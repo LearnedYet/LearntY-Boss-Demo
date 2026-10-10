@@ -1,0 +1,33 @@
+# 统一换行符，保持仓库跨平台一致。
+* text=auto eol=lf
+
+# Unity 将这些资源序列化为 YAML 文本，便于比较和合并。
+*.cs        text diff=csharp
+*.meta      text
+*.asset     text
+*.unity     text
+*.prefab    text
+*.mat       text
+*.asmdef    text
+*.inputactions text
+*.json      text
+*.md        text
+
+# 常见二进制资源类型，为美术资源接入预留规则。
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.psd   binary
+*.fbx   binary
+*.wav   binary
+*.mp3   binary
+*.ogg   binary
+*.ttf   binary
+*.otf   binary
+
+# 导入的三维资源体积较大，使用 Git LFS，避免存入普通 Git 对象。
+*.fbx       filter=lfs diff=lfs merge=lfs -text
+*.FBX       filter=lfs diff=lfs merge=lfs -text
+
+# 烘焙光照数据虽使用 .asset 扩展名，实际为二进制；文本换行转换会损坏它。
+**/LightingData.asset binary

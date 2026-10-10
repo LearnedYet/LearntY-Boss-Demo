@@ -1,0 +1,99 @@
+# ---------------------------------------------------------------------------
+# Unity 自动生成的目录
+# ---------------------------------------------------------------------------
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# 只有对应资源被忽略时，才应忽略其 .meta 文件
+!/[Aa]ssets/**/*.meta
+
+# ---------------------------------------------------------------------------
+# 这些目录构成项目本身，不应忽略
+# ---------------------------------------------------------------------------
+!/[Aa]ssets/
+!/[Pp]ackages/
+!/[Pp]roject[Ss]ettings/
+
+# ---------------------------------------------------------------------------
+# IDE 和构建产物，Unity 会按需重新生成
+# ---------------------------------------------------------------------------
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# ---------------------------------------------------------------------------
+# Unity3D 为崩溃报告生成的元数据文件
+# ---------------------------------------------------------------------------
+sysinfo.txt
+crashlytics-build.properties
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# ---------------------------------------------------------------------------
+# 构建产物
+# ---------------------------------------------------------------------------
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# ---------------------------------------------------------------------------
+# 操作系统生成的文件
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# 批处理日志和测试输出
+# ---------------------------------------------------------------------------
+/unity-*.log
+/test-results.xml
+
+# 测试框架每次运行 PlayMode 测试都会在 Assets/ 写入临时启动场景，
+# 结束后不一定会清理这些文件。
+/Assets/InitTestScene*.unity
+/Assets/InitTestScene*.unity.meta
+
+# Mixamo 资源可用于游戏及其构建，但不能重新分发原始文件，因此不加入仓库。
+# 获取方式见 Docs/ART_INTEGRATION.md；目录缺失时，生成器会回退到
+# CC0 Quaternius 角色。
+Assets/_Project/Art/Licensed/
+Assets/_Project/Art/Licensed.meta
+
+# 下载的音效包只提交录音和许可证，不提交压缩包和网页快捷方式。
+Assets/_Project/Audio/ThirdParty/**/*.zip
+Assets/_Project/Audio/ThirdParty/**/*.zip.meta
+Assets/_Project/Audio/ThirdParty/**/*.url
+Assets/_Project/Audio/ThirdParty/**/*.url.meta
+
+# Freesound 合集切分到 Takes/，环境音加工成循环；原始下载只保留在本机，均为 CC0，
+# 可按 THIRD_PARTY_NOTICES.md 的 ID 重新下载。三个咆哮音效完整播放并保留。
+Assets/_Project/Audio/ThirdParty/Freesound/*.wav
+Assets/_Project/Audio/ThirdParty/Freesound/*.wav.meta
+Assets/_Project/Audio/ThirdParty/Freesound/*.aiff
+Assets/_Project/Audio/ThirdParty/Freesound/*.aiff.meta
+!Assets/_Project/Audio/ThirdParty/Freesound/489901__*
+!Assets/_Project/Audio/ThirdParty/Freesound/132874__*
+!Assets/_Project/Audio/ThirdParty/Freesound/497056__*
