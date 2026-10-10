@@ -1,3 +1,4 @@
+using UnityEditor;
 using UnityEditor.Events;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,29 +6,29 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// The project's shared generators for the two UI primitives every screen needs.
+    /// 项目共用生成器，生成每个界面需要的两种 UI 基础元素。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Extracted so the heads-up display and the title screen produce identical text and buttons
-    /// rather than each carrying its own near-copy. Both are built from code for the same reason the
-    /// scenes are: a hand-authored canvas is a wall of anchor values that means nothing in a diff.
+    /// 抽出共用实现，让 HUD 和标题页生成一致文字与按钮，不各自维护近似副本。
+    /// 两者由代码构建的理由与场景相同：手写画布是一堆在差异中难以理解的锚点数值。
     /// </para>
     /// <para>
-    /// Text uses the always-present legacy runtime font. TextMeshPro needs its essential resources
-    /// imported through a dialog before anything renders, which a generated scene cannot assume has
-    /// happened.
+    /// 文字使用随附动态 Noto Sans SC，确保编辑器和构建中显示中文，不依赖玩家设备安装字体。
     /// </para>
     /// </remarks>
     internal static class UiBuilder
     {
-        /// <summary>Creates a centred text element using the built-in font.</summary>
-        /// <param name="parent">Transform to parent the text under.</param>
-        /// <param name="name">Object name.</param>
-        /// <param name="content">Initial text.</param>
-        /// <param name="fontSize">Font size in reference pixels.</param>
-        /// <param name="alignment">Text alignment.</param>
-        /// <returns>The created text component.</returns>
+        private const string FontAssetPath =
+            "Assets/_Project/Art/ThirdParty/NotoSansSC/NotoSansSC-Regular.otf";
+
+        /// <summary>用随附中文字体创建居中文字元素。</summary>
+        /// <param name="parent">文字所挂载的父 Transform。</param>
+        /// <param name="name">对象名称。</param>
+        /// <param name="content">初始文字。</param>
+        /// <param name="fontSize">以参考像素计的字号。</param>
+        /// <param name="alignment">文字对齐方式。</param>
+        /// <returns>创建的文字组件。</returns>
         public static Text CreateText(
             Transform parent,
             string name,
@@ -40,7 +41,11 @@ namespace AdaptiveBossArena.Editor
 
             var text = textObject.GetComponent<Text>();
             text.text = content;
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = AssetDatabase.LoadAssetAtPath<Font>(FontAssetPath);
+            if (text.font == null)
+            {
+                throw new System.InvalidOperationException($"UI font is missing: {FontAssetPath}");
+            }
             text.fontSize = fontSize;
             text.alignment = alignment;
             text.color = Color.white;
@@ -56,13 +61,13 @@ namespace AdaptiveBossArena.Editor
             return text;
         }
 
-        /// <summary>Creates a labelled button wired to a callback.</summary>
-        /// <param name="parent">Transform to parent the button under.</param>
-        /// <param name="name">Object name.</param>
-        /// <param name="label">Button caption.</param>
-        /// <param name="anchoredPosition">Centre-relative position.</param>
-        /// <param name="onClick">Method invoked on click. Must be a public method on a serialised object.</param>
-        /// <returns>The created button, for callers that need to reference it afterwards.</returns>
+        /// <summary>创建带标签并绑定回调的按钮。</summary>
+        /// <param name="parent">按钮所挂载的父 Transform。</param>
+        /// <param name="name">对象名称。</param>
+        /// <param name="label">按钮文字。</param>
+        /// <param name="anchoredPosition">相对中心的位置。</param>
+        /// <param name="onClick">点击调用的方法，必须是序列化对象上的公开方法。</param>
+        /// <returns>创建的按钮，供需要后续引用的调用者使用。</returns>
         public static Button CreateButton(
             Transform parent,
             string name,
@@ -80,8 +85,7 @@ namespace AdaptiveBossArena.Editor
             rect.anchoredPosition = anchoredPosition;
             rect.sizeDelta = new Vector2(320f, 56f);
 
-            // Dark iron with a thin bone edge, warming when hovered. A translucent white slab read as a
-            // placeholder, on every screen that has buttons.
+            // 暗铁色配细骨白边，悬停时变暖。半透明白块在所有带按钮界面都像占位。
             buttonObject.GetComponent<Image>().color = Color.white;
             buttonObject.AddComponent<Outline>().effectColor = new Color(0.62f, 0.52f, 0.4f, 0.55f);
 
@@ -89,11 +93,9 @@ namespace AdaptiveBossArena.Editor
             text.rectTransform.sizeDelta = new Vector2(320f, 56f);
             text.color = new Color(0.86f, 0.8f, 0.7f);
 
-            // AddPersistentListener, not AddListener. This runs at edit time while the scene is being
-            // baked to disk, and a plain AddListener registers a runtime-only callback that is never
-            // serialised — so on reload every generated button would have an empty onClick and do
-            // nothing, however correct the wiring looked in code. Persistent listeners are the ones
-            // stored in the scene, exactly as if the method had been dragged into the inspector.
+            // 使用 AddPersistentListener 而非 AddListener。此代码在编辑时将场景写入磁盘，
+            // 普通AddListener 仅注册运行时回调，不序列化；重载后所有按钮 onClick 为空，
+            // 无论代码连接看似多正确。持久监听器存于场景，等同将方法拖入 Inspector。
             var button = buttonObject.GetComponent<Button>();
             button.colors = new ColorBlock
             {
@@ -111,20 +113,19 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Creates a horizontal slider with a solid, sprite-free look.
+        /// 创建纯色、无精灵风格的水平滑杆。
         /// </summary>
         /// <remarks>
-        /// Built through <see cref="DefaultControls"/> rather than by hand: a slider's fill and handle
-        /// have a fiddly nest of anchors that the component drives at runtime, and getting one wrong
-        /// yields a control that looks right and does not move. Letting Unity assemble the known-good
-        /// hierarchy and then only recolouring it removes that whole class of mistake.
+        /// 通过以下方式构建： <see cref="DefaultControls"/> ，不手工组合。
+        /// 滑杆填充和手柄有复杂嵌套锚点，由组件运行时驱动；任一错误都会使控件看似正确却不动。
+        /// 让 Unity 建立已知正确层级，再只改色，可消除此类错误。
         /// </remarks>
-        /// <param name="parent">Transform to parent under.</param>
-        /// <param name="name">Object name.</param>
-        /// <param name="anchoredPosition">Centre-relative position.</param>
-        /// <param name="accent">Colour of the filled portion.</param>
-        /// <param name="width">Slider width.</param>
-        /// <returns>The slider, ranged zero to one.</returns>
+        /// <param name="parent">要挂载到的父 Transform。</param>
+        /// <param name="name">对象名称。</param>
+        /// <param name="anchoredPosition">相对中心的位置。</param>
+        /// <param name="accent">填充部分颜色。</param>
+        /// <param name="width">滑杆宽度。</param>
+        /// <returns>零到一范围的滑杆。</returns>
         public static Slider CreateSlider(
             Transform parent, string name, Vector2 anchoredPosition, Color accent, float width = 340f)
         {
@@ -151,13 +152,13 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Creates a checkbox toggle with a solid, sprite-free look and no built-in label.
+        /// 创建纯色、无精灵风格、不带内置文字的复选开关。
         /// </summary>
-        /// <param name="parent">Transform to parent under.</param>
-        /// <param name="name">Object name.</param>
-        /// <param name="anchoredPosition">Centre-relative position.</param>
-        /// <param name="accent">Colour of the checkmark when on.</param>
-        /// <returns>The toggle.</returns>
+        /// <param name="parent">要挂载到的父 Transform。</param>
+        /// <param name="name">对象名称。</param>
+        /// <param name="anchoredPosition">相对中心的位置。</param>
+        /// <param name="accent">开启时勾选标记的颜色。</param>
+        /// <returns>开关。</returns>
         public static Toggle CreateToggle(
             Transform parent, string name, Vector2 anchoredPosition, Color accent)
         {
@@ -172,8 +173,7 @@ namespace AdaptiveBossArena.Editor
             rect.anchoredPosition = anchoredPosition;
             rect.sizeDelta = new Vector2(30f, 30f);
 
-            // The default toggle ships with its own Text label; the settings rows supply their own,
-            // so it is disabled rather than left showing an empty box beside the real label.
+            // 默认开关自带 Text 标签，设置行有独立标签，因此禁用默认标签，避免在真实文字旁显示空框。
             Transform label = toggleObject.transform.Find("Label");
             if (label != null)
             {
@@ -186,7 +186,7 @@ namespace AdaptiveBossArena.Editor
             return toggleObject.GetComponent<Toggle>();
         }
 
-        /// <summary>Recolours a named descendant image, tolerating its absence.</summary>
+        /// <summary>为指定名称的后代 Image 改色，允许对象缺失。</summary>
         private static void Recolour(Transform root, string path, Color color)
         {
             Transform target = root.Find(path);

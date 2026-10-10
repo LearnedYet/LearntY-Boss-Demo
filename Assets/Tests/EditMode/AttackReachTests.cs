@@ -6,13 +6,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Pins the one definition of how far an attack can reach.
+    /// 固定攻击可达距离的唯一定义。
     /// </summary>
     /// <remarks>
-    /// Four pieces of the boss's logic decide what it can hit - which attack to pick, when to stop
-    /// approaching, whether a combo can continue, and the controller's own check - and they used to
-    /// each carry their own copy of this sum. The lunge is about to change how it travels, and a copy
-    /// left behind would have had the boss choosing attacks it could not land.
+    /// 首领四处逻辑判断可击中距离：选招、停止接近、连击能否继续、控制器自身检查。以前各自复制同一计算。
+    /// 突进位移即将变化，任一旧副本都会让首领选中无法命中的攻击。
     /// </remarks>
     [TestFixture]
     public sealed class AttackReachTests
@@ -44,7 +42,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ALungeAddsTheGroundItCoversDuringItsWindUp()
         {
-            // The Charge: 2.6 m of hit range and 16 m/s over a 0.55 s wind-up.
+            // Charge：2.6 米命中范围，0.55 秒前摇期间速度 16 米每秒。
             AttackDefinition charge = Attack(range: 2.6f, lungeSpeed: 16f, startupSeconds: 0.55f);
 
             Assert.AreEqual(2.6f + 16f * 0.55f, charge.EffectiveReach, 0.001f);

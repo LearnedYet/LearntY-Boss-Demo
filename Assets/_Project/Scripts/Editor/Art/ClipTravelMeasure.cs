@@ -7,27 +7,27 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Which way, and how fast, a locomotion clip walks the body, read from its planted foot.
+    /// 从着地脚读取移动片段带动身体的方向与速度。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The Mixamo clips are in place: the hips never travel, so the importer reports no motion. The feet still
-    /// tell: whichever foot is lower is planted, and a planted foot slides backwards under a body walking
-    /// forwards. Averaged over the cycle, the planted foot's slide is the clip's travel, reversed.
+    /// Mixamo 片段原地播放，髋部不位移，因此导入器报告没有运动。但脚仍能说明方向：较低的脚处于着地状态，
+    /// 身体向前行走时着地脚会在其下方向后滑动。整个循环中着地脚滑动的平均反向速度，
+    /// 就是片段的移动速度。
     /// </para>
     /// <para>
-    /// Measured rather than taken from file names, because the names lie. "great sword run" steps backwards;
-    /// it was the brute's run, and the brute ran forwards on legs running away.
+    /// 使用测量结果而非文件名，因为名称会误导。“great sword run” 实际向后迈步；它曾被用作巨兽跑步动作，
+    /// 让向前跑的巨兽双腿却在后退。
     /// </para>
     /// </remarks>
     public static class ClipTravelMeasure
     {
         private const int Samples = 60;
 
-        /// <summary>A clip's travel in the model's own space: x across, y along its forward, in metres per second.</summary>
-        /// <param name="table">The fighter whose model poses the clip.</param>
-        /// <param name="clipName">The clip.</param>
-        /// <returns>The travel, or zero when the clip or model is absent.</returns>
+        /// <summary>模型自身坐标中的片段移动速度：x 为横向，y 为前向，单位为米每秒。</summary>
+        /// <param name="table">用于播放片段姿势的战斗角色。</param>
+        /// <param name="clipName">动画片段。</param>
+        /// <returns>移动速度；缺少片段或模型时为零。</returns>
         public static Vector2 TravelOf(CharacterClipTable table, string clipName)
         {
             AnimationClip clip = FindClip(table.ClipSources, clipName);

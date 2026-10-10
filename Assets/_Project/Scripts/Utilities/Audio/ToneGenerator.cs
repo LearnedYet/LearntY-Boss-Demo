@@ -4,43 +4,35 @@ using UnityEngine;
 namespace AdaptiveBossArena.Utilities.Audio
 {
     /// <summary>
-    /// Synthesises the game's sound effects at runtime.
+    /// 在运行时合成游戏音效。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The project ships with no audio assets and no sound designer, and a silent action game cannot
-    /// feel good no matter how it looks — impact without sound reads as the hit not having landed.
-    /// Rather than leave it silent, every cue here is generated from noise and simple oscillators.
+    /// 最初项目没有音频资源和音效设计师，但动作游戏缺少声音就难以产生良好手感：
+    /// 无声打击会让人以为没有命中。因此用噪声和简单振荡器生成每种提示音。
     /// </para>
     /// <para>
-    /// The approach is deliberately crude but it targets the properties that actually matter for
-    /// combat feedback: a sharp transient so the hit lands on the exact frame, a short decay so
-    /// rapid exchanges do not smear together, and clearly distinct timbres so the player can tell a
-    /// deflect from a block without looking. Metallic ring for a deflect, dull thud for a block,
-    /// filtered noise sweep for a swing.
+    /// 方法刻意保持简单，重点满足战斗反馈：尖锐瞬态让声音准确落在命中帧，短衰减避免连续交换混成一团，
+    /// 不同音色让玩家不看画面也能区分弹反和格挡。弹反用金属鸣响，格挡用沉闷撞击，挥击用滤波噪声扫频。
     /// </para>
     /// <para>
-    /// All clips are procedural and seeded, so they are identical every run and cost nothing to
-    /// ship.
+    /// 所有音频均由程序按种子生成，每次运行一致，无需附带音频文件。
     /// </para>
     /// </remarks>
     public static class ToneGenerator
     {
-        /// <summary>Rate assumed when the audio system has not reported one.</summary>
+        /// <summary>音频系统未报告采样率时采用的默认值。</summary>
         public const int FallbackSampleRate = 44100;
 
-        /// <summary>Length of the fade to silence at the end of a one-shot, in seconds.</summary>
+        /// <summary>单次音效结尾淡出到静音的时长，单位为秒。</summary>
         private const float ReleaseSeconds = 0.004f;
 
         /// <summary>
-        /// Sample rate used for every generated clip.
+        /// 所有生成音频使用的采样率。
         /// </summary>
         /// <remarks>
-        /// Taken from the audio system rather than fixed, so clips are built at the rate the output
-        /// actually runs at and are not resampled on every play. The project's output is 48 kHz while
-        /// these clips were hard-coded to 44.1 kHz, so every one of them was being converted at
-        /// runtime for nothing. Falls back when the value is unavailable, which happens in batch mode
-        /// with no audio device.
+        /// 读取音频系统实际采样率，避免每次播放重采样。项目输出为48 kHz，而以前硬编码为44.1 kHz，
+        /// 造成无谓运行时转换。无音频设备的批处理模式等情况下使用回退值。
         /// </remarks>
         public static int SampleRate
         {
@@ -53,21 +45,19 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds a percussive impact: a noise burst through a fast decay.
+        /// 生成打击声：经过快速衰减的噪声爆发。
         /// </summary>
         /// <remarks>
-        /// Noise rather than a tone, because impacts are broadband. The decay is what sells weight —
-        /// a longer one reads as heavier without changing the volume.
+        /// 冲击是宽频声音，因此使用噪声而非单一音调。较长衰减可以在不改变音量的情况下传达更重的打击。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="durationSeconds">Total length.</param>
-        /// <param name="lowPassHz">Cutoff. Lower sounds duller and heavier.</param>
-        /// <param name="seed">Seed, so the clip is identical every run.</param>
+        /// <param name="name">音频名称。</param>
+        /// <param name="durationSeconds">总时长。</param>
+        /// <param name="lowPassHz">截止频率，越低越沉闷、厚重。</param>
+        /// <param name="seed">随机种子，使各次运行的音频一致。</param>
         /// <param name="peak">
-        /// How loud this impact should be. Independent of the cutoff, so a duller sound is not
-        /// automatically a quieter one.
+        /// 打击音量，与截止频率独立，避免音色变闷时自动变小。
         /// </param>
-        /// <returns>The generated clip.</returns>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreateImpact(
             string name,
             float durationSeconds = 0.18f,
@@ -86,8 +76,7 @@ namespace AdaptiveBossArena.Utilities.Audio
             {
                 float noise = (float)(random.NextDouble() * 2d - 1d);
 
-                // One-pole low pass. Cheap, and enough to turn white noise into something with a
-                // sense of mass rather than a hiss.
+                // 单极点低通，计算开销低，足以将白噪声从嘶声变成有重量感的声音。
                 previous += (noise - previous) * smoothing;
 
                 float envelope = FastDecay(i / (float)sampleCount, sharpness: 9f);
@@ -98,30 +87,25 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds an impact with actual weight: a crack, a body, and a room behind them.
+        /// 生成有重量感的打击声，叠加接触瞬态、主体和空间反射。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// A single filtered noise burst is a hiss with an envelope on it — which is what every
-        /// impact in this game used to be, and why they all sounded the same and none of them landed.
-        /// A hit that reads as heavy is layered: a bright transient for the contact, a low body that
-        /// drops in pitch as it decays for the mass behind it, and reflections for the space it
-        /// happened in.
+        /// 单个滤波噪声爆发只是带包络的嘶声，过去所有打击都采用这种方式，因此听起来相似且缺乏冲击。
+        /// 厚重打击需要明亮接触瞬态、随衰减降低音高的低频主体，以及表现空间的反射。
         /// </para>
         /// <para>
-        /// The pitch drop on the body is the part that does the work. A fixed low tone reads as a
-        /// hum; one that falls as it fades reads as something heavy being struck. It is the oldest
-        /// trick in drum synthesis and it is the difference between a click and a blow.
+        /// 主体音高下降是关键。固定低音像嗡鸣，随淡出下降则像重物受到撞击，这是鼓音合成中的常用方法。
         /// </para>
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="bodyHz">Pitch the body settles to. Lower reads as heavier.</param>
-        /// <param name="lowPassHz">Cutoff of the transient. Lower is duller.</param>
-        /// <param name="durationSeconds">Total length, including the room tail.</param>
-        /// <param name="peak">How loud this impact should be.</param>
-        /// <param name="roomAmount">How much of the arena is heard behind it.</param>
-        /// <param name="seed">Seed, so the clip is identical every run.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="bodyHz">主体最终音高，越低越显得厚重。</param>
+        /// <param name="lowPassHz">瞬态的截止频率，越低越沉闷。</param>
+        /// <param name="durationSeconds">包括空间尾音的总时长。</param>
+        /// <param name="peak">打击音量。</param>
+        /// <param name="roomAmount">背景中竞技场空间反射的强度。</param>
+        /// <param name="seed">随机种子，使各次运行的音频一致。</param>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreateWeightedImpact(
             string name,
             float bodyHz = 90f,
@@ -143,12 +127,12 @@ namespace AdaptiveBossArena.Utilities.Audio
             {
                 float progress = i / (float)sampleCount;
 
-                // The contact: a short, bright noise crack that is gone almost immediately.
+                // 接触层：短促、明亮、几乎立即消失的噪声裂响。
                 float noise = (float)(random.NextDouble() * 2d - 1d);
                 previous += (noise - previous) * smoothing;
                 float crack = previous * FastDecay(progress, sharpness: 26f);
 
-                // The mass: a sine starting well above its resting pitch and falling onto it.
+                // 重量层：正弦音从较高音高下降到稳定音高。
                 float sweep = Mathf.Lerp(2.2f, 1f, Mathf.Clamp01(progress * 5f));
                 phase += 2f * Mathf.PI * bodyHz * sweep / SampleRate;
                 float body = Mathf.Sin(phase) * FastDecay(progress, sharpness: 7f);
@@ -162,19 +146,17 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds a long, sinking knell for a death.
+        /// 为死亡生成悠长、下沉的钟鸣。
         /// </summary>
         /// <remarks>
-        /// The game had no death sound at all, for either combatant — the most significant moment in
-        /// the fight passed in silence. This is deliberately the slowest thing in the bank: a low
-        /// cluster that sags in pitch and takes its time, so it reads as an ending rather than
-        /// another impact.
+        /// 过去双方都没有死亡音效，战斗最关键时刻无声结束。此声音刻意成为音效库中最缓慢的一项：
+        /// 低频音簇逐渐降调并延长衰减，让玩家感知到结束。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="rootHz">Lowest partial.</param>
-        /// <param name="durationSeconds">Total length.</param>
-        /// <param name="peak">How loud the knell should be.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="rootHz">最低分音。</param>
+        /// <param name="durationSeconds">总时长。</param>
+        /// <param name="peak">钟鸣音量。</param>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreateDeathKnell(
             string name,
             float rootHz = 110f,
@@ -184,7 +166,7 @@ namespace AdaptiveBossArena.Utilities.Audio
             int sampleCount = Mathf.Max(1, Mathf.RoundToInt(SampleRate * durationSeconds));
             var samples = new float[sampleCount];
 
-            // A minor third and an octave below the root: heavy, and unmistakably not a victory.
+            // 根音上方的小三度和下方的八度，形成沉重、明确不同于胜利的声音。
             float[] partials = { 0.5f, 1f, 1.19f };
             float[] gains = { 1f, 0.7f, 0.45f };
             var phases = new float[partials.Length];
@@ -193,7 +175,7 @@ namespace AdaptiveBossArena.Utilities.Audio
             {
                 float progress = i / (float)sampleCount;
 
-                // Sags a whole tone across the clip, which is what makes it read as collapsing.
+                // 整个音频下降一个全音，传达坍塌感。
                 float sag = Mathf.Lerp(1f, 0.89f, progress);
                 float value = 0f;
 
@@ -203,7 +185,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                     value += Mathf.Sin(phases[p]) * gains[p];
                 }
 
-                // Slow attack so it swells rather than strikes, then a long decay.
+                // 缓慢起音使声音逐渐膨胀，再进入长衰减。
                 float attack = Mathf.Clamp01(progress * 12f);
                 samples[i] = Saturate(value * 0.4f) * attack * FastDecay(progress, sharpness: 2.6f);
             }
@@ -214,17 +196,15 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds a metallic ring for a successful deflect.
+        /// 为成功弹反生成金属鸣响。
         /// </summary>
         /// <remarks>
-        /// Several inharmonic partials rather than a musical chord. Harmonically related tones sound
-        /// like an instrument; deliberately detuned ones sound like struck metal, which is what a
-        /// parry needs to feel like.
+        /// 使用多个非谐波分音；谐波相关音像乐器，刻意失谐的分音更像金属撞击，符合招架反馈。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="rootHz">Lowest partial.</param>
-        /// <param name="durationSeconds">Total length.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="rootHz">最低分音。</param>
+        /// <param name="durationSeconds">总时长。</param>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreateMetallicRing(
             string name,
             float rootHz = 880f,
@@ -247,7 +227,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                     value += Mathf.Sin(2f * Mathf.PI * rootHz * partials[p] * time) * gains[p];
                 }
 
-                // Higher partials should die first, as they do on real metal.
+                // 像真实金属一样，让较高分音先衰减。
                 float envelope = FastDecay(i / (float)sampleCount, sharpness: 4.5f);
                 samples[i] = value * envelope * 0.25f;
             }
@@ -256,17 +236,15 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds a soft rising shimmer, for restorative moments like a heal.
+        /// 为治疗等恢复时刻生成柔和、上升的闪光音。
         /// </summary>
         /// <remarks>
-        /// Harmonic partials rather than the inharmonic ones of the metallic ring, so it reads as
-        /// warm and musical rather than struck. A gentle upward pitch glide and a soft attack make it
-        /// feel like something being restored rather than something being hit.
+        /// 使用谐波分音，区别于金属鸣响的非谐波分音，传达温暖和音乐性。柔和起音与轻微升调表现恢复感。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="baseHz">Fundamental of the chime.</param>
-        /// <param name="durationSeconds">Total length.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="baseHz">铃音基频。</param>
+        /// <param name="durationSeconds">总时长。</param>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreateShimmer(
             string name,
             float baseHz = 660f,
@@ -284,7 +262,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                 float time = i / (float)SampleRate;
                 float progress = i / (float)sampleCount;
 
-                // A small upward glide is what makes it read as "rising" — recovery, not a chord.
+                // 轻微上滑音高传达上升和恢复。
                 float glide = Mathf.Lerp(0.97f, 1.06f, progress);
 
                 float value = 0f;
@@ -293,7 +271,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                     value += Mathf.Sin(2f * Mathf.PI * baseHz * partials[p] * glide * time) * gains[p];
                 }
 
-                // A soft attack (no sharp transient) keeps it gentle; the slow decay lets it bloom.
+                // 柔和起音避免尖锐瞬态，缓慢衰减让声音展开。
                 float attack = Mathf.Clamp01(progress / 0.09f);
                 float decay = FastDecay(progress, sharpness: 3.2f);
 
@@ -304,20 +282,18 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds a swing whoosh: filtered noise that rises then falls.
+        /// 生成挥击破空声：截止频率先升后降的滤波噪声。
         /// </summary>
         /// <remarks>
-        /// The rise-and-fall shape is what makes it read as motion past the ear rather than as a
-        /// burst. Played on wind-up, it also gives the player an audible telegraph.
+        /// 先升后降的形状表现从耳边掠过的运动；在前摇播放，还能提供听觉预警。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="durationSeconds">Total length.</param>
-        /// <param name="seed">Seed for reproducibility.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="durationSeconds">总时长。</param>
+        /// <param name="seed">用于复现的随机种子。</param>
+        /// <returns>生成的音频。</returns>
         /// <param name="brightness">
-        /// Scales how high the cutoff sweeps. Below one the swing is heavy and airy, above one it is
-        /// thin and fast — which is how three weapons that share one moveset can still be told apart
-        /// by ear.
+        /// 缩放截止频率扫描高度。小于一时厚重、宽松，大于一时轻薄、迅速，
+        /// 让共享招式的三种武器仍能凭声音区分。
         /// </param>
         public static AudioClip CreateWhoosh(
             string name,
@@ -337,8 +313,7 @@ namespace AdaptiveBossArena.Utilities.Audio
             {
                 float progress = i / (float)sampleCount;
 
-                // Cutoff sweeps up and back down, which is what makes it sound like something
-                // passing rather than simply starting and stopping.
+                // 截止频率先上升再回落，使声音像物体掠过。
                 float sweep = Mathf.Sin(progress * Mathf.PI);
                 float smoothing = Mathf.Lerp(0.02f, ceiling, sweep);
 
@@ -352,17 +327,15 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds a sharp, alarming sting to warn of a perilous, unblockable attack.
+        /// 为无法格挡的危险攻击生成尖锐警报音。
         /// </summary>
         /// <remarks>
-        /// A tritone — the most tense interval there is — under a fast tremolo, so it reads instantly
-        /// as danger rather than as any ordinary swing. The player hears "do not block this" before
-        /// the red telegraph has fully bloomed.
+        /// 三全音配合快速震音，立刻传达危险。在红色预警完全展开前，玩家已经听见不能格挡的警告。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="rootHz">Fundamental of the sting.</param>
-        /// <param name="durationSeconds">Total length.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="rootHz">警报基频。</param>
+        /// <param name="durationSeconds">总时长。</param>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreatePerilWarning(
             string name,
             float rootHz = 300f,
@@ -386,7 +359,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                     value += Mathf.Sin(2f * Mathf.PI * rootHz * partials[p] * time) * gains[p];
                 }
 
-                // A fast tremolo makes it pulse like an alarm rather than sit like a chord.
+                // 快速震音使其像警报一样脉动。
                 float tremolo = 0.7f + 0.3f * Mathf.Sin(2f * Mathf.PI * 18f * time);
                 float envelope = FastDecay(progress, sharpness: 2.4f);
 
@@ -397,17 +370,15 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds an unsteady low lurch for the moment a committed boss swing overbalances it.
+        /// 为Boss全力挥击后失衡生成不稳定的低沉踉跄声。
         /// </summary>
         /// <remarks>
-        /// The pitch sags downward across the sound — the audible equivalent of tipping off balance —
-        /// under a slow wobble and slightly detuned partials, so it lands as a heavy stumble the player
-        /// can read as an opening rather than as a clean note.
+        /// 声音逐渐降调，配合缓慢摆动和轻微失谐分音，表现失去平衡的沉重踉跄，让玩家识别进攻机会。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="rootHz">Fundamental. Low, because a large mass losing its footing is low.</param>
-        /// <param name="durationSeconds">Total length.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="rootHz">基频，重物失去立足点应使用低频。</param>
+        /// <param name="durationSeconds">总时长。</param>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreateStumble(
             string name,
             float rootHz = 165f,
@@ -417,7 +388,7 @@ namespace AdaptiveBossArena.Utilities.Audio
             int sampleCount = Mathf.Max(1, Mathf.RoundToInt(SampleRate * durationSeconds));
             var samples = new float[sampleCount];
 
-            // Slightly detuned partials, so the tone never quite settles and reads as unsteady.
+            // 轻微失谐分音使音调无法完全稳定，传达不稳感。
             float[] partials = { 1f, 1.5f, 2.02f };
             float[] gains = { 1f, 0.5f, 0.3f };
 
@@ -426,7 +397,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                 float time = i / (float)SampleRate;
                 float progress = i / (float)sampleCount;
 
-                // The pitch sags across the sound, and a slow wobble makes the fall a lurch, not a slide.
+                // 音高下降配合缓慢摆动，表现踉跄式下坠。
                 float glide = Mathf.Lerp(1f, 0.72f, progress);
                 float wobble = 1f + 0.04f * Mathf.Sin(2f * Mathf.PI * 6.5f * time);
 
@@ -436,7 +407,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                     value += Mathf.Sin(2f * Mathf.PI * rootHz * partials[p] * glide * wobble * time) * gains[p];
                 }
 
-                // A soft knock in, then a long heavy fall as the boss settles.
+                // 柔和敲击后接长而沉重的下落，表现Boss恢复站稳。
                 float attack = Mathf.Clamp01(progress / 0.06f);
                 float envelope = attack * FastDecay(progress, sharpness: 1.6f);
 
@@ -447,13 +418,13 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds a low roar for boss phase transitions.
+        /// 为Boss阶段切换生成低沉咆哮。
         /// </summary>
-        /// <param name="name">Clip name.</param>
-        /// <param name="baseHz">Fundamental. Lower reads as larger.</param>
-        /// <param name="durationSeconds">Total length.</param>
-        /// <param name="seed">Seed for reproducibility.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="baseHz">基频，越低越显得庞大。</param>
+        /// <param name="durationSeconds">总时长。</param>
+        /// <param name="seed">用于复现的随机种子。</param>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreateRoar(
             string name,
             float baseHz = 70f,
@@ -472,7 +443,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                 float time = i / (float)SampleRate;
                 float progress = i / (float)sampleCount;
 
-                // Pitch sags across the roar, which reads as effort and mass.
+                // 咆哮逐渐降调，表现用力和体量。
                 float pitch = baseHz * Mathf.Lerp(1.15f, 0.85f, progress);
 
                 float fundamental = Mathf.Sin(2f * Mathf.PI * pitch * time);
@@ -489,17 +460,15 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds a sustained drone for the music bed.
+        /// 为音乐背景生成持续低音。
         /// </summary>
         /// <remarks>
-        /// Looped and layered by the audio service, with higher layers faded in as the boss
-        /// escalates. Tension without melody, which suits an encounter that has no narrative beats
-        /// to score.
+        /// 由音频服务循环并分层，随着Boss升级淡入高层。没有旋律的紧张感适合没有叙事节拍的单场遭遇战。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="rootHz">Fundamental.</param>
-        /// <param name="durationSeconds">Loop length.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="rootHz">基频。</param>
+        /// <param name="durationSeconds">循环时长。</param>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreateDrone(
             string name, float rootHz = 55f, float durationSeconds = 4f, float peak = 0.4f)
         {
@@ -510,7 +479,7 @@ namespace AdaptiveBossArena.Utilities.Audio
             {
                 float time = i / (float)SampleRate;
 
-                // Slightly detuned unison, which beats gently and stops the drone sounding synthetic.
+                // 轻微失谐的同度音产生柔和拍频，减少合成器感。
                 float a = Mathf.Sin(2f * Mathf.PI * rootHz * time);
                 float b = Mathf.Sin(2f * Mathf.PI * rootHz * 1.004f * time);
                 float fifth = Mathf.Sin(2f * Mathf.PI * rootHz * 1.5f * time) * 0.35f;
@@ -522,18 +491,17 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Builds a rhythmic pulsing tone for the top music layer.
+        /// 为音乐顶层生成节奏脉冲音。
         /// </summary>
         /// <remarks>
-        /// Where the drone is sustained tension, this is a heartbeat — a tone gated by a steady pulse.
-        /// Faded in only for the final phase, it is what turns "fuller" into "urgent". The loop length
-        /// is chosen to hold a whole number of beats so the pulse never stutters at the seam.
+        /// 背景低音提供持续紧张，脉冲层像心跳，用稳定节拍控制音调。只在最终阶段淡入，增加紧迫感。
+        /// 循环时长包含整数拍，避免接缝处节奏跳变。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="rootHz">Fundamental.</param>
-        /// <param name="beatsPerMinute">Pulse rate.</param>
-        /// <param name="beats">Number of beats in the loop.</param>
-        /// <returns>The generated clip.</returns>
+        /// <param name="name">音频名称。</param>
+        /// <param name="rootHz">基频。</param>
+        /// <param name="beatsPerMinute">脉冲频率。</param>
+        /// <param name="beats">循环包含的拍数。</param>
+        /// <returns>生成的音频。</returns>
         public static AudioClip CreatePulse(
             string name,
             float rootHz = 110f,
@@ -553,7 +521,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                 float tone = Mathf.Sin(2f * Mathf.PI * rootHz * time)
                              + Mathf.Sin(2f * Mathf.PI * rootHz * 1.5f * time) * 0.3f;
 
-                // A sharp attack and quick decay within each beat gives the layer its drive.
+                // 每拍中尖锐起音和快速衰减提供推进感。
                 float withinBeat = (i % beatSamples) / (float)beatSamples;
                 float pulse = FastDecay(withinBeat, sharpness: 6f);
 
@@ -563,31 +531,28 @@ namespace AdaptiveBossArena.Utilities.Audio
             return BuildLoopingClip(name, samples, peak);
         }
 
-        /// <summary>Exponential decay envelope, normalised to the clip's progress.</summary>
+        /// <summary>按音频播放进度归一化的指数衰减包络。</summary>
         private static float FastDecay(float progress, float sharpness) =>
             Mathf.Exp(-progress * sharpness);
 
-        /// <summary>Delays of the early reflections, in seconds.</summary>
+        /// <summary>早期反射延迟，单位为秒。</summary>
         /// <remarks>
-        /// Deliberately not multiples of one another. Evenly spaced taps reinforce a single frequency
-        /// and colour the sound like a comb filter instead of suggesting a space.
+        /// 延迟刻意互不成整数倍。等距抽头会强化单一频率，产生梳状滤波音色，而非空间感。
         /// </remarks>
         private static readonly float[] ReflectionSeconds = { 0.011f, 0.023f, 0.037f };
 
-        /// <summary>How loud each reflection is relative to the dry signal.</summary>
+        /// <summary>各次反射相对干声的音量。</summary>
         private static readonly float[] ReflectionGains = { 0.5f, 0.32f, 0.2f };
 
         /// <summary>
-        /// Adds a handful of early reflections, so a sound has somewhere to happen.
+        /// 添加少量早期反射，让声音具有空间来源。
         /// </summary>
         /// <remarks>
-        /// Every clip in this game was bone dry, which is most of why nothing had size: a real impact
-        /// in a stone arena arrives with the room immediately behind it. A few short taps are enough
-        /// to imply that space and cost a single pass over the buffer — far cheaper than a reverb,
-        /// and it survives being played twelve at a time.
+        /// 过去音频完全没有空间反射，缺少体量感。石质竞技场中的真实冲击紧接着会有房间反射；
+        /// 几个短延迟抽头只需遍历缓冲区一次，比混响便宜，也能支持多个声音同时播放。
         /// </remarks>
-        /// <param name="samples">Buffer to add reflections into, in place.</param>
-        /// <param name="amount">How present the room is, from zero to about one.</param>
+        /// <param name="samples">原地添加反射的缓冲区。</param>
+        /// <param name="amount">房间反射存在感，约从零到一。</param>
         private static void ApplyRoomTail(float[] samples, float amount)
         {
             if (amount <= 0f)
@@ -595,8 +560,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                 return;
             }
 
-            // Reflections are taken from the dry signal rather than the running result, so the taps
-            // do not feed each other into an ever-growing wash.
+            // 反射取自干声，不使用正在修改的结果，避免抽头彼此反馈形成越来越长的混响。
             var dry = (float[])samples.Clone();
 
             for (int tap = 0; tap < ReflectionSeconds.Length; tap++)
@@ -618,36 +582,28 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Rounds off peaks instead of letting them clip.
+        /// 平滑压低峰值，避免直接削波。
         /// </summary>
         /// <remarks>
-        /// Layered sounds add up, and summing a thump onto a crack routinely overshoots. Hard
-        /// clipping that overshoot is heard as a harsh crackle; bending it is heard as loudness,
-        /// which is what an impact wants anyway.
+        /// 叠加的撞击声和裂响容易超出幅度范围；硬削波会产生刺耳爆裂，柔和压缩则保留响度感。
         /// </remarks>
         private static float Saturate(float sample) => (float)System.Math.Tanh(sample);
 
         /// <summary>
-        /// Scales a buffer so its loudest sample sits at a chosen peak.
+        /// 缩放缓冲区，使最响采样达到指定峰值。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This is what makes a cue's loudness a decision rather than an accident. The one-pole
-        /// low-pass used across these generators attenuates in proportion to its cutoff — output
-        /// level falls with the square root of the cutoff frequency — so the duller a sound was made,
-        /// the quieter it came out. The result was exactly backwards: a light jab at 2200 Hz was
-        /// several times louder than the heavy hit, the execution, and the low-health heartbeat,
-        /// which at 85 Hz was all but inaudible.
+        /// 让音量成为明确配置。单极点低通会随截止频率降低而衰减，输出约按截止频率平方根变化。
+        /// 以前轻击2200 Hz比重击、处决和85 Hz低生命心跳响数倍，音量关系反而错误。
         /// </para>
         /// <para>
-        /// Normalising every buffer to an explicit peak removes the coupling entirely, so cutoff
-        /// chooses <em>timbre</em> and the peak argument chooses <em>loudness</em>. Relative balance
-        /// between cues is therefore still deliberate — a footstep is quiet because it asks to be,
-        /// not because of its filter.
+        /// 将每个缓冲区归一化到明确峰值，消除这种耦合，让截止频率选择<em>音色</em>、
+        /// 峰值参数选择<em>响度</em>。脚步轻是主动配置的结果，而非滤波器副作用。
         /// </para>
         /// </remarks>
-        /// <param name="samples">Buffer to scale in place.</param>
-        /// <param name="targetPeak">Desired absolute maximum, from zero to one.</param>
+        /// <param name="samples">原地缩放的缓冲区。</param>
+        /// <param name="targetPeak">期望绝对峰值，范围零到一。</param>
         private static void NormalisePeak(float[] samples, float targetPeak)
         {
             float loudest = 0f;
@@ -657,8 +613,7 @@ namespace AdaptiveBossArena.Utilities.Audio
                 loudest = Mathf.Max(loudest, Mathf.Abs(samples[i]));
             }
 
-            // A silent buffer has nothing to scale, and dividing by its peak would be a division by
-            // zero rather than a useful result.
+            // 静音缓冲区无需缩放，除以其峰值会造成除零。
             if (loudest <= Mathf.Epsilon)
             {
                 return;
@@ -673,14 +628,11 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Fades the last few milliseconds to silence.
+        /// 将最后几毫秒淡出到静音。
         /// </summary>
         /// <remarks>
-        /// An exponential decay never actually reaches zero, so a buffer that simply stops is a step
-        /// discontinuity, and a step is heard as a click. The gentler envelopes were the worst
-        /// offenders: the overbalance stumble ended at a fifth of its peak amplitude and the peril
-        /// warning at a tenth, both cutting off hard. A ramp of a few milliseconds is inaudible as a
-        /// fade and removes every one of those ticks at once.
+        /// 指数衰减不会真正到零，直接截断会产生阶跃和点击声。此前失衡音结束时仍有峰值五分之一，
+        /// 危险警报仍有十分之一。几毫秒线性淡出不易察觉，却能消除这些点击。
         /// </remarks>
         private static void ApplyReleaseTaper(float[] samples)
         {
@@ -688,26 +640,23 @@ namespace AdaptiveBossArena.Utilities.Audio
 
             for (int i = 0; i < taper; i++)
             {
-                // Runs from the end backwards, so index 0 of the ramp is the final sample.
+                // 从结尾向前处理，淡出数组索引0对应最后一个采样。
                 samples[samples.Length - 1 - i] *= i / (float)taper;
             }
         }
 
         /// <summary>
-        /// Returns a shortened buffer whose end meets its start, so it loops without a tick.
+        /// 返回缩短的缓冲区，使结尾与开头连续，无点击循环。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The buffer is trimmed by the fade length and the discarded tail is blended back over the
-        /// head. The last kept sample is then followed — on wrap — by the sample that genuinely came
-        /// after it in the original buffer, which is what makes the seam continuous.
+        /// 按淡出长度裁短缓冲区，将丢弃尾部混入开头。循环接缝处最后保留的采样之后，
+        /// 会接上原缓冲区中真正紧随的采样，保证连续。
         /// </para>
         /// <para>
-        /// The previous implementation faded the tail toward the head in place without shortening,
-        /// which left the final sample landing on the head's <em>fade-th</em> value while playback
-        /// wrapped to its first: the discontinuity survived, merely relocated. It was also applied to
-        /// buffers that were already whole numbers of cycles and needed nothing, where it dragged the
-        /// first beat's attack in as a ghost a tenth of a second before the loop point.
+        /// 以前原地将尾部向开头淡变而不缩短，最终采样落在开头的<em>淡出长度位置</em>，
+        /// 循环却返回首采样，不连续只是被转移。对本来完整周期的缓冲区应用该处理，
+        /// 还会在接缝前引入提前出现的幽灵起音。
         /// </para>
         /// </remarks>
         private static float[] MakeSeamless(float[] samples)
@@ -732,10 +681,10 @@ namespace AdaptiveBossArena.Utilities.Audio
             return result;
         }
 
-        /// <summary>Wraps a one-shot buffer into a clip, tapered and normalised.</summary>
-        /// <param name="name">Clip name.</param>
-        /// <param name="samples">Sample buffer.</param>
-        /// <param name="peak">Loudness this cue should have, from zero to one.</param>
+        /// <summary>将单次音效缓冲区包装成已淡出、归一化的音频。</summary>
+        /// <param name="name">音频名称。</param>
+        /// <param name="samples">采样缓冲区。</param>
+        /// <param name="peak">提示音响度，范围零到一。</param>
         private static AudioClip BuildClip(string name, float[] samples, float peak)
         {
             if (samples == null || samples.Length == 0)
@@ -750,15 +699,14 @@ namespace AdaptiveBossArena.Utilities.Audio
         }
 
         /// <summary>
-        /// Wraps a looping buffer into a clip, made seamless and normalised.
+        /// 将循环缓冲区包装成无缝且归一化的音频。
         /// </summary>
         /// <remarks>
-        /// Deliberately does not taper: a fade to silence at the end of a loop is a hole punched in
-        /// the sound once per cycle, which is the very artefact the taper exists to prevent elsewhere.
+        /// 刻意不在结尾淡出到静音，否则每轮循环都会出现声音空洞。
         /// </remarks>
-        /// <param name="name">Clip name.</param>
-        /// <param name="samples">Sample buffer.</param>
-        /// <param name="peak">Loudness this layer should have, from zero to one.</param>
+        /// <param name="name">音频名称。</param>
+        /// <param name="samples">采样缓冲区。</param>
+        /// <param name="peak">该音乐层响度，范围零到一。</param>
         private static AudioClip BuildLoopingClip(string name, float[] samples, float peak)
         {
             if (samples == null || samples.Length == 0)
@@ -772,7 +720,7 @@ namespace AdaptiveBossArena.Utilities.Audio
             return CreateClip(name, seamless);
         }
 
-        /// <summary>Hands a finished buffer to Unity.</summary>
+        /// <summary>将完成的缓冲区交给Unity。</summary>
         private static AudioClip CreateClip(string name, float[] samples)
         {
             var clip = AudioClip.Create(name, samples.Length, channels: 1, SampleRate, stream: false);

@@ -4,11 +4,10 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests how much dust a footfall lifts.
+    /// 测试脚步扬起多少尘土。
     /// </summary>
     /// <remarks>
-    /// Fighters crossed a stone floor without disturbing it. Dust on every step would be worse: a fighter
-    /// edging into range would trail it behind them, so a creep lifts nothing at all.
+    /// 角色穿过石地板原本毫无扰动，但每步都扬尘更糟：缓慢靠近攻击距离不应拖出尘尾，因此慢移不扬尘。
     /// </remarks>
     [TestFixture]
     public sealed class FootstepDustTests

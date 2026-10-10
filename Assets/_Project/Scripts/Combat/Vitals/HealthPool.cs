@@ -5,19 +5,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Vitals
 {
     /// <summary>
-    /// A health pool with change and death notification.
+    /// 带有变化和死亡通知的生命值池。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A plain class rather than a component, and deliberately placed in the Combat assembly so the
-    /// player and the boss share one implementation. Health that behaves subtly differently for the
-    /// two combatants is a class of bug that only shows up in edge cases such as simultaneous
-    /// lethal hits.
+    /// 采用普通类而不是组件，并刻意放在 Combat 程序集内，让玩家与首领共用实现。
+    /// 双方生命值行为的细微差异属于只会在同时致命命中等边界情况出现的缺陷。
     /// </para>
     /// <para>
-    /// The pool knows nothing about invincibility frames, perfect dodges or resistances. Those are
-    /// decisions about whether a hit should land at all, and they belong to the owner's
-    /// <see cref="IDamageable"/> implementation. This type only moves the number.
+    /// 池不关心无敌帧、完美闪避和抗性。这些决定命中是否应当生效，
+    /// 属于所属对象的<see cref="IDamageable"/> 实现。此类型只改变数值。
     /// </para>
     /// </remarks>
     public sealed class HealthPool : IHealth
@@ -26,10 +23,10 @@ namespace AdaptiveBossArena.Combat.Vitals
         private float _current;
         private float _maximum;
 
-        /// <summary>Creates a pool filled to its maximum.</summary>
-        /// <param name="maximum">Capacity of the pool. Must be positive.</param>
-        /// <param name="team">Team the owner fights for, reported with the death event.</param>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when the maximum is not positive.</exception>
+        /// <summary>创建已填充到最大值的池。</summary>
+        /// <param name="maximum">池的容量，必须为正数。</param>
+        /// <param name="team">所属对象的阵营，会随死亡事件报告。</param>
+        /// <exception cref="ArgumentOutOfRangeException">最大值不是正数时抛出。</exception>
         public HealthPool(float maximum, CombatantTeam team)
         {
             if (maximum <= 0f)
@@ -62,11 +59,11 @@ namespace AdaptiveBossArena.Combat.Vitals
         public event Action<DeathArgs> Died;
 
         /// <summary>
-        /// Removes health and reports how much was actually taken.
+        /// 扣除生命值，并报告实际扣除的数量。
         /// </summary>
-        /// <param name="amount">Health to remove. Non-positive values are ignored.</param>
-        /// <param name="cause">The hit responsible, forwarded to the death event for attribution.</param>
-        /// <returns>Health actually removed after clamping at zero.</returns>
+        /// <param name="amount">要扣除的生命值，忽略非正数。</param>
+        /// <param name="cause">造成伤害的命中，转发到死亡事件用于归因。</param>
+        /// <returns>限制最低为零后，实际扣除的生命值。</returns>
         public float Reduce(float amount, in DamageInfo cause)
         {
             if (amount <= 0f || !IsAlive)
@@ -80,8 +77,7 @@ namespace AdaptiveBossArena.Combat.Vitals
 
             Changed?.Invoke(ResourceChangedArgs.Create(previous, _current, _maximum));
 
-            // Death is raised after the change notification so that a health bar has already been
-            // updated to zero by the time a death screen reacts.
+            // 死亡在变化通知后触发，确保死亡界面响应时，生命条已经更新为零。
             if (_current <= 0f)
             {
                 Died?.Invoke(new DeathArgs
@@ -98,8 +94,7 @@ namespace AdaptiveBossArena.Combat.Vitals
         /// <inheritdoc />
         public float Heal(float amount)
         {
-            // Healing the dead would silently revive a combatant whose death has already been
-            // announced, leaving listeners in an inconsistent state.
+            // 治疗死者会悄然复活已经宣布死亡的战斗参与者，让监听者处于不一致状态。
             if (amount <= 0f || !IsAlive)
             {
                 return 0f;
@@ -117,7 +112,7 @@ namespace AdaptiveBossArena.Combat.Vitals
             return restored;
         }
 
-        /// <summary>Refills the pool, for example when a fight restarts.</summary>
+        /// <summary>填满池，例如重新开始战斗时。</summary>
         public void ResetToFull()
         {
             float previous = _current;
@@ -125,8 +120,8 @@ namespace AdaptiveBossArena.Combat.Vitals
             Changed?.Invoke(ResourceChangedArgs.Create(previous, _current, _maximum));
         }
 
-        /// <summary>Changes capacity, scaling the current amount to preserve the fill fraction.</summary>
-        /// <param name="maximum">New capacity. Must be positive.</param>
+        /// <summary>改变容量，并按比例调整当前值以保留填充比例。</summary>
+        /// <param name="maximum">新容量，必须为正数。</param>
         public void SetMaximum(float maximum)
         {
             if (maximum <= 0f)

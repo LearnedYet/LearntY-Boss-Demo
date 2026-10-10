@@ -5,16 +5,15 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// A piece of the arena that a heavy blow can break into falling stone.
+    /// 可被重击打碎为掉落石块的竞技场部件。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Breaking hides the intact stone and throws pieces from the debris pool out of the space it filled.
-    /// It never touches a collider: what breaks is dressing, so the fight's geometry is the same before
-    /// and after, and a broken parapet cannot open a gap in the arena's boundary.
+    /// 破坏隐藏完整石材，并从碎片池向其原有空间外抛出碎片。绝不修改碰撞体：破坏仅是装饰，
+    /// 所以战斗几何在破坏前后保持一致，损坏矮墙不会打开竞技场边界缺口。
     /// </para>
     /// <para>
-    /// Restored for every retry, so an attempt always starts in the same room.
+    /// 每次重试恢复，使尝试都从同一房间开始。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -38,25 +37,24 @@ namespace AdaptiveBossArena.Combat
         [Tooltip("How many pieces it breaks into.")]
         private int _pieceCount = 5;
 
-        /// <summary>Whether this has been broken this attempt.</summary>
+        /// <summary>本次尝试中是否已经被破坏。</summary>
         public bool IsBroken { get; private set; }
 
-        /// <summary>Centre of the intact stone.</summary>
+        /// <summary>完整石材的中心。</summary>
         public Vector3 Centre => transform.position;
 
-        /// <summary>How much further than an impact's own reach this stone can be broken from.</summary>
+        /// <summary>超出冲击自身范围后仍能破坏此石材的额外距离。</summary>
         /// <remarks>
-        /// The columns stand three metres behind the wall ring, where no blow ever lands. Without this they
-        /// could only break from impacts the fight cannot produce; with it, a charge into the wall right in
-        /// front of one brings it down.
+        /// 立柱在环墙后三米，那里不会有攻击落地。若无此值，只能被战斗无法产生的冲击打碎；加入后，
+        /// 在柱前撞墙的冲锋就能使它倒塌。
         /// </remarks>
         public float ReachBonus => _reachBonus;
 
-        /// <summary>Assigns the stone and its size. Used by the scene generator.</summary>
-        /// <param name="intact">Every visible part of the intact stone.</param>
-        /// <param name="size">Its dimensions, in metres, which the pieces are cut from.</param>
-        /// <param name="pieceCount">How many pieces it breaks into.</param>
-        /// <param name="reachBonus">Extra reach, for stone standing back from where blows land.</param>
+        /// <summary>分配石材及尺寸，供场景生成器使用。</summary>
+        /// <param name="intact">完整石材的全部可见部件。</param>
+        /// <param name="size">用于切分碎片的尺寸，单位为米。</param>
+        /// <param name="pieceCount">破碎后的碎片数量。</param>
+        /// <param name="reachBonus">后方石材相对于攻击落点的额外影响距离。</param>
         public void Bind(Renderer[] intact, Vector3 size, int pieceCount, float reachBonus = 0f)
         {
             _intact = intact ?? new Renderer[0];
@@ -65,12 +63,12 @@ namespace AdaptiveBossArena.Combat
             _reachBonus = reachBonus;
         }
 
-        /// <summary>Breaks the stone, throwing its pieces away from the impact.</summary>
-        /// <param name="impact">Where the blow landed.</param>
-        /// <param name="pool">Where the pieces come from.</param>
-        /// <param name="random">The seeded source of every scatter.</param>
-        /// <param name="speed">Typical launch speed of a piece.</param>
-        /// <returns>True when this broke now; false if it was already broken.</returns>
+        /// <summary>打碎石材，将碎片朝远离冲击点的方向抛出。</summary>
+        /// <param name="impact">攻击落点。</param>
+        /// <param name="pool">碎片来源。</param>
+        /// <param name="random">所有散射使用的带种子随机源。</param>
+        /// <param name="speed">碎片典型发射速度。</param>
+        /// <returns>本次刚破坏时为 true，已被破坏时为 false。</returns>
         public bool Break(Vector3 impact, DebrisPool pool, IRandomProvider random, float speed)
         {
             if (IsBroken)
@@ -88,7 +86,7 @@ namespace AdaptiveBossArena.Combat
 
             Vector3 half = _size * 0.5f;
 
-            // Pieces scaled so together they hold roughly the stone's volume, not n copies of it.
+            // 缩放碎片，使总体积大致等于原石材，而非 n 份原石材。
             float pieceScale = Mathf.Pow(1f / Mathf.Max(1, _pieceCount), 1f / 3f);
 
             for (int i = 0; i < _pieceCount; i++)
@@ -109,7 +107,7 @@ namespace AdaptiveBossArena.Combat
             return true;
         }
 
-        /// <summary>Makes the stone whole again, for a retry.</summary>
+        /// <summary>为重试恢复完整石材。</summary>
         public void Restore()
         {
             IsBroken = false;

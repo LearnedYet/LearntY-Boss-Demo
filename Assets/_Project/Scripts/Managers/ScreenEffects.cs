@@ -7,29 +7,26 @@ using UnityEngine.Rendering.Universal;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Drives the post-processing volume in response to the fight.
+    /// 根据战斗状态驱动后处理体积。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The volume profile is otherwise a fixed look. This makes it answer the moment: the frame
-    /// reddens and desaturates as the player is dying, jolts on a hit, and flares with a lens punch on
-    /// a clean deflect. It is the screen equivalent of the hit-stop and the shake — feedback the player
-    /// feels before they read it.
+    /// 体积配置原本是固定外观，这里让它响应当前时刻：玩家濒死时画面变红、降低饱和度，受击时跳动，
+    /// 精准弹反时伴随镜头冲击闪亮。它是顿帧与震动的屏幕对应反馈，让玩家在理解之前先感受到。
     /// </para>
     /// <para>
-    /// It edits <see cref="Volume.profile"/>, the per-instance copy, never the shared asset, so nothing
-    /// it does here is written back to disk. The two transient jolts respect the reduced-flashing
-    /// accessibility setting; the sustained low-health grade is a slow, gentle shift rather than a
-    /// flash, so it stays. Everything runs on unscaled time to read through a hit-stop.
+    /// 修改的是 <see cref="Volume.profile"/> 逐实例副本，而非共享资源，因此这里的变化不会写回磁盘。
+    /// 两种短暂冲击遵守减少闪光的无障碍设置；持续低生命调色是缓慢柔和变化，不是闪光，所以保留。
+    /// 全部使用未缩放时间，以便顿帧期间仍可读。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class ScreenEffects : MonoBehaviour
     {
-        /// <summary>Health fraction at or below which the danger grade begins.</summary>
+        /// <summary>危险调色开始生效的生命比例阈值。</summary>
         private const float LowHealthThreshold = 0.4f;
 
-        /// <summary>Health fraction at which the danger grade is fully applied.</summary>
+        /// <summary>危险调色完全生效的生命比例。</summary>
         private const float LowHealthFloor = 0.08f;
 
         private const float LowHealthVignetteAdd = 0.22f;
@@ -41,13 +38,13 @@ namespace AdaptiveBossArena.Game
         private const float DeflectBloomAdd = 0.7f;
         private const float PulseDecayPerSecond = 3.5f;
 
-        /// <summary>Health fraction below which the heartbeat begins.</summary>
+        /// <summary>心跳开始播放的生命比例阈值。</summary>
         private const float HeartbeatStartHealth = 0.35f;
 
-        /// <summary>Seconds between beats when the heartbeat first begins.</summary>
+        /// <summary>心跳刚开始时两拍之间的秒数。</summary>
         private const float HeartbeatSlowSeconds = 1.1f;
 
-        /// <summary>Seconds between beats at the brink of death — a racing pulse.</summary>
+        /// <summary>濒死时两拍之间的秒数，表现急促心跳。</summary>
         private const float HeartbeatFastSeconds = 0.42f;
 
         private static readonly Color LowHealthVignetteColor = new Color(0.5f, 0.02f, 0.03f);
@@ -122,11 +119,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Reads the effects out of the volume's profile again, after a quality change swapped it.
+        /// 画质切换替换配置后，再次读取体积配置中的效果。
         /// </summary>
         /// <remarks>
-        /// The pulses and vignettes are written into the volume's own copy of the profile. A swap replaces that
-        /// copy, and without re-reading it every hit would go on writing into one that is no longer drawn.
+        /// 脉冲和暗角写入体积自己的配置副本。切换会替换该副本，若不重新读取，
+        /// 每次命中仍会写入已经不再绘制的旧副本。
         /// </remarks>
         public void RebindProfile()
         {
@@ -135,7 +132,7 @@ namespace AdaptiveBossArena.Game
                 return;
             }
 
-            // The per-instance profile, cloned on first access, so runtime edits never touch the asset.
+            // 首次访问时克隆逐实例配置，使运行时修改绝不影响资源。
             VolumeProfile profile = _volume.profile;
 
             profile.TryGet(out _vignette);
@@ -166,12 +163,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Pulses a heartbeat while the player is near death, racing faster as their health falls.
+        /// 玩家濒死时播放心跳，生命越低节奏越快。
         /// </summary>
         /// <remarks>
-        /// A sound rather than a flash, so it stays on for players who suppress flashing — it is the
-        /// audible half of the same "you are dying" signal the reddening vignette carries. It stops the
-        /// moment the player is dead or safe.
+        /// 采用声音而非闪光，因此抑制闪光的玩家仍会听见；它是变红暗角所传达“你快死了”的声音对应信号。
+        /// 玩家死亡或脱离危险时立即停止。
         /// </remarks>
         private void TickHeartbeat(float deltaTime)
         {
@@ -179,7 +175,7 @@ namespace AdaptiveBossArena.Game
 
             if (!dying || _audio == null)
             {
-                // Reset so the first beat lands immediately on the next brush with death.
+                // 重置，使下次接近死亡时立即播放第一拍。
                 _heartbeatTimer = 0f;
                 return;
             }
@@ -195,10 +191,10 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Assigns the references. Used by the scene generator.</summary>
-        /// <param name="volume">Global post-processing volume.</param>
-        /// <param name="playerHealth">Normalised player health channel.</param>
-        /// <param name="deflect">Clean deflect channel.</param>
+        /// <summary>分配引用，供场景生成器使用。</summary>
+        /// <param name="volume">全局后处理体积。</param>
+        /// <param name="playerHealth">归一化的玩家生命通道。</param>
+        /// <param name="deflect">精准弹反通道。</param>
         public void Bind(Volume volume, FloatEventChannel playerHealth, VoidEventChannel deflect)
         {
             _volume = volume;
@@ -208,7 +204,7 @@ namespace AdaptiveBossArena.Game
 
         private void OnHealthChanged(float normalized)
         {
-            // A drop is a hit taken; the jolt is suppressed for players who have asked for less flashing.
+            // 生命下降表示受击；玩家要求减少闪光时抑制冲击。
             if (normalized < _health - Mathf.Epsilon && !FeedbackSettings.ReducedFlashing)
             {
                 _damagePulse = 1f;
@@ -226,12 +222,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Writes the grade, but only the values that moved.
+        /// 写入调色，但只写变化的数值。
         /// </summary>
         /// <remarks>
-        /// Writing a volume parameter marks the stack for re-evaluation, and a changed saturation rebuilds the
-        /// colour lookup table. At full health with no hit in flight nothing here changes, so a browser on weak
-        /// graphics should not be paying for it sixty times a second.
+        /// 写入体积参数会标记后处理栈重新评估，饱和度变化还会重建颜色查找表。
+        /// 满生命且没有受击效果时这里不发生变化，因此弱显卡浏览器不应每秒为其支付六十次开销。
         /// </remarks>
         private void Apply()
         {
@@ -265,7 +260,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Below this, a change to the grade is invisible and not worth a write.</summary>
+        /// <summary>小于此幅度的调色变化不可见，不值得写入。</summary>
         private const float WriteEpsilon = 0.0005f;
 
         private static void SetIfChanged(VolumeParameter<float> parameter, float value)

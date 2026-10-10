@@ -10,21 +10,18 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that the boss's parry is a window with a punishable tail, not an invincible stance.
+    /// 测试首领招架是带可惩罚尾段的窗口，而非无敌站姿。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The rule itself is covered in edit mode against <c>DefenceResolver</c>. What cannot be covered
-    /// there is the wiring: that the boss hands the resolver its own stance timer and its own
-    /// configured window, and therefore that the tail is genuinely punishable in the shipped scene.
-    /// Before this, the stance refused every hit for half a second, so it could be waited out but
-    /// never beaten — there was no moment at which committing to it had been the wrong call.
+    /// 规则本身已在编辑模式下针对以下类型测试： <c>DefenceResolver</c>。编辑模式无法覆盖的是连接配置：
+    /// 首领是否将自己的站姿计时和配置窗口交给解析器，从而使发布场景中的尾段确实可被惩罚。
+    /// 此前站姿会拒绝半秒内所有攻击，玩家只能等它结束，无法击败它；
+    /// 不存在投入该动作被证明是错误决策的时刻。
     /// </para>
     /// <para>
-    /// The stance is driven by reflection rather than by waiting for the boss to choose one. Its
-    /// entry is a seeded probability against a perceived heavy swing, so provoking it honestly would
-    /// make the test a coin flip; and the distinction under test is a tenth of a second wide, which
-    /// is not something to leave to frame timing.
+    /// 通过反射驱动站姿，而非等待首领自行选择。进入站姿依赖针对感知重击的种子概率，
+    /// 正常诱导会使测试变成抛硬币；所测差异窗口只有十分之一秒，也不应依赖帧时机。
     /// </para>
     /// </remarks>
     [TestFixture]
@@ -47,7 +44,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             _boss = Object.FindAnyObjectByType<BossController>();
         }
 
-        /// <summary>Reads a private field from an instance, failing the test if it is not there.</summary>
+        /// <summary>从实例读取私有字段，不存在时使测试失败。</summary>
         private static object Field(object owner, string fieldName)
         {
             FieldInfo field = owner.GetType().GetField(
@@ -58,10 +55,10 @@ namespace AdaptiveBossArena.Tests.PlayMode
             return field.GetValue(owner);
         }
 
-        /// <summary>The boss's tuning asset, which nothing needs to expose publicly.</summary>
+        /// <summary>首领调节参数资源，无需任何模块公开暴露。</summary>
         private BossConfig Config() => (BossConfig)Field(_boss, "_config");
 
-        /// <summary>Puts the boss into its parry stance, a given distance into it.</summary>
+        /// <summary>使首领进入招架站姿，并推进至指定时间。</summary>
         private void ForceStance(float secondsIntoStance)
         {
             var context = (BossContext)Field(_boss, "_context");
@@ -69,8 +66,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
 
             object parryState = Field(_boss, "_parryState");
 
-            // Auto-property with a private setter, so the compiler-generated backing field is the
-            // only way in. Named rather than searched so a rename fails loudly here.
+            // 具有私有 setter 的自动属性，因此编译器生成的后备字段是唯一入口。按名称而非搜索找到它，
+            // 使重命名在此明确失败。
             FieldInfo timeInState = parryState.GetType().BaseType?.GetField(
                 "<TimeInState>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -78,7 +75,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             timeInState.SetValue(parryState, secondsIntoStance);
         }
 
-        /// <summary>An ordinary player swing, of the kind the stance exists to answer.</summary>
+        /// <summary>普通玩家挥击，正是该站姿要应对的攻击。</summary>
         private static DamageInfo Swing() =>
             DamageInfo.Create(30f, DamageType.Heavy, CombatantTeam.Player, 1);
 
@@ -107,8 +104,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             BossConfig config = Config();
             float healthBefore = _boss.Health.Current;
 
-            // Past the window, still committed to the stance. This is the punish, and the entire
-            // reason baiting the stance out is worth doing.
+            // 已过窗口，但仍投入站姿。这就是惩罚机会，也是诱导该站姿值得做的全部理由。
             ForceStance(config.ParryWindowSeconds + config.ParryTailSeconds * 0.5f);
 
             Assert.AreEqual(
@@ -141,8 +137,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
                 Unparryable = true
             };
 
-            // The punish the player earned by breaking its guard. Refusing it with the same stance
-            // that failed would take back something already paid for.
+            // 玩家通过破防赢得的惩罚机会。若用已经失败的相同站姿拒绝它，
+            // 就会收回玩家已付出代价获得的奖励。
             Assert.AreEqual(
                 DamageOutcome.Applied, _boss.TakeDamage(execution).Outcome,
                 "The boss parried an attack marked unparryable.");

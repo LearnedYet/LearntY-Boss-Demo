@@ -4,35 +4,35 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// Blood left on the floor where blows landed, fading after a while.
+    /// 在打击落点留下地面血迹，一段时间后淡出。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A blow sprayed blood and the floor stayed clean, so a long fight left no trace of itself. Splatters
-    /// that stay a while and then fade let the floor keep a record of where the exchange went.
+    /// 打击喷出鲜血，地面却保持干净，使长战斗不留任何痕迹。停留一段时间再淡出的血迹，
+    /// 让地面记录交锋发生的位置。
     /// </para>
     /// <para>
-    /// A fixed ring of flat quads, reused oldest first, so a long fight never allocates and never piles up
-    /// more than <see cref="Capacity"/> of them. Each is stretched along the blow that made it. Fades on game
-    /// time, so a pause or hit-stop holds it.
+    /// 固定数量的平面四边形形成环形池，优先复用最旧项，确保长战斗不会分配内存，
+    /// 且不会累积超过 <see cref="Capacity"/> 个血迹。每个沿产生它的打击拉伸。按游戏时间淡出，
+    /// 因此暂停或顿帧会保持它。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class BloodDecalPool : MonoBehaviour
     {
-        /// <summary>The most splatters on the floor at once.</summary>
+        /// <summary>地面同时存在的最多血迹数量。</summary>
         public const int Capacity = 24;
 
-        /// <summary>The most splatters on the floor at once in a browser, where each is overdraw a weak GPU pays for.</summary>
+        /// <summary>浏览器地面同时存在的最多血迹数量，每个都会给较弱 GPU 带来过度绘制成本。</summary>
         public const int WebCapacity = 12;
 
-        /// <summary>How long a splatter stays at full strength before it starts to fade, in seconds.</summary>
+        /// <summary>血迹开始淡出前维持完整强度的时间，单位为秒。</summary>
         public const float HoldSeconds = 16f;
 
-        /// <summary>How long a splatter takes to fade out, in seconds.</summary>
+        /// <summary>血迹完全淡出的时间，单位为秒。</summary>
         public const float FadeSeconds = 6f;
 
-        /// <summary>Height above the floor: over the old stains, under the scars and warnings.</summary>
+        /// <summary>高于地面的高度：位于旧污迹之上、地面痕迹和预警之下。</summary>
         private const float Lift = 0.011f;
 
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -44,7 +44,7 @@ namespace AdaptiveBossArena.Combat.Feel
         private float _clock;
         private int _next;
 
-        /// <summary>How many splatters are currently on the floor.</summary>
+        /// <summary>当前地面上的血迹数量。</summary>
         public int VisibleCount
         {
             get
@@ -60,9 +60,9 @@ namespace AdaptiveBossArena.Combat.Feel
             }
         }
 
-        /// <summary>A splatter's opacity at an age.</summary>
-        /// <param name="ageSeconds">Seconds since it was placed.</param>
-        /// <returns>One while fresh, easing to zero over the fade.</returns>
+        /// <summary>血迹在某个存活时间的不透明度。</summary>
+        /// <param name="ageSeconds">放置以来的秒数。</param>
+        /// <returns>新血迹为一，在淡出过程中缓动到零。</returns>
         public static float AlphaAt(float ageSeconds)
         {
             if (ageSeconds <= HoldSeconds)
@@ -74,9 +74,9 @@ namespace AdaptiveBossArena.Combat.Feel
             return 1f - t * t;
         }
 
-        /// <summary>Builds the pool.</summary>
-        /// <param name="material">Alpha-blended splatter material.</param>
-        /// <param name="random">Source for each splatter's turn and size, so no splatter reaches for the global generator.</param>
+        /// <summary>构建池。</summary>
+        /// <param name="material">透明度混合的血迹材质。</param>
+        /// <param name="random">各血迹旋转和大小的来源，避免血迹使用全局生成器。</param>
         public void Construct(Material material, IRandomProvider random)
         {
             _random = random;
@@ -90,7 +90,7 @@ namespace AdaptiveBossArena.Combat.Feel
                 GameObject quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
                 quad.name = $"Blood_{i:D2}";
 
-                // Visual only: nothing should collide with a stain.
+                // 仅用于视觉：任何对象都不应与污迹碰撞。
                 Destroy(quad.GetComponent<Collider>());
 
                 quad.transform.SetParent(transform, worldPositionStays: false);
@@ -105,10 +105,10 @@ namespace AdaptiveBossArena.Combat.Feel
             }
         }
 
-        /// <summary>Leaves a splatter on the floor under a blow.</summary>
-        /// <param name="position">Where the blow landed; only its floor position is used.</param>
-        /// <param name="direction">The blow's direction, which the splatter is flung along.</param>
-        /// <param name="size">Rough size in metres.</param>
+        /// <summary>在打击下方地面留下血迹。</summary>
+        /// <param name="position">打击落点，只使用其地面位置。</param>
+        /// <param name="direction">打击方向，血迹沿此方向溅出。</param>
+        /// <param name="size">大致尺寸，单位为米。</param>
         public void Place(Vector3 position, Vector3 direction, float size)
         {
             if (_renderers.Length == 0 || _random == null)
@@ -123,7 +123,7 @@ namespace AdaptiveBossArena.Combat.Feel
             var along = new Vector3(direction.x, 0f, direction.z);
             along = along.sqrMagnitude > 1e-6f ? along.normalized : Quaternion.Euler(0f, _random.NextFloat(0f, 360f), 0f) * Vector3.forward;
 
-            // A quad faces along -z; laid flat, its texture's up runs along the blow, so the droplets fly with it.
+            // 四边形沿 -z 朝向；放平后，纹理上方沿打击方向，因此液滴随打击飞行。
             Quaternion flat = Quaternion.LookRotation(Vector3.down, along);
             float scale = size * _random.NextFloat(0.75f, 1.25f);
 
@@ -150,7 +150,7 @@ namespace AdaptiveBossArena.Combat.Feel
 
                 float age = _clock - _placedAt[i];
 
-                // Nothing to write while a splatter is still fresh: it was set to full strength when placed.
+                // 血迹仍新鲜时无需写入：放置时已设为完整强度。
                 if (age <= HoldSeconds)
                 {
                     continue;

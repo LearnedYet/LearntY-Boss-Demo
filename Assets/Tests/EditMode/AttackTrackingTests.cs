@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests when a swing stops following its target, which is what makes a late dodge work.
+    /// 测试挥击何时停止追踪目标，保证晚闪避有效。
     /// </summary>
     [TestFixture]
     public sealed class AttackTrackingTests
@@ -21,8 +21,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ASwingCommitsBeforeItsWindUpEnds()
         {
-            // The last stretch of the wind-up is committed. A swing that could still turn here would
-            // follow a late dodge straight into the strike.
+            // 前摇最后一段已投入攻击。此时还能转向就会追随晚闪避直接命中。
             Assert.IsFalse(AttackTracking.CanTrack(AttackPhase.Startup, 0.35f, Startup, Window));
         }
 

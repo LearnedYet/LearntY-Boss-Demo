@@ -4,20 +4,19 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Sprites the interface is drawn with, generated rather than imported.
+    /// 界面绘制使用的精灵，通过生成而非导入获得。
     /// </summary>
     public static class UiSprites
     {
         private const string Folder = "Assets/_Project/Materials/UI";
 
         /// <summary>
-        /// Vertical shading for a gauge's fill: a thin lit edge on top, darkening toward the bottom.
+        /// 资源条填充的竖向明暗：顶部细亮边，向底部变暗。
         /// </summary>
         /// <remarks>
-        /// A flat colour read as a coloured rectangle; shaded, the same fill reads as a filled channel. White,
-        /// so each gauge's own colour tints it.
+        /// 纯色像彩色矩形；有明暗后同一填充像充满的槽。使用白色以接受各条自身着色。
         /// </remarks>
-        /// <returns>The sprite asset.</returns>
+        /// <returns>精灵资产。</returns>
         public static Sprite GaugeShading()
         {
             const int Height = 32;
@@ -55,8 +54,7 @@ namespace AdaptiveBossArena.Editor
             var sprite = Sprite.Create(texture, new Rect(0, 0, 4, Height), new Vector2(0.5f, 0.5f), 100f);
             sprite.name = "GaugeShading";
 
-            // The texture is the main asset and the sprite rides inside it, so the sprite's reference to its
-            // texture is to a saved object rather than to one that existed only in memory.
+            // 纹理是主资产，精灵存于其中，因此精灵引用的是已保存纹理对象而非仅内存对象。
             AssetAuthoring.EnsureFolderExists(Folder);
             AssetDatabase.CreateAsset(texture, path);
             AssetDatabase.AddObjectToAsset(sprite, texture);
@@ -65,8 +63,8 @@ namespace AdaptiveBossArena.Editor
             return LoadSprite(path);
         }
 
-        /// <summary>A soft white glow fading from the centre to nothing at the edges, tinted by the image using it.</summary>
-        /// <returns>The sprite asset.</returns>
+        /// <summary>中心向边缘淡至透明的柔白光晕，由使用它的 Image 着色。</summary>
+        /// <returns>精灵资产。</returns>
         public static Sprite RadialGlow()
         {
             const int Size = 256;

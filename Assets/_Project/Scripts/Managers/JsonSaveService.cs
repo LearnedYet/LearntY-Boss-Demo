@@ -6,22 +6,20 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Persists records as JSON files under the platform's save folder.
+    /// 将记录作为 JSON 文件保存到平台存档目录。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Writes are atomic: the record goes to a temporary file which then replaces the original.
-    /// A direct overwrite leaves a truncated file if the process dies mid-write, and the player who
-    /// alt-F4s during an autosave is exactly the player who then cannot launch the game.
+    /// 写入采用原子替换：先写临时文件，再替换原文件。直接覆盖在进程中途退出时会留下截断文件，
+    /// 而自动存档期间按 Alt-F4 的玩家，恰恰会因此无法再次启动游戏。
     /// </para>
     /// <para>
-    /// Reads never throw. A corrupt or unreadable file returns false so the caller falls back to
-    /// defaults; losing settings is a small annoyance, whereas failing to start is not.
+    /// 读取绝不抛出异常。损坏或不可读文件返回 false，调用者退回默认值；丢失设置只是小麻烦，
+    /// 无法启动则不是。
     /// </para>
     /// <para>
-    /// <see cref="PlayerPrefs"/> was rejected deliberately. On Windows it writes to the registry,
-    /// which is opaque, awkward to back up, and effectively impossible to inspect when diagnosing a
-    /// player's problem.
+    /// 刻意不使用 <see cref="PlayerPrefs"/>。它在 Windows 上写入注册表，不透明、难以备份，
+    /// 诊断玩家问题时也几乎无法检查。
     /// </para>
     /// </remarks>
     public sealed class JsonSaveService : ISaveService
@@ -32,10 +30,9 @@ namespace AdaptiveBossArena.Game
 
         private readonly string _rootFolder;
 
-        /// <summary>Creates a save service writing beneath the given folder.</summary>
+        /// <summary>创建向指定目录下写入的存档服务。</summary>
         /// <param name="rootFolder">
-        /// Destination folder. Defaults to the platform's persistent data path, which is the only
-        /// location guaranteed to be writable across platforms.
+        /// 目标目录。默认采用平台持久化数据路径，这是唯一保证跨平台可写的位置。
         /// </param>
         public JsonSaveService(string rootFolder = null)
         {
@@ -46,7 +43,7 @@ namespace AdaptiveBossArena.Game
             Directory.CreateDirectory(_rootFolder);
         }
 
-        /// <summary>Folder records are written to.</summary>
+        /// <summary>记录写入的目录。</summary>
         public string RootFolder => _rootFolder;
 
         /// <inheritdoc />
@@ -67,15 +64,15 @@ namespace AdaptiveBossArena.Game
             try
             {
 #if UNITY_WEBGL && !UNITY_EDITOR
-                // The browser build's virtual filesystem does not support File.Replace, and the write
-                // is persisted to IndexedDB by the runtime anyway, so a plain write is both correct and
-                // free of the console error the atomic path would raise every time settings change.
+                // 浏览器构建的虚拟文件系统不支持 File.Replace，
+                // 且运行时本来就会将写入持久化到 IndexedDB，因此普通写入既正确，
+                // 也能避免每次修改设置时原子路径产生的控制台错误。
                 File.WriteAllText(finalPath, json);
 #else
                 File.WriteAllText(tempPath, json);
 
-                // File.Replace is atomic where the platform supports it and keeps the previous
-                // version as a backup, which gives a corrupt write something to fall back to.
+                // 平台支持时 File.Replace 为原子操作，并把上一版本保留为备份，
+                // 使损坏写入仍有可恢复版本。
                 if (File.Exists(finalPath))
                 {
                     File.Replace(tempPath, finalPath, finalPath + BackupExtension);
@@ -101,8 +98,7 @@ namespace AdaptiveBossArena.Game
                 return true;
             }
 
-            // The primary file is missing or unreadable. File.Replace leaves the previous version
-            // behind precisely for this, so it is worth a look before giving up.
+            // 主文件缺失或不可读。File.Replace 正是为此保留了上一版本，因此放弃前值得检查备份。
             if (TryReadFrom(PathFor(key) + BackupExtension, out data))
             {
                 Debug.LogWarning(
@@ -121,7 +117,7 @@ namespace AdaptiveBossArena.Game
             TryDelete(PathFor(key) + BackupExtension);
         }
 
-        /// <summary>Reads and parses one file, treating any failure as "not available".</summary>
+        /// <summary>读取并解析一个文件，任何失败均视为不可用。</summary>
         private static bool TryReadFrom<TData>(string path, out TData data) where TData : class
         {
             data = null;
@@ -151,7 +147,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Deletes a file, ignoring failures.</summary>
+        /// <summary>删除文件，并忽略失败。</summary>
         private static void TryDelete(string path)
         {
             try
@@ -167,7 +163,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Resolves the file path for a record key.</summary>
+        /// <summary>解析记录键对应的文件路径。</summary>
         private string PathFor(string key) => Path.Combine(_rootFolder, key + FileExtension);
     }
 }

@@ -3,41 +3,38 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// Builds flat ground meshes matching an attack's hit volume.
+    /// 构建与攻击命中体积匹配的平面地面网格。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// These are generated from the same numbers hit detection uses, so what the player sees is
-    /// exactly what will be tested. A visual that merely approximates the hitbox is worse than none,
-    /// because it teaches the player a range that is not real.
+    /// 它们由命中检测使用的相同数值生成，因此玩家看到的就是实际检测的范围。
+    /// 仅大致接近命中盒的视觉比没有视觉更糟，因为它会让玩家学到不真实的攻击距离。
     /// </para>
     /// <para>
-    /// Meshes are flat and lie on the ground rather than being volumetric. From a top-down camera
-    /// the ground plane is the only thing whose extent is readable at a glance, and a floating
-    /// volume would obscure both combatants.
+    /// 网格是铺在地面的平面，而不是立体体积。对于俯视摄像机，地面平面是唯一能一眼看清范围的对象，
+    /// 悬浮体积会遮住双方战斗者。
     /// </para>
     /// </remarks>
     public static class AttackShapeMesh
     {
-        /// <summary>Segments used to approximate a full circle. Higher is smoother.</summary>
+        /// <summary>近似完整圆的分段数，越高越平滑。</summary>
         private const int SegmentsPerCircle = 48;
 
         /// <summary>
-        /// Rings from the shape's centre to its edge, as a fraction of the way out and the opacity there.
+        /// 从形状中心到边缘的环，记录向外距离比例及其不透明度。
         /// </summary>
         /// <remarks>
-        /// Faint inside, bright in a narrow band just short of the edge, softening at the edge itself. A filled
-        /// shape at one opacity read as a coloured disc lying on the floor; a lit rim reads as a boundary,
-        /// and still shows exactly where the danger ends.
+        /// 内部暗淡，边缘内侧窄带明亮，边缘本身柔化。用单一不透明度填充的形状看起来像地面上的彩色圆盘；
+        /// 发亮边缘看起来像边界，且仍准确显示危险范围的终点。
         /// </remarks>
         public static readonly (float Scale, float Alpha)[] Rings =
         {
             (0f, 0.08f), (0.78f, 0.16f), (0.93f, 1f), (1f, 0.35f)
         };
 
-        /// <summary>Builds a mesh matching the attack's shape, centred on the attacker's origin.</summary>
-        /// <param name="attack">Attack supplying the shape and dimensions.</param>
-        /// <returns>A newly created mesh. The caller owns it.</returns>
+        /// <summary>以攻击者原点为中心，构建匹配攻击形状的网格。</summary>
+        /// <param name="attack">提供形状和尺寸的攻击。</param>
+        /// <returns>新创建的网格，由调用者拥有。</returns>
         public static Mesh Build(AttackDefinition attack)
         {
             if (attack == null)
@@ -54,12 +51,12 @@ namespace AdaptiveBossArena.Combat.Feel
                     return BuildFan(attack.Range, 360f, Vector3.zero);
 
                 default:
-                    // An arc is centred on the attacker, matching how hit detection tests it.
+                    // 扇形以攻击者为中心，与命中检测的处理一致。
                     return BuildFan(attack.Range, attack.ArcDegrees, Vector3.zero);
             }
         }
 
-        /// <summary>Builds a wedge lying on the ground, opening along local forward.</summary>
+        /// <summary>构建铺在地面、沿局部前向展开的扇形。</summary>
         private static Mesh BuildFan(float radius, float arcDegrees, Vector3 centre)
         {
             arcDegrees = Mathf.Clamp(arcDegrees, 1f, 360f);
@@ -67,7 +64,7 @@ namespace AdaptiveBossArena.Combat.Feel
             int segments = Mathf.Max(3, Mathf.RoundToInt(SegmentsPerCircle * (arcDegrees / 360f)));
             bool fullCircle = arcDegrees >= 360f;
 
-            // A wedge's outline runs along the arc and back through its point; a circle's is the arc alone.
+            // 扇形轮廓沿圆弧并经过顶点返回；圆形轮廓只有圆弧。
             int outlineCount = fullCircle ? segments : segments + 2;
             var outline = new Vector3[outlineCount];
 
@@ -79,7 +76,7 @@ namespace AdaptiveBossArena.Combat.Feel
             {
                 float radians = (startDegrees + stepDegrees * i) * Mathf.Deg2Rad;
 
-                // Local space has forward along +Z, so the sweep is measured from that axis.
+                // 局部空间前方沿 +Z，因此从该轴测量扫掠。
                 outline[i] = centre + new Vector3(Mathf.Sin(radians) * radius, 0f, Mathf.Cos(radians) * radius);
             }
 
@@ -89,14 +86,14 @@ namespace AdaptiveBossArena.Combat.Feel
             {
                 outline[outlineCount - 1] = centre;
 
-                // Rings shrink toward the wedge's middle rather than its point, so the rim follows both straight sides.
+                // 各环向扇形中部而不是顶点收缩，让发亮边缘也沿两条直边延伸。
                 middle = centre + new Vector3(0f, 0f, radius * 0.5f);
             }
 
             return BuildRinged(outline, middle, "AttackArc");
         }
 
-        /// <summary>Builds a flat rectangle lying on the ground.</summary>
+        /// <summary>构建铺在地面的平面矩形。</summary>
         private static Mesh BuildBox(Vector3 halfExtents, Vector3 offset)
         {
             float x = halfExtents.x;
@@ -115,7 +112,7 @@ namespace AdaptiveBossArena.Combat.Feel
         }
 
         /// <summary>
-        /// Fills a closed outline with rings shrunk toward a middle point, each carrying its opacity as vertex alpha.
+        /// 用向中点收缩的环填充闭合轮廓，各环通过顶点透明度携带不透明度。
         /// </summary>
         private static Mesh BuildRinged(Vector3[] outline, Vector3 middle, string name)
         {
@@ -142,7 +139,7 @@ namespace AdaptiveBossArena.Combat.Feel
                     int inner = ring * n + i, innerNext = ring * n + (i + 1) % n;
                     int outer = inner + n, outerNext = innerNext + n;
 
-                    // Winding is left to chance by the outline's direction; the overlay material draws both faces.
+                    // 绕序取决于轮廓方向；叠加材质绘制双面。
                     triangles[t++] = inner; triangles[t++] = outer; triangles[t++] = outerNext;
                     triangles[t++] = inner; triangles[t++] = outerNext; triangles[t++] = innerNext;
                 }
@@ -151,7 +148,7 @@ namespace AdaptiveBossArena.Combat.Feel
             return Finalise(vertices, colours, triangles, name);
         }
 
-        /// <summary>Assembles and prepares a mesh for rendering.</summary>
+        /// <summary>组装网格并准备渲染。</summary>
         private static Mesh Finalise(Vector3[] vertices, Color[] colours, int[] triangles, string name)
         {
             var mesh = new Mesh

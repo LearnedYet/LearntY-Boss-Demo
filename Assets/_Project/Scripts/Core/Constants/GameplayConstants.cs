@@ -1,106 +1,96 @@
 namespace AdaptiveBossArena.Core.Constants
 {
     /// <summary>
-    /// Fixed values that are structural rather than tunable.
+    /// 属于结构约束而非可调配置的固定值。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Anything a designer should be able to adjust without a recompile belongs in a ScriptableObject
-    /// instead. What lives here are constants other code reasons about: the physics rate the frame
-    /// data is authored against, engine-level ceilings, and defaults used when configuration is
-    /// missing.
+    /// 设计者需要无需重新编译就能调整的值应放进ScriptableObject。这里保存其他代码依赖的常量：
+    /// 制定攻击帧数据时使用的物理频率、引擎级上限和缺失配置时的默认值。
     /// </para>
     /// <para>
-    /// This type exists to satisfy the project's no-magic-numbers rule at the level where a bare
-    /// literal would otherwise appear in several files and drift apart.
+    /// 此类型用于落实项目的禁用魔法数字规则：否则裸字面量会出现在多个文件，并逐渐产生不一致。
     /// </para>
     /// </remarks>
     public static class GameplayConstants
     {
-        /// <summary>Physics steps per second the project runs at.</summary>
+        /// <summary>项目每秒执行的物理步数。</summary>
         /// <remarks>
-        /// Attack timings are authored in seconds but conceived in frames at this rate. Changing it
-        /// silently re-times every attack in the game.
+        /// 攻击时序以秒保存，但按此频率的帧数构思。修改它会无声地改变全游戏攻击的时间尺度。
         /// </remarks>
         public const int PhysicsStepsPerSecond = 60;
 
-        /// <summary>Duration of one physics step, in seconds.</summary>
+        /// <summary>一个物理步的秒数。</summary>
         public const float FixedTimeStep = 1f / PhysicsStepsPerSecond;
 
-        /// <summary>Duration of one frame at the reference rate, useful for expressing frame counts.</summary>
+        /// <summary>参考频率下一帧的秒数，用于表达帧数。</summary>
         public const float OneFrame = FixedTimeStep;
 
-        /// <summary>Downward acceleration for any character in the air, in metres per second squared.</summary>
+        /// <summary>空中角色的向下加速度，单位为米每秒平方。</summary>
         /// <remarks>
-        /// Stronger than real gravity on purpose. At 9.8 a launched character hangs long enough to look
-        /// like it is floating, which is the opposite of weight; the genre's heavy feel comes from falls
-        /// that are quick and land hard.
+        /// 刻意强于真实重力。使用 9.8 时，被击飞的角色悬空太久，看起来像漂浮，与重量感相反；
+        /// 此类游戏的厚重感来自快速下落和沉重落地。
         /// </remarks>
         public const float Gravity = 25f;
 
-        /// <summary>Downward speed held while grounded, keeping the controller's floor contact stable.</summary>
+        /// <summary>落地时保持的向下速度，使控制器与地面稳定接触。</summary>
         /// <remarks>
-        /// Replaces the old constant grounding push, which was not gravity at all and so could never
-        /// have supported a launch or a fall.
+        /// 替代旧的恒定贴地推力。旧值并非重力，因此无法支持击飞或下落。
         /// </remarks>
         public const float GroundedSpeed = -2f;
 
         /// <summary>
-        /// How long an input is remembered and replayed once the character can act again.
+        /// 输入被记住，并在角色恢复行动后重放的时长。
         /// </summary>
         /// <remarks>
-        /// Roughly nine frames. Without buffering, an attack pressed one frame before a dash recovery
-        /// ends is discarded, and the player correctly perceives that as the game dropping inputs.
-        /// This single value does more for perceived responsiveness than any animation work.
+        /// 约九帧。没有输入缓存时，闪避后摇结束前一帧按下的攻击会被丢弃，玩家会准确地感到游戏漏掉输入。
+        /// 此值对响应手感的改善大于任何动画工作。
         /// </remarks>
         public const float InputBufferSeconds = 0.15f;
 
         /// <summary>
-        /// Window after a boss attack becomes active during which a dash counts as a perfect dodge.
+        /// Boss 攻击进入有效期后，闪避可被判为完美闪避的窗口。
         /// </summary>
         public const float PerfectDodgeWindowSeconds = 0.12f;
 
-        /// <summary>How long the slow-motion reward for a perfect dodge lasts, in real time.</summary>
+        /// <summary>完美闪避慢动作奖励持续的真实时间。</summary>
         /// <remarks>
-        /// Long enough to register and act on, short enough that a player who dodges well is not
-        /// spending most of the fight in slow motion.
+        /// 足够长以便察觉和行动，又足够短，避免善于闪避的玩家大部分战斗都处于慢动作。
         /// </remarks>
         public const float PerfectDodgeSlowMotionSeconds = 0.45f;
 
-        /// <summary>Maximum hit-stop any single hit may request, as a safety ceiling.</summary>
+        /// <summary>单次命中允许请求的命中停顿上限，作为安全限制。</summary>
         public const float MaxHitStopSeconds = 0.2f;
 
-        /// <summary>Height above the arena floor at which combatant origins sit.</summary>
+        /// <summary>战斗参与者原点高于竞技场地面的高度。</summary>
         public const float GroundPlaneHeight = 0f;
 
         /// <summary>
-        /// Number of boss phases in the encounter, including the Last Stand desperation phase.
+        /// 战斗中 Boss 的阶段数，包括最终绝境阶段 Last Stand。
         /// </summary>
         public const int BossPhaseCount = 4;
 
-        /// <summary>Health fraction below which the boss enters its second phase.</summary>
+        /// <summary>Boss 进入第二阶段的生命比例阈值。</summary>
         public const float BossPhaseTwoThreshold = 0.66f;
 
-        /// <summary>Health fraction below which the boss enters its third phase.</summary>
+        /// <summary>Boss 进入第三阶段的生命比例阈值。</summary>
         public const float BossPhaseThreeThreshold = 0.33f;
 
-        /// <summary>Health fraction below which the boss enters its Last Stand desperation phase.</summary>
+        /// <summary>Boss 进入 Last Stand 绝境阶段的生命比例阈值。</summary>
         public const float BossPhaseFourThreshold = 0.15f;
 
         /// <summary>
-        /// How often the learning system recomputes the player's behaviour profile, in seconds.
+        /// 学习系统重算玩家行为画像的间隔秒数。
         /// </summary>
         /// <remarks>
-        /// Deliberately coarse. Recomputing every frame would let the boss respond to a single
-        /// action, which is the reactive behaviour this design is trying to avoid. Analysis on an
-        /// interval forces the boss to act on trends.
+        /// 刻意采用较粗间隔。每帧重算会让 Boss 对单一动作立即反应，而这正是设计要避免的行为。
+        /// 按间隔分析迫使 Boss 基于趋势行动。
         /// </remarks>
         public const float BehaviourAnalysisIntervalSeconds = 2.5f;
 
-        /// <summary>Shortest permitted gap between two adaptations taking effect, in seconds.</summary>
+        /// <summary>两次适应生效之间允许的最短间隔秒数。</summary>
         /// <remarks>
-        /// Adaptations that stack too quickly read as the boss cheating rather than learning. The
-        /// player needs time to notice a change and respond to it before the next one lands.
+        /// 适应叠加过快会像 Boss 作弊而非学习。玩家需要在下一次变化前有时间察觉当前变化并作出回应。
         /// </remarks>
         public const float MinSecondsBetweenAdaptations = 12f;
     }

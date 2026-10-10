@@ -7,51 +7,44 @@ using UnityEngine;
 namespace AdaptiveBossArena.Player.States
 {
     /// <summary>
-    /// Holding a guard, and within the opening moments of it, a deflect.
+    /// 保持防御，并在其起始短时段内弹反。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The defining mechanic of the fight. Pressing guard opens a brief deflect window; a hit
-    /// arriving inside it is turned aside entirely, costs the attacker posture, and gives the
-    /// unmistakable metallic clang and freeze that makes the timing worth learning. Press too early
-    /// or hold too long and the same input becomes an ordinary block: the hit is survived, but it
-    /// costs chip damage and the defender's own posture.
+    /// 战斗的核心机制。按下防御会开启短暂弹反窗口；窗口内到来的攻击会被完全拨开、削减攻击者架势，
+    /// 并触发清晰的金属撞击声和停顿，使时机值得学习。按得太早或保持太久，同一输入便成为普通格挡：
+    /// 承受住攻击，但付出削减伤害和防御者自身架势。
     /// </para>
     /// <para>
-    /// Deflecting is deliberately the aggressive option rather than the safe one. Blocking bleeds
-    /// your posture until it breaks; deflecting bleeds theirs. That inversion is what stops the
-    /// fight becoming a turtle, and it is what makes the boss's feints matter once it learns you
-    /// deflect on a rhythm.
+    /// 刻意让弹反成为进攻选项，而非安全选项。格挡持续消耗自身架势直至崩溃，弹反则消耗对方架势。
+    /// 这种反转避免战斗变成龟缩，也让 Boss学会玩家弹反节奏后的佯攻有了意义。
     /// </para>
     /// <para>
-    /// The state exposes its window rather than resolving damage itself. The player's
-    /// <see cref="IDamageable"/> implementation is the only place that decides what happens to an
-    /// incoming hit, so all the timing knowledge lives here and all the resolution lives there.
+    /// 状态只暴露窗口，不自行解析伤害。玩家的 <see cref="IDamageable"/>实现是唯一决定如何处理传入攻击
+    /// 的位置，因此时机知识集中在这里，解析则集中在那里。
     /// </para>
     /// </remarks>
     public sealed class PlayerParryState : StateBase<PlayerContext>
     {
-        /// <summary>How long after pressing guard a hit is deflected rather than blocked.</summary>
+        /// <summary>按下防御后，攻击会被弹反而非格挡的时长。</summary>
         public const float DeflectWindowSeconds = 0.2f;
 
-        /// <summary>Shortest time the guard is held, so a tap still reads as a deliberate action.</summary>
+        /// <summary>防御保持的最短时间，使轻点也表现为主动动作。</summary>
         private const float MinimumGuardSeconds = 0.2f;
 
-        /// <summary>Longest the guard may be held before the player is forced to drop it.</summary>
+        /// <summary>玩家被迫放下防御前可持续保持的最长时间。</summary>
         private const float MaximumGuardSeconds = 1.6f;
 
-        /// <summary>Stamina drained per second while guarding, so holding it is not free.</summary>
+        /// <summary>防御时每秒消耗的体力，使持续保持防御有代价。</summary>
         private const float GuardStaminaDrainPerSecond = 12f;
 
-        /// <summary>True while a hit arriving now would be deflected outright.</summary>
+        /// <summary>此刻到来的攻击会被完全弹反时为 true。</summary>
         /// <remarks>
-        /// Answered by the shared resolver rather than by a second copy of the timing rule, so what
-        /// this reports and what the damage path actually does cannot disagree. It is asked with no
-        /// particular hit in mind, which is why it is a presentation read - the stamina drain and
-        /// any tell - and not the decision itself.
+        /// 由共享解析器回答，而非复制第二份时机规则，使此处报告的结果与实际伤害路径始终一致。
+        /// 询问时不针对特定攻击，因此它只是供体力消耗和提示使用的表现读取，并非实际判定本身。
         /// </remarks>
-        /// <param name="context">The player context.</param>
-        /// <returns>Whether the deflect window is currently open.</returns>
+        /// <param name="context">玩家上下文。</param>
+        /// <returns>弹反窗口当前是否开启。</returns>
         public bool IsInDeflectWindow(PlayerContext context) =>
             DefenceResolver.ResolveDefence(new DefenceQuery
             {
@@ -62,9 +55,9 @@ namespace AdaptiveBossArena.Player.States
                 DeflectWindowSeconds = context.DeflectWindowSeconds
             }) == DefenceOutcome.Deflected;
 
-        /// <summary>True once the guard may be released.</summary>
-        /// <param name="context">The player context.</param>
-        /// <returns>Whether the player may act again.</returns>
+        /// <summary>防御可以松开时为 true。</summary>
+        /// <param name="context">玩家上下文。</param>
+        /// <returns>玩家是否可以再次行动。</returns>
         public bool IsComplete(PlayerContext context)
         {
             if (TimeInState < MinimumGuardSeconds)
@@ -72,8 +65,7 @@ namespace AdaptiveBossArena.Player.States
                 return false;
             }
 
-            // Released early if the button is let go, dropped automatically if held too long or if
-            // stamina runs dry. A guard that could be held forever would remove the decision.
+            // 松开按钮时可提前结束；保持过久或体力耗尽时自动放下。若可无限保持防御，决策就会失去意义。
             bool stillHeld = context.Input.IsHeld(Controls.PlayerInputAction.Guard);
 
             return !stillHeld ||
@@ -93,15 +85,13 @@ namespace AdaptiveBossArena.Player.States
         /// <inheritdoc />
         protected override void OnTick(PlayerContext context, float deltaTime)
         {
-            // Guarding roots the player. Being able to walk while guarding would make it strictly
-            // better than moving, and the fight would stop having spacing in it.
+            // 防御使玩家定在原地。若能一边防御一边走动，它就会严格优于单纯移动，战斗也就失去间距管理。
             context.Motor.Decelerate(deltaTime);
             context.Motor.Tick(deltaTime);
 
             context.Motor.FaceDirection(context.FacingTowardThreat, deltaTime);
 
-            // Only the sustained portion costs stamina. Charging for the deflect window itself would
-            // punish the precise timing the whole mechanic is trying to encourage.
+            // 只有持续防御阶段消耗体力。若弹反窗口本身也收费，就会惩罚整个机制想鼓励的准确时机。
             if (!IsInDeflectWindow(context))
             {
                 context.Stamina.TrySpend(GuardStaminaDrainPerSecond * deltaTime);
@@ -116,45 +106,42 @@ namespace AdaptiveBossArena.Player.States
     }
 
     /// <summary>
-    /// The riposte: a single devastating strike into a broken guard.
+    /// 反击：对已破防目标的一次毁灭性打击。
     /// </summary>
     /// <remarks>
-    /// Only reachable when the boss's posture has broken, and only for a short window. It is the
-    /// entire payoff of the deflect system — every deflect is a small deposit toward this, which is
-    /// what makes standing your ground feel like progress rather than mere survival.
+    /// 只在 Boss 架势崩溃时可进入，且窗口很短。这是弹反系统的完整回报：每次弹反都为其积累一点进度，
+    /// 使坚守位置表现为取得进展，而非单纯求生。
     /// </remarks>
     /// <summary>
-    /// A committed strike of the blade that turns a blow aside.
+    /// 投入一次刀刃挥击，将攻击拨开。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The player's verdict on the old defence was that it "doesn't really feel like parrying": there was only a
-    /// guard whose first fifth of a second happened to deflect. This is the other half - a deliberate swing with a
-    /// short window and a recovery long enough to be punished for missing, which is what makes landing one mean
-    /// something. It takes far more of the boss's guard than a deflect and reels it for longer.
+    /// 玩家对旧防御的评价是“感觉并不像招架”：只有一个防御动作，开头五分之一秒恰好可以弹反。
+    /// 这是补齐的另一半：主动挥击、短窗口，以及长到足以惩罚挥空的后摇，才使成功招架有分量。
+    /// 它比弹反削减更多 Boss 防御，并使其后仰更久。
     /// </para>
     /// <para>
-    /// It cannot answer an unblockable, an unparryable blow or a shockwave. Those still have to be dodged, so the
-    /// parry never becomes the single answer to everything.
+    /// 无法应对不可格挡、不可招架攻击或冲击波。这些仍必须闪避，因此招架不会成为所有问题的唯一答案。
     /// </para>
     /// </remarks>
     public sealed class PlayerParryStrikeState : StateBase<PlayerContext>
     {
-        /// <summary>How long after the swing begins a blow is turned aside.</summary>
+        /// <summary>挥击开始后，可以拨开攻击的时长。</summary>
         public const float WindowSeconds = 0.22f;
 
-        /// <summary>The whole move, window and recovery: whiffing one leaves the player open.</summary>
+        /// <summary>包含窗口与后摇的完整动作；挥空会暴露玩家。</summary>
         public const float DurationSeconds = 0.72f;
 
-        /// <summary>Stamina a parry costs, so it cannot simply be mashed.</summary>
+        /// <summary>一次招架消耗的体力，使玩家无法只靠连续乱按。</summary>
         public const float StaminaCost = 14f;
 
-        /// <summary>True while a blow arriving now would be turned aside.</summary>
+        /// <summary>此刻到来的攻击会被拨开时为 true。</summary>
         public bool IsWindowOpen => TimeInState <= WindowSeconds;
 
-        /// <summary>True once the swing and its recovery are over.</summary>
-        /// <param name="context">The player context.</param>
-        /// <returns>Whether the player may act again.</returns>
+        /// <summary>挥击及其后摇结束时为 true。</summary>
+        /// <param name="context">玩家上下文。</param>
+        /// <returns>玩家是否可以再次行动。</returns>
         public bool IsComplete(PlayerContext context) => TimeInState >= DurationSeconds;
 
         /// <inheritdoc />
@@ -170,7 +157,7 @@ namespace AdaptiveBossArena.Player.States
         /// <inheritdoc />
         protected override void OnTick(PlayerContext context, float deltaTime)
         {
-            // Rooted, and turned toward the boss: a parry is aimed at the blow, not swung at the air.
+            // 定在原地并转向 Boss：招架瞄准来袭攻击，而非对着空气挥击。
             context.Motor.Decelerate(deltaTime);
             context.Motor.FaceDirection(context.FacingTowardThreat, deltaTime);
             context.Motor.Tick(deltaTime);
@@ -182,9 +169,9 @@ namespace AdaptiveBossArena.Player.States
 
     public sealed class PlayerRiposteState : StateBase<PlayerContext>
     {
-        /// <summary>True once the riposte has finished.</summary>
-        /// <param name="context">The player context.</param>
-        /// <returns>Whether the player may act again.</returns>
+        /// <summary>反击完成时为 true。</summary>
+        /// <param name="context">玩家上下文。</param>
+        /// <returns>玩家是否可以再次行动。</returns>
         public bool IsComplete(PlayerContext context) => !context.Attacks.IsRunning;
 
         /// <inheritdoc />
@@ -193,8 +180,7 @@ namespace AdaptiveBossArena.Player.States
             context.SetObservableState(ObservableActionState.HeavyAttacking);
             context.RiposteConsumed = true;
 
-            // The execution: a heavier, multi-hit answer to a broken guard, falling back to the
-            // ordinary riposte when none is authored.
+            // 处决：对破防目标更重的多段打击；未配置时回退为普通反击。
             AttackDefinition execution = context.ExecutionAttack;
 
             if (execution == null)
@@ -202,8 +188,8 @@ namespace AdaptiveBossArena.Player.States
                 return;
             }
 
-            // Snapped toward the target rather than eased, because a riposte that missed because the
-            // character was still turning would feel like the game refusing an earned reward.
+            // 立即转向目标，而非逐渐转向，因为若角色仍在转身导致反击落空，
+            // 会让玩家觉得游戏拒绝了已赢得的奖励。
             context.Motor.SnapToDirection(context.FacingTowardThreat);
             context.Attacks.Begin(execution);
 

@@ -5,20 +5,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Core.Perception
 {
     /// <summary>
-    /// Human-plausibility limits applied to every decision the boss makes.
+    /// 应用于 Boss 每次决策的人类合理性限制。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Restricting the boss to visible information is necessary but not sufficient. A boss that acts
-    /// on visible information with zero delay and perfect consistency still reads as a cheat. This
-    /// asset supplies the two remaining ingredients: a lag before a perceived event can be acted
-    /// on, and variance so identical situations do not produce identical responses.
+    /// 仅限制可见信息是必要但不充分的。无延迟且总是准确地响应可见信息，仍然像作弊。
+    /// 此资源提供另外两个要素：感知事件后需等待的反应延迟，以及让相同场景不总产生相同响应的变化。
     /// </para>
     /// <para>
-    /// Defaults are drawn from human reaction research: roughly 250 milliseconds for a simple
-    /// visual stimulus, and longer when a choice between responses is involved. Later boss phases
-    /// tighten these toward the fast end rather than below it, so escalation never crosses into
-    /// superhuman territory.
+    /// 默认值参考人类反应研究：简单视觉刺激约需250 毫秒，需要选择响应时更长。
+    /// Boss后续阶段只接近该范围的快端，而不低于它，确保难度升级不会进入超人范围。
     /// </para>
     /// </remarks>
     [CreateAssetMenu(
@@ -52,27 +48,27 @@ namespace AdaptiveBossArena.Core.Perception
                  "Set to zero only for a deliberately mechanical boss.")]
         private float _missedOpportunityChance = 0.12f;
 
-        /// <summary>Delay applied to all player observations before the AI may see them.</summary>
+        /// <summary>AI 看到玩家观察前，对全部观察施加的延迟。</summary>
         public float PerceptionLatencySeconds => _perceptionLatencySeconds;
 
-        /// <summary>Fastest permitted reaction, in seconds.</summary>
+        /// <summary>允许的最快反应秒数。</summary>
         public float MinReactionSeconds => _minReactionSeconds;
 
-        /// <summary>Slowest permitted reaction, in seconds.</summary>
+        /// <summary>允许的最慢反应秒数。</summary>
         public float MaxReactionSeconds => Mathf.Max(_maxReactionSeconds, _minReactionSeconds);
 
-        /// <summary>Probability that the boss overlooks an opening it could have punished.</summary>
+        /// <summary>Boss 忽略一个本可惩罚的空当的概率。</summary>
         public float MissedOpportunityChance => _missedOpportunityChance;
 
-        /// <summary>Rolls a reaction delay for a single decision.</summary>
-        /// <param name="random">Seedable randomness source, so tests stay deterministic.</param>
-        /// <returns>A delay in seconds within the configured band.</returns>
+        /// <summary>为单次决策抽取反应延迟。</summary>
+        /// <param name="random">可设置种子的随机源，保证测试确定性。</param>
+        /// <returns>配置范围内的延迟秒数。</returns>
         public float RollReactionDelay(IRandomProvider random) =>
             random.NextFloat(MinReactionSeconds, MaxReactionSeconds);
 
-        /// <summary>Rolls whether the boss fails to notice an opening this time.</summary>
-        /// <param name="random">Seedable randomness source.</param>
-        /// <returns>True when the opening should be ignored.</returns>
+        /// <summary>抽取 Boss 此次是否忽略空当。</summary>
+        /// <param name="random">可设置种子的随机源。</param>
+        /// <returns>应忽略该空当时为 true。</returns>
         public bool RollMissedOpportunity(IRandomProvider random) =>
             random.NextFloat01() < _missedOpportunityChance;
 
@@ -82,7 +78,7 @@ namespace AdaptiveBossArena.Core.Perception
         {
             base.OnValidate();
 
-            // A profile whose minimum exceeds its maximum would silently invert the reaction band.
+            // 最小值大于最大值的配置会无声地反转反应范围。
             if (_maxReactionSeconds < _minReactionSeconds)
             {
                 _maxReactionSeconds = _minReactionSeconds;

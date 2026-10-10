@@ -1,59 +1,33 @@
-# Performance log
+# 性能记录
 
-Every stage of the physics and graphics overhaul appends a row here, measured the same way each time,
-so a stage that costs frame budget shows it instead of being felt later.
+物理和图形改造的每个阶段在这里追加一行，尽量使用相同测量方式，让阶段引入的帧预算成本及时可见。
 
-## How it is measured
+## 测量方式
 
-`PerfProbe` (Game) samples an untouched fight: it waits for the ready-fight intro to release, discards
-two settling seconds, then samples. The boss attacks a stationary player throughout, so the scenario
-is deterministic enough to compare across stages.
+`PerfProbe`（Game）采样无人操作的战斗：等待开战提示结束，丢弃两秒稳定期，然后开始采样。Boss 全程攻击静止玩家，以便跨阶段比较。
 
-- **Windows:** `Build/Windows/AdaptiveBossArena.exe -screen-fullscreen 0 -screen-width 1280
-  -screen-height 720 -perfCapture 60 -perfLog <file> -perfQuit`
-- **WebGL:** open the page with `?perf=60`; the `[PERF]` line is written to the browser console.
+- **Windows：** `Build/Windows/AdaptiveBossArena.exe -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -perfCapture 60 -perfLog <file> -perfQuit`
+- **WebGL：** 使用 `?perf=60` 打开页面，浏览器 Console 输出 `[PERF]` 行。
 
-**Caveats on reading these numbers:**
-- Windows frame times are vsync-locked on the test machine (144 Hz), so p50/p95 show the cap rather
-  than the headroom. A regression shows as p95 rising above 6.95 ms, or as `max` spikes.
-- WebGL frame times are only valid in a **visible, focused** tab. A hidden tab (such as the automation
-  browser pane) is throttled to about 1 fps, so its timings are recorded as not measured. Draw calls,
-  triangles and build size do not depend on throttling and are valid.
+解读数据时需要注意：
 
-## Budgets
+- 记录测试机器、屏幕刷新率、垂直同步设置、分辨率和画质档位。Windows 帧时间可能受垂直同步限制，因此 p50 / p95 不能直接表示剩余性能空间；比较结果时还应关注 `max` 峰值及采样环境。
+- WebGL 帧时间只在可见且获得焦点的标签页中有效。隐藏标签页或自动化浏览器侧栏可能被限制到约 1 fps，因此这类环境的帧时间应标为未测量。Draw Call、三角形数量和构建大小可单独记录，同时注明测量环境。
+- 不同硬件、浏览器和画质档位的结果不能直接当作同一基准比较。
 
-| | WebGL | Windows |
-|---|---|---|
-| Frame time p95 | ≤ 16.7 ms | ≤ 8.3 ms |
-| Draw calls | ≤ 250 | ≤ 600 |
-| Triangles | ≤ 150k | ≤ 500k |
-| Physics bodies | ≤ 40 | ≤ 200 |
-| Build size (gzipped payloads) | ≤ 60 MB | — |
+## 预算
 
-## Log
+| 指标 | WebGL | Windows |
+|------|-------|---------|
+| 帧时间 p95 | ≤ 16.7 ms | ≤ 8.3 ms |
+| Draw Call | ≤ 250 | ≤ 600 |
+| 三角形 | ≤ 150k | ≤ 500k |
+| 物理刚体 | ≤ 40 | ≤ 200 |
+| 构建大小（gzip 压缩内容） | ≤ 60 MB | — |
 
-| Date | Stage | Commit | Platform | p50 | p95 | max | Draw calls | Tris | Build | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-09-13 | S0 baseline | af805de | Windows 1280×720 | 6.94 | 6.95 | 20.83 | 155 | 21.8k | — | vsync-locked 144 Hz; 8639 frames / 60 s |
-| 2026-09-13 | S0 baseline | af805de | WebGL (local) | not measured | not measured | — | 113 | 15.0k | 15.7 MB | hidden pane throttled to ~1 fps; counts valid |
-| 2026-09-13 | P1 | 6440c9d | Windows 1280×720 | 6.94 | 6.95 | 13.89 | 135 | 18.5k | — | vsync-locked; no regression |
-| 2026-09-13 | P1 | 6440c9d | WebGL (local) | not measured | not measured | — | — | — | 15.7 MB | fresh load verified; deployed |
-| 2026-09-13 | G1 | fa21a19 | Windows 1280×720 (desktop tier, Ultra) | 6.94 | 6.95 | 62.49 | 294 | 36.9k | 34 MB zip | SSAO+4096 shadows+MSAA4; one 62 ms spike, p95 unaffected |
-| 2026-09-13 | G1 | fa21a19 | WebGL (local, web tier) | not measured | not measured | — | — | — | 15.7 MB | ships web pipeline only, no SSAO shader compiled; deployed |
-| 2026-09-13 | P2 | 6338ceb | Windows 1280×720 (desktop tier, Ultra) | 6.94 | 6.95 | 13.89 | 290 | 36.7k | — | no regression |
-| 2026-09-13 | P2 | 6338ceb | WebGL (local, web tier) | not measured | not measured | — | — | — | 15.7 MB | tier verified in log; deployed |
-| 2026-09-13 | G2 | 2c88fdf | Windows 1280×720 (desktop tier, Ultra) | 6.94 | 6.95 | 20.83 | 231 | 153.4k | — | two skinned characters; tris over the WebGL 150k budget by 2% — watch in G3 |
-| 2026-09-13 | G2 | 2c88fdf | WebGL (local, web tier) | not measured | not measured | — | — | — | 16.3 MB | tier verified in log, rigs render in browser; deployed |
-| 2026-09-13 | P3 | 333da1c | Windows 1280×720 (desktop tier, Ultra) | 6.94 | 6.95 | 13.89 | 233 | 153.5k | — | knockdowns, launches, wall impacts: no cost |
-| 2026-09-13 | P3 | 333da1c | WebGL (local, web tier) | not measured | not measured | — | — | — | 16 MB | tier verified in log; knockdown, get-up and wall impact seen in a live run; deployed |
-| 2026-09-14 | G3 | e01297a | Windows 1280×720 (desktop tier, Ultra), 12 s | 6.94 | 6.95 | 20.83 | 203 | 119.8k | — | cathedral, haze, shafts, dust; static batching cut draw calls |
-| 2026-09-14 | G3 | e01297a | WebGL (local, web tier) | not measured | not measured | — | 166 | 104.6k | 25 MB | tier verified in log; cathedral renders in browser; deployed |
-| 2026-09-14 | P4 | 43e60a8 | Windows 1280×720 (desktop tier, Ultra) | 6.94 | 6.95 | 20.84 | 213 | 120.5k | — | ragdolls, breakable parapet, pooled debris (150 cap) |
-| 2026-09-14 | P4 | 43e60a8 | WebGL (local, web tier) | not measured | not measured | — | — | — | 25 MB | tier verified in log; debris seen flying in browser; deployed |
-| 2026-09-15 | G4 | 8266be4 | Windows 1280×720 (desktop tier, Ultra) | 6.94 | 7.10 | 111.09 | 219 | 121.0k | — | final; one 111 ms spike (single hitch, p95 inside budget) |
-| 2026-09-15 | G4 | 8266be4 | WebGL (local, web tier) | not measured | not measured | — | — | — | 25 MB | tier verified in log; deployed |
-| 2026-09-15 | fixes | 44eb5cd | Windows 1280×720 (desktop tier, Ultra) | 6.95 | 6.95 | 13.89 | 179 | 105.2k | — | rig facing, camera confinement, roof cookie, baked probes + reflection, breakable columns |
-| 2026-09-15 | fixes | 44eb5cd | WebGL (local, web tier) | not measured | not measured | — | — | — | 25 MB | tier verified in log; deployed |
-| 2026-09-16 | grim dark | acf3e4c | Windows 1920×1080 (desktop tier, Ultra) | 6.94 | 6.95 | 20.83 | 259 | 118.4k | — | post-processing live for the first time, blood and blade smear, banners, stains, directional locomotion |
-| 2026-09-17 | before stage A | bf06164 | WebGL (local, in-app browser pane, web tier) | 14.00 | 21.00 | 1028.00 | 247 | 90.1k | — | post-processing live on web for the first time; one ~1 s hitch |
-| 2026-09-17 | stage A | eb20c1e | WebGL (local, separate Chrome window, web tier) | 7.00 | 8.00 | 69.00 | 172 | 63.0k | — | web post profile, 2 hard cascades, no depth copy, FXAA, thinned shafts/dust/candles/pools; different browser harness from the row above |
+## 测量结果
+
+当前版本尚未采集新的性能测量结果。下表留空，完成实际采样后再填写；上述预算是目标，不代表已经达到。
+
+| 日期 | 阶段 | 版本 | 平台与测量环境 | p50（ms） | p95（ms） | max（ms） | Draw Call | 三角形 | 构建大小 | 说明 |
+|------|------|------|----------------|-----------|-----------|-----------|-----------|--------|----------|------|

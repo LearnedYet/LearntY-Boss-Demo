@@ -6,14 +6,12 @@ using UnityEngine.Rendering.Universal;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Pins the split between the browser's render tier and the desktop build's.
+    /// 固定浏览器渲染等级与桌面构建之间的划分。
     /// </summary>
     /// <remarks>
-    /// The one property that matters most here is invisible from the desktop: ambient occlusion broke
-    /// the WebGL build outright, and it passed every test and ran a full fight as a Windows player
-    /// before dying on load in a browser. A desktop tier that leaked into WebGL would repeat that
-    /// failure with nothing but a browser to notice it. These assert the leak is structurally
-    /// impossible rather than hoping it does not happen.
+    /// 此处最重要的属性无法从桌面观察：环境光遮蔽曾直接破坏 WebGL构建，而它此前通过所有测试，
+    /// 且 Windows 版本完整战斗正常，直到浏览器加载时才崩溃。若桌面等级泄漏至 WebGL，就会重现该故障，
+    /// 仍只有浏览器能发现。这里断言结构上不可能泄漏，而非期待它不会发生。
     /// </remarks>
     [TestFixture]
     public sealed class RenderTierTests
@@ -47,8 +45,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheWebTierIsCheapEnoughForIntegratedGraphics()
         {
-            // Once post-processing rendered, the web tier - the desktop's settings with a smaller shadow map -
-            // stuttered in the browser on a laptop's integrated graphics.
+            // 后处理正常渲染后，网页等级仍只是缩小阴影贴图的桌面配置，在笔记本集成显卡的浏览器中卡顿。
             var web = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(RenderPipelineConfigurator.PipelineAssetPath);
             var desktop = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(RenderPipelineConfigurator.DesktopPipelineAssetPath);
 
@@ -106,8 +103,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void EachPlatformOffersALowMediumAndHigh()
         {
-            // The game's quality setting picks among the levels its build keeps, by name. Three distinct pipelines
-            // per platform, stepping up in shadow resolution or cascades, or the setting changes nothing.
+            // 游戏画质配置按名称选择其构建保留的级别。每个平台需有三个独立管线，
+            // 通过阴影分辨率或级联数逐级提升，否则设置就没有实际作用。
             foreach (string[] tier in new[] { RenderPipelineConfigurator.WebPipelinePaths, RenderPipelineConfigurator.DesktopPipelinePaths })
             {
                 var low = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(tier[0]);
@@ -132,7 +129,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void NoBrowserLevelEverRendersWithAmbientOcclusion()
         {
-            // Ambient occlusion on the web renderer once killed the browser build with "too much recursion".
+            // 网页渲染器的环境光遮蔽曾以“递归过多（too much recursion）”错误导致浏览器构建崩溃。
             foreach (string path in RenderPipelineConfigurator.WebPipelinePaths)
             {
                 var pipeline = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(path);
@@ -168,8 +165,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void BothBuildTargetsPassTheirTierCheck()
         {
-            // The same check the build script runs before building. If it ever fails here, a build
-            // would refuse to start - which is the intended outcome, but should be caught now.
+            // 与构建脚本构建前运行的检查相同。若这里失败，构建会拒绝启动，这是预期行为，
+            // 但应在当前检查中发现。
             Assert.IsNull(BuildScript.TierProblemFor(BuildTarget.WebGL));
             Assert.IsNull(BuildScript.TierProblemFor(BuildTarget.StandaloneWindows64));
         }

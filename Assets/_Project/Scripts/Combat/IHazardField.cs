@@ -3,20 +3,19 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// Spawns lingering ground hazards on demand, without the caller knowing how they are pooled.
+    /// 按需生成持续地面危险区域，调用者无需了解对象池管理。
     /// </summary>
     /// <remarks>
-    /// Injected into the boss's <see cref="AttackExecutor"/> as an optional dependency. The player's
-    /// executor is given none, which is the whole reason only the boss scars the ground: the seam is
-    /// closed by absence rather than by a runtime check.
+    /// 作为可选依赖注入首领的 <see cref="AttackExecutor"/>。玩家执行器不获得此依赖，
+    /// 因此只有首领能在地面留下痕迹；通过依赖缺席封闭能力，而非运行时检查。
     /// </remarks>
     public interface IHazardField
     {
-        /// <summary>Raises a hazard zone at a point on the ground.</summary>
-        /// <param name="center">World-space centre, at floor height.</param>
-        /// <param name="radius">Radius of the danger area.</param>
-        /// <param name="damagePerTick">Damage dealt each tick to anything standing inside.</param>
-        /// <param name="durationSeconds">How long the zone stays dangerous.</param>
+        /// <summary>在地面点位生成危险区域。</summary>
+        /// <param name="center">位于地面高度的世界空间中心。</param>
+        /// <param name="radius">危险区域半径。</param>
+        /// <param name="damagePerTick">每跳对站在其中的目标造成的伤害。</param>
+        /// <param name="durationSeconds">区域保持危险的时长。</param>
         void Spawn(Vector3 center, float radius, float damagePerTick, float durationSeconds);
     }
 }

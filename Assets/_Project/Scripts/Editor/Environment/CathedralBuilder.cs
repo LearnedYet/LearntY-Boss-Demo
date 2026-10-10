@@ -9,32 +9,28 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Environment
 {
     /// <summary>
-    /// Builds the ruined cathedral the fight takes place in.
+    /// 构建战斗所在的废墟大教堂。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The fight happens on the crossing of a broken nave: eight columns in an octagon around the
-    /// fighting floor, lintels between the ones still standing, an outer wall with tall window openings,
-    /// an aisle roof that has partly fallen in and a crossing open to the sky, so the sun comes down
-    /// onto the floor in shafts.
+    /// 战斗发生在破损中殿的交叉部：八根柱子围绕地板组成八边形，仍站立的柱子之间有过梁；外墙有高窗，
+    /// 侧廊屋顶部分坍塌，交叉部向天空开放，使阳光成束照到地板。
     /// </para>
     /// <para>
-    /// Nothing here changes the fight. The playable radius, the collision ring and the layers all stay as
-    /// the arena builder made them: every piece of the cathedral stands outside the ring or lies flat
-    /// under it, and none carries a collider. The ring's own boxes stay live and only their meshes are
-    /// hidden behind textured ones, so the boundary the AI's positioning was tuned against is untouched.
+    /// 这里不改变战斗。可玩半径、碰撞墙环和层保持竞技场构建器原样；教堂部件位于墙环外或平铺其下，
+    /// 不带碰撞体。墙环自身盒体保持有效，仅用纹理网格遮住，AI 站位所依据的边界不变。
     /// </para>
     /// <para>
-    /// Everything is placed from constants and a fixed seed, for the same reason the fight never uses
-    /// <c>UnityEngine.Random</c>: two regenerations must produce the same scene.
+    /// 全部根据常量和固定种子摆放，理由与战斗不使用以下随机源相同：<c>UnityEngine.Random</c>：
+    /// 两次重新生成必须产生相同场景。
     /// </para>
     /// </remarks>
     public static class CathedralBuilder
     {
-        /// <summary>Name of the root object, which tests look for.</summary>
+        /// <summary>测试要查找的根对象名称。</summary>
         public const string RootName = "Cathedral";
 
-        /// <summary>The sun's rotation, shared with the arena's directional light so the shafts line up with it.</summary>
+        /// <summary>太阳旋转，与竞技场方向光共用，使光柱对齐。</summary>
         public static readonly Quaternion SunRotation = Quaternion.Euler(58f, -35f, 0f);
 
         private const uint LayoutSeed = 20260914u;
@@ -47,10 +43,10 @@ namespace AdaptiveBossArena.Editor.Environment
         private const float OuterWallHeight = 18f;
         private const float OuterWallThickness = 1.5f;
         private const float WindowSill = 5f;
-        /// <summary>Where the window's pointed arch springs from its straight sides.</summary>
+        /// <summary>窗户尖拱从竖直侧边开始的位置。</summary>
         private const float WindowSpring = 9.5f;
 
-        /// <summary>The arch's point above its springing, against the window's width: a steep lancet.</summary>
+        /// <summary>拱顶相对起拱线的高度，与窗宽配合形成陡峭尖拱。</summary>
         private const float WindowArchRise = 0.75f;
         private const int DebrisCount = 34;
         private const int StainCount = 16;
@@ -58,30 +54,29 @@ namespace AdaptiveBossArena.Editor.Environment
         private const float BannerWidth = 1.5f;
         private const float BannerHeight = 4.8f;
 
-        /// <summary>Height of a banner's top edge: low enough to hang inside the camera's view over the wall ring.</summary>
+        /// <summary>旗帜顶边高度，足够低以悬挂在墙环上方的摄像机视野内。</summary>
         private const float BannerTop = 7.6f;
 
-        /// <summary>How far in front of the column's face the cloth hangs.</summary>
+        /// <summary>布料悬挂在柱面前方的距离。</summary>
         private const float BannerStandOff = 0.06f;
 
-        /// <summary>Height of floor stains above the stone: clear of it, and below the scars at 0.02.</summary>
+        /// <summary>地板污渍高于石面的高度：避免重叠，并低于 0.02 的伤痕层。</summary>
         private const float StainLift = 0.006f;
         private const int ShaftCount = 5;
         private const float ParapetCrownHeight = 0.9f;
         private const int ParapetCrownPieces = 5;
         private const int ColumnPieces = 10;
 
-        /// <summary>The least sun the roof's shadow lets through anywhere, as a fraction.</summary>
+        /// <summary>屋顶阴影任何位置允许透过的最低阳光比例。</summary>
         public const float MinimumSun = 0.5f;
 
         /// <summary>
-        /// How much further a column can be broken from than the impact's own reach: the three and a half
-        /// metres it stands behind the wall ring, less a margin so only a blow landing squarely in front of
-        /// it counts.
+        /// 相比冲击自身范围，柱子允许从更远处被打碎的距离：柱子位于墙环后三米半，扣除余量，
+        /// 确保只有正对柱前方的打击才计入。
         /// </summary>
         private const float ColumnReachBonus = 3.2f;
 
-        /// <summary>Live debris ceilings: the plan's physics budget of 40 bodies on WebGL, a generous 150 on desktop.</summary>
+        /// <summary>活动碎片上限：计划中 WebGL 物理预算为 40 个刚体，桌面放宽为 150 个。</summary>
         private const int WebDebrisCapacity = 40;
 
         private const int DesktopDebrisCapacity = 150;
@@ -93,7 +88,7 @@ namespace AdaptiveBossArena.Editor.Environment
         private static readonly Color CandleLight = new Color(1f, 0.66f, 0.34f);
         private static readonly Color ShaftColour = new Color(1f, 0.93f, 0.78f, 0.11f);
 
-        /// <summary>Under half the desktop shafts' strength: the browser renders the same additive planes much brighter.</summary>
+        /// <summary>低于桌面光柱强度的一半；浏览器把相同叠加平面渲染得亮得多。</summary>
         private static readonly Color WebShaftColour = new Color(1f, 0.93f, 0.78f, 0.045f);
         private static readonly Color DustColour = new Color(1f, 0.95f, 0.85f, 0.5f);
 
@@ -101,15 +96,15 @@ namespace AdaptiveBossArena.Editor.Environment
         private static Material _brick;
         private static Material _block;
 
-        /// <summary>Columns 2 and 5 have fallen. Two, and not adjacent, so the ring still reads as a ring.</summary>
+        /// <summary>第 2 和第 5 根柱子已倒。只有两根且不相邻，让柱环仍能读作环形。</summary>
         private static bool IsCollapsed(int column) => column == 2 || column == 5;
 
-        /// <summary>Outer wall faces whose upper wall and roof bay have come down.</summary>
+        /// <summary>上层墙体和对应屋顶区间已坍塌的外墙面。</summary>
         private static bool IsRuinedBay(int face) => face == 1 || face == 4 || face == 6;
 
-        /// <summary>Builds the cathedral around the arena.</summary>
-        /// <param name="config">Arena dimensions.</param>
-        /// <param name="arenaRoot">The arena root, whose floor and wall ring already exist.</param>
+        /// <summary>围绕竞技场构建大教堂。</summary>
+        /// <param name="config">竞技场尺寸。</param>
+        /// <param name="arenaRoot">已存在地板和墙环的竞技场根对象。</param>
         public static void Build(ArenaConfig config, Transform arenaRoot)
         {
             _floor = MaterialLibrary.GetOrCreateTexturedLit("CathedralFloor", "stone_tiles_02", StoneTint);
@@ -130,8 +125,7 @@ namespace AdaptiveBossArena.Editor.Environment
             BuildShafts(root.transform);
             BuildDust(root.transform, radius);
 
-            // The dust and the candles are what the web build thins; hand them to the platform lighting, which
-            // BuildShafts has just added beside the cathedral.
+            // 网页构建会减少尘埃和蜡烛，将它们交给 BuildShafts刚在教堂旁添加的平台照明组件。
             if (root.transform.parent.TryGetComponent(out PlatformLighting lighting))
             {
                 Transform dust = root.transform.Find("Dust");
@@ -144,18 +138,18 @@ namespace AdaptiveBossArena.Editor.Environment
 
             foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>(true))
             {
-                // Static batching folds the whole ruin into a handful of draw calls in a build, which is
-                // what keeps a hundred-odd stones inside the WebGL draw-call budget.
+                // 静态批处理在构建中将整个废墟合并为少量绘制调用，
+                // 让百余块石材保持在 WebGL draw-call 预算内。
                 GameObjectUtility.SetStaticEditorFlags(renderer.gameObject, StaticEditorFlags.BatchingStatic);
             }
         }
 
         /// <summary>
-        /// Lays a tiled stone floor across the nave and hides the flat placeholder disc.
+        /// 在中殿铺设平铺石地板，并隐藏平坦占位圆盘。
         /// </summary>
         /// <remarks>
-        /// The disc's UVs spread one texture across the whole 32-metre floor, which would show each
-        /// flagstone the size of a car. Its collider is a separate object and stays exactly as it was.
+        /// 圆盘 UV 把一张纹理铺满整个 32 米地板，会让每块石板像汽车一样大。其碰撞体是独立对象，
+        /// 保持原样。
         /// </remarks>
         private static void BuildFloor(Transform root, Transform arenaRoot, float radius)
         {
@@ -172,12 +166,11 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// Old stains across the nave, and grime gathered where the floor meets the wall ring.
+        /// 中殿旧污渍，以及地板与墙环交界处积聚的污垢。
         /// </summary>
         /// <remarks>
-        /// The floor was one clean tiled plane under an even light: the largest thing on screen, and the most
-        /// obviously generated. Seeded, so every rebuild lays the same stains; flat, collider-free quads just
-        /// above the stone, beneath the scars and warnings drawn over them.
+        /// 地板原本是均匀光照下的干净平铺平面，既占屏幕最大面积，也最明显像程序生成。
+        /// 使用种子保证每次重建相同污渍；平坦、无碰撞体的四边形略高于石面，低于上方绘制的伤痕和警告。
         /// </remarks>
         private static void BuildFloorStains(Transform root, float radius)
         {
@@ -201,13 +194,13 @@ namespace AdaptiveBossArena.Editor.Environment
                 patch.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
 
-            // One quad spanning the whole floor, its texture clear in the middle and darkening toward the ring.
+            // 覆盖整块地板的四边形，纹理中间透明、向墙环逐渐变暗。
             GameObject ring = Place(stains, "WallGrime", quad, grime, Vector3.up * (StainLift * 0.5f), Quaternion.Euler(90f, 0f, 0f));
             ring.transform.localScale = new Vector3((radius + 1f) * 2f, (radius + 1f) * 2f, 1f);
             ring.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
-        /// <summary>An irregular blotch: layered noise cut by a soft radial falloff, darker at its heart.</summary>
+        /// <summary>不规则斑块：叠层噪声经柔和径向衰减裁切，中心更暗。</summary>
         private static Texture2D StainTexture() => GetOrCreateTexture("FloorStainBlotch", 256, 256, (u, v) =>
         {
             float x = u * 2f - 1f, y = v * 2f - 1f;
@@ -217,7 +210,7 @@ namespace AdaptiveBossArena.Editor.Environment
             return Mathf.Clamp01(shape * (0.55f + noise * 0.6f));
         });
 
-        /// <summary>Clear across the fighting floor, gathering into a dark band at the wall ring.</summary>
+        /// <summary>战斗地板保持透明，在墙环处聚集成暗带。</summary>
         private static Texture2D GrimeRingTexture() => GetOrCreateTexture("FloorGrimeRing", 512, 512, (u, v) =>
         {
             float x = u * 2f - 1f, y = v * 2f - 1f;
@@ -239,7 +232,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 AssetDatabase.CreateAsset(material, path);
             }
 
-            // Alpha-blended matter, not light: a stain darkens whatever the light has done to the stone.
+            // Alpha 混合表现物质而非光：污渍加深光照后的石材颜色。
             material.shader = shader;
             material.SetFloat("_Surface", 1f);
             material.SetFloat("_Blend", 0f);
@@ -249,7 +242,7 @@ namespace AdaptiveBossArena.Editor.Environment
             material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             material.SetOverrideTag("RenderType", "Transparent");
 
-            // Before every other transparent thing, so scars and warnings always draw over the stains.
+            // 先于其他透明物绘制，让伤痕和警告始终位于污渍上方。
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent - 50;
             material.SetTexture("_BaseMap", texture);
             material.SetColor("_BaseColor", colour);
@@ -259,11 +252,10 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// Hides the collision ring's grey boxes behind brick, keeping every collider where it is.
+        /// 用砖材遮住碰撞墙环灰盒，保持所有碰撞体位置。
         /// </summary>
         /// <remarks>
-        /// The visible box is replaced by a separate object rather than edited in place: its scale is what
-        /// sizes its collider, and a tiled mesh needs a scale of one.
+        /// 用独立对象替换可见盒体，而不原地修改；原对象缩放决定碰撞体尺寸，平铺网格则要求缩放为一。
         /// </remarks>
         private static void ReskinWallRing(Transform root, Transform arenaRoot)
         {
@@ -287,8 +279,8 @@ namespace AdaptiveBossArena.Editor.Environment
                 BuildBreakableParapet(parapet, wall);
             }
 
-            // Beside the cathedral rather than inside it: the pool's pieces carry colliders, and the
-            // dressing is held to carrying none. Theirs are on the debris layer, which no fighter touches.
+            // 放在教堂旁而非内部：池化碎片带碰撞体，而装饰要求不带。
+            // 碎片位于战斗角色不接触的 debris 层。
             var destruction = new GameObject("Destruction");
             destruction.transform.SetParent(arenaRoot, false);
 
@@ -298,8 +290,7 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// One segment of the parapet: a solid base, and a crown of stone on top that a slam or a body
-        /// driven into the wall knocks off. Both are dressing over the unchanged collider.
+        /// 一段护墙：下方实心底座，上方石冠可被砸地或撞墙身体击落。两者都是覆盖在不变碰撞体上的装饰。
         /// </summary>
         private static void BuildBreakableParapet(Transform parent, Transform wall)
         {
@@ -345,7 +336,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 GameObject capital = Block(columns, $"Capital_{i}", new Vector3(2.4f, 0.8f, 2.4f), 1.5f, _block,
                     foot + Vector3.up * (1.4f + ColumnHeight), facing);
 
-                // The plinth stays: a column that comes down leaves its footing, like the two already fallen.
+                // 柱基保留；柱子倒塌后留下基座，与已有两根倒柱一致。
                 shaft.AddComponent<Destructible>().Bind(
                     new Renderer[] { shaft.GetComponent<MeshRenderer>(), capital.GetComponent<MeshRenderer>() },
                     shaftSize, ColumnPieces, ColumnReachBonus);
@@ -355,7 +346,7 @@ namespace AdaptiveBossArena.Editor.Environment
                     BuildCandles(columns, i, foot, angle);
                 }
 
-                // A lintel to the next column, only while both still stand to carry it.
+                // 通往下一根柱子的过梁，仅在两柱都站立支撑它时存在。
                 int next = (i + 1) % ColumnCount;
 
                 if (!IsCollapsed(next))
@@ -374,12 +365,11 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// Adds the lintels either side of each standing column to what disappears when it breaks.
+        /// 将每根站立柱子两侧的过梁加入柱子破碎时消失的部件。
         /// </summary>
         /// <remarks>
-        /// A lintel is carried by two columns, and one left spanning to a column that has come down would hang
-        /// in the air. Done after every column and lintel exists, because a column's left-hand lintel is built
-        /// in the previous turn of the loop and its right-hand one after it.
+        /// 过梁由两柱支撑，若仍跨向已倒柱就会悬空。在所有柱和过梁创建后执行，
+        /// 因为左侧过梁在上轮循环生成，右侧则在本轮之后生成。
         /// </remarks>
         private static void GiveColumnsTheirLintels(Transform columns)
         {
@@ -413,8 +403,7 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// A broken stump, the shaft lying where it fell - outward, away from the fighting floor - and the
-        /// lintels it carried in pieces beside it.
+        /// 断桩、向外倒离战斗地板的柱身，以及散落旁边的过梁碎片。
         /// </summary>
         private static void BuildFallenColumn(
             Transform parent, int index, Vector3 foot, float angle, XorShiftRandomProvider random)
@@ -445,13 +434,13 @@ namespace AdaptiveBossArena.Editor.Environment
             }
         }
 
-        /// <summary>Candles at a column's foot: the only warm light left in the building.</summary>
+        /// <summary>柱脚的蜡烛，是建筑中剩下的唯一暖光。</summary>
         private static void BuildCandles(Transform parent, int index, Vector3 foot, float angle)
         {
             Material wax = MaterialLibrary.GetOrCreateSurface("CandleWax", new Color(0.86f, 0.82f, 0.70f), 0f, 0.3f);
             Material flame = MaterialLibrary.GetOrCreateSurface("CandleFlame", Color.black, 0f, 0f, CandleFlame);
 
-            // On the side facing the fight, so the light falls on the floor rather than the column's back.
+            // 放在朝向战斗的一侧，让光照到地板而非柱后。
             Vector3 front = foot - OnRing(angle, 1.8f);
             float[] heights = { 0.45f, 0.3f, 0.6f };
 
@@ -478,8 +467,7 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// The octagonal outer wall: two piers per face with a tall window between them, and an aisle roof
-        /// bay reaching in to the column ring. Ruined bays keep lowered piers and lose the rest.
+        /// 八边形外墙：每面两墩，中间高窗，侧廊屋顶向内延伸到柱环。破损区只保留较低的墩，移除其余部分。
         /// </summary>
         private static void BuildOuterWalls(Transform root, float radius)
         {
@@ -520,8 +508,7 @@ namespace AdaptiveBossArena.Editor.Environment
 
                 float headHeight = OuterWallHeight - WindowSpring;
 
-                // A pointed arch over the window rather than a flat lintel: the rectangular openings read as a
-                // warehouse, and the lancet is most of what says cathedral from the fighting floor.
+                // 窗上使用尖拱而非平过梁；矩形开口像仓库，尖拱是在战斗地板视角下辨认大教堂的关键。
                 Place(walls, $"Head_{face}",
                     TiledMeshes.PointedArchHead(OuterWallThickness, headHeight, window, window * WindowArchRise, 2f),
                     _brick, centre + Vector3.up * (WindowSpring + headHeight * 0.5f), facing);
@@ -535,13 +522,12 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// Rotted banners hanging from the standing columns, on the side facing the fight.
+        /// 站立柱朝向战斗的一侧悬挂腐朽旗帜。
         /// </summary>
         /// <remarks>
-        /// Between the wall ring and the roof the camera saw bare stone. On the columns - close, lit by the
-        /// shafts, and always inside the view - cloth that is torn, faded and folded says who held this place
-        /// and how long ago. Parented with the columns so each joins its column's breakable parts, and falls
-        /// with it. Cut-out rather than blended, so it sorts and shadows like the stone.
+        /// 墙环与屋顶之间原先只有裸石。在靠近、受光柱照明且始终在视野内的柱子上，
+        /// 破损褪色褶皱布料讲述旧主和久远历史。挂到柱子下成为可破碎部件，随柱倒下。使用裁切而非混合，
+        /// 使排序和阴影与石材一致。
         /// </remarks>
         private static void BuildBanners(Transform columns, float ringRadius)
         {
@@ -566,7 +552,7 @@ namespace AdaptiveBossArena.Editor.Environment
             }
         }
 
-        /// <summary>A banner's cloth: a unit-sized grid with shallow folds down its length.</summary>
+        /// <summary>旗布：单位尺寸网格，纵向带浅褶皱。</summary>
         private static Mesh BannerMesh()
         {
             string path = TiledMeshes.MeshFolder + "/BannerCloth.asset";
@@ -588,7 +574,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 {
                     float u = column / (float)Columns, v = row / (float)Rows;
 
-                    // Folds deepen toward the free bottom edge, where the cloth hangs loosest.
+                    // 褶皱朝自由底边加深，那里布料最松。
                     float fold = Mathf.Sin(u * Mathf.PI * 3f) * 0.05f * (1.2f - v);
                     vertices[row * (Columns + 1) + column] = new Vector3(u - 0.5f, v - 0.5f, fold);
                     uvs[row * (Columns + 1) + column] = new Vector2(u, v);
@@ -619,7 +605,7 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// Faded crimson cloth with a bone sigil, folded, grimed toward its hem and torn away along it.
+        /// 褪色深红布，带骨白符号、褶皱、向下摆加深的污垢和撕裂边缘。
         /// </summary>
         private static Texture2D BannerTexture()
         {
@@ -648,7 +634,7 @@ namespace AdaptiveBossArena.Editor.Environment
                     float fade = Mathf.PerlinNoise(u * 4f + 5.5f, v * 5f + 1.7f);
                     Color colour = crimson * (0.7f + weave * 0.3f) * (0.75f + fade * 0.45f);
 
-                    // A sword pointing down within a ring, in the upper third: whoever raised these, long gone.
+                    // 上三分之一处，环内有向下的剑；立起这些旗帜的人早已消失。
                     float cx = (u - 0.5f) * 2f, cy = (v - 0.7f) * 2f * (Height / (float)Width) * 0.5f;
                     float ring = Mathf.Abs(Mathf.Sqrt(cx * cx + cy * cy) - 0.55f);
                     bool blade = Mathf.Abs(cx) < 0.05f && cy > -0.75f && cy < 0.6f;
@@ -659,10 +645,10 @@ namespace AdaptiveBossArena.Editor.Environment
                         colour = Color.Lerp(colour, bone * (0.8f + fade * 0.3f), 0.75f);
                     }
 
-                    // Grime rising from the hem.
+                    // 从下摆向上蔓延的污垢。
                     colour *= Mathf.Lerp(0.45f, 1f, Mathf.Clamp01(v * 2.2f));
 
-                    // The hem torn away in ragged tongues, and a few holes eaten through higher up.
+                    // 下摆撕成参差布条，上部还蚀穿几个孔。
                     float tear = 0.12f + Mathf.PerlinNoise(u * 9f, 3.3f) * 0.22f + Mathf.Abs(Mathf.Sin(u * Mathf.PI * 2.5f)) * 0.08f;
                     bool hole = Mathf.PerlinNoise(u * 11f + 20f, v * 9f + 40f) > 0.8f && v < 0.6f;
                     float alpha = v < tear || hole ? 0f : 1f;
@@ -674,7 +660,7 @@ namespace AdaptiveBossArena.Editor.Environment
 
             texture.Apply(true);
 
-            // Rewritten in place, so retuning the cloth reaches the existing asset.
+            // 原地重写，让布料调参作用于已有资产。
             if (created)
             {
                 AssetAuthoring.EnsureFolderExists(EditorMenus.GeneratedMaterialFolder);
@@ -701,7 +687,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 AssetDatabase.CreateAsset(material, path);
             }
 
-            // Cut out and seen from both sides: cloth hangs free, and its torn hem must show as holes.
+            // 裁切并双面可见：布料自由悬挂，撕裂下摆必须显示为孔洞。
             material.shader = shader;
             material.SetTexture("_BaseMap", BannerTexture());
             material.SetColor("_BaseColor", Color.white);
@@ -717,7 +703,7 @@ namespace AdaptiveBossArena.Editor.Environment
             return material;
         }
 
-        /// <summary>Stones scattered between the column ring and the outer wall, never on the fighting floor.</summary>
+        /// <summary>柱环与外墙之间散落石块，不放在战斗地板上。</summary>
         private static void BuildDebris(Transform root, float radius)
         {
             var debris = new GameObject("Debris").transform;
@@ -739,12 +725,11 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// Sunlight falling through the open crossing, faked with soft additive planes.
+        /// 用柔和叠加平面模拟穿过开放交叉部的阳光。
         /// </summary>
         /// <remarks>
-        /// URP has no volumetric lighting, and the WebGL build could not afford it if it did. Three crossed
-        /// planes with a soft-edged gradient read as a shaft from any angle the camera takes, cost a few
-        /// dozen triangles, and never write depth, so they cannot hide a telegraph or a fighter.
+        /// URP 没有体积光，即使有 WebGL 预算也承担不起。三个交叉平面配柔边渐变，
+        /// 从摄像机任何角度都像光柱，仅需数十三角形且不写深度，不会遮住预警或角色。
         /// </remarks>
         private static void BuildShafts(Transform root)
         {
@@ -783,9 +768,9 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// Hands the sun and the broken roof's shadow pattern to the platform lighting, once the light exists.
+        /// 灯光存在后，将太阳和破损屋顶的阴影图案交给平台照明。
         /// </summary>
-        /// <param name="sun">The arena's directional light.</param>
+        /// <param name="sun">竞技场方向光。</param>
         public static void BindSun(Light sun)
         {
             PlatformLighting lighting = Object.FindAnyObjectByType<PlatformLighting>();
@@ -795,7 +780,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 return;
             }
 
-            // The cookie's size lives on URP's light data, which a light created from code does not carry yet.
+            // Cookie 尺寸保存在 URP 灯光数据上，代码创建的灯光尚未带该数据。
             if (!sun.TryGetComponent(out UnityEngine.Rendering.Universal.UniversalAdditionalLightData _))
             {
                 sun.gameObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>();
@@ -805,11 +790,11 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// The shadow the ruined roof throws: four rafters across open sky, and ragged patches of roof still standing.
+        /// 废墟屋顶投影：开阔天空下四根椽条，以及参差残存屋顶。
         /// </summary>
         /// <remarks>
-        /// Tileable, because a directional cookie repeats across the whole floor. The patches come from value
-        /// noise on a wrapping grid, seeded, so the pattern is identical in every regeneration.
+        /// 可平铺，因为方向光 Cookie 在整块地板上重复。残片来自环绕网格上的value noise；使用固定种子，
+        /// 保证每次生成相同图案。
         /// </remarks>
         private static Texture2D RoofShadowCookie()
         {
@@ -829,8 +814,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 }
             }
 
-            // Rewritten in place on every run rather than only created once, so a change to the pattern reaches
-            // the scene without the asset having to be deleted, and every reference to it survives.
+            // 每次原地重写而非仅创建一次，让图案修改无需删除资产就可进入场景，同时保留所有引用。
             var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             bool created = texture == null;
 
@@ -848,7 +832,7 @@ namespace AdaptiveBossArena.Editor.Environment
                     float u = (float)px / Size;
                     float v = (float)py / Size;
 
-                    // Smoothly interpolated, wrapping lattice noise: the fallen and standing roof.
+                    // 平滑插值、可环绕的格点噪声，表现坍塌与残存屋顶。
                     float gx = u * Cells, gy = v * Cells;
                     int x0 = Mathf.FloorToInt(gx) % Cells, y0 = Mathf.FloorToInt(gy) % Cells;
                     int x1 = (x0 + 1) % Cells, y1 = (y0 + 1) % Cells;
@@ -860,13 +844,13 @@ namespace AdaptiveBossArena.Editor.Environment
 
                     float roof = Edge(0.72f, 0.8f, noise);
 
-                    // Four rafters, a whole number of them per tile so they meet across the seam.
+                    // 四根椽条，每块平铺纹理数量为整数，使接缝对齐。
                     float rafter = Mathf.Abs(Mathf.Sin(u * Mathf.PI * 4f));
                     float beam = Edge(0.04f, 0.1f, rafter);
 
-                    // Accents, not cover. The crossing is open to the sky, so the fighting floor is sunlit with
-                    // a few shadows across it. The first version cut the sun to about a fifth everywhere and took
-                    // the whole frame from 0.38 to 0.21 mean luminance; nothing here may fall below MinimumSun.
+                    // 只点缀而不覆盖。交叉部向天空开放，战斗地板应受阳光照明，仅有少量阴影。
+                    // 初版在各处把阳光减至约五分之一，使全帧平均亮度从 0.38降到 0.21；
+                    // 这里任何位置都不能低于 MinimumSun。
                     float light = Mathf.Max(MinimumSun, Mathf.Lerp(1f, 0.6f, roof) * Mathf.Lerp(0.65f, 1f, beam));
                     texture.SetPixel(px, py, new Color(light, light, light, 1f));
                 }
@@ -887,7 +871,7 @@ namespace AdaptiveBossArena.Editor.Environment
             return texture;
         }
 
-        /// <summary>Motes drifting in the light. On unscaled time, so the air keeps moving through a hit-stop.</summary>
+        /// <summary>光中漂浮微粒。使用 unscaled time，让 hit-stop 期间空气仍流动。</summary>
         private static void BuildDust(Transform root, float radius)
         {
             var dustObject = new GameObject("Dust");
@@ -936,7 +920,7 @@ namespace AdaptiveBossArena.Editor.Environment
             renderer.sharedMaterial = GetOrCreateAdditive("DustMote", DotTexture(), Color.white);
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-            // A mote drifting past the lens would otherwise fill a tenth of the screen as a bloomed white blob.
+            // 否则微粒经过镜头会成为泛光白团，占据十分之一屏幕。
             renderer.maxParticleSize = 0.006f;
         }
 
@@ -1000,7 +984,7 @@ namespace AdaptiveBossArena.Editor.Environment
             return material;
         }
 
-        /// <summary>Soft across the shaft, brightest toward the sky and fading out before the floor.</summary>
+        /// <summary>光柱横向柔和，靠天空最亮，在到达地板前淡出。</summary>
         private static Texture2D ShaftGradient() => GetOrCreateTexture("LightShaftGradient", 32, 128, (u, v) =>
         {
             float across = Mathf.Sin(u * Mathf.PI);
@@ -1014,26 +998,24 @@ namespace AdaptiveBossArena.Editor.Environment
             return Mathf.Clamp01(1f - d * d);
         });
 
-        /// <summary>A smooth 0-to-1 ramp as <paramref name="x"/> crosses from one edge to the other.</summary>
+        /// <summary>当以下数值从一侧边缘跨到另一侧时，产生平滑的零到一渐变： <paramref name="x"/> 。</summary>
         /// <remarks>
-        /// GLSL's <c>smoothstep(edge0, edge1, x)</c>. Not <see cref="Mathf.SmoothStep"/>, whose arguments look the
-        /// same and mean something else: it interpolates between its first two values, so passing it edges
-        /// returns a value between those edges and never a mask. That mistake made the first roof cookie cut
-        /// the sun to about a fifth over the whole arena.
+        /// 采用 GLSL 的 <c>smoothstep(edge0, edge1, x)</c>，不是 <see cref="Mathf.SmoothStep"/>；
+        /// 后者参数外观相似但含义不同：它在前两个数值之间插值，传入边界只会得到边界间的数值而非遮罩。
+        /// 这个错误曾让首版屋顶 Cookie 将整个竞技场阳光削至约五分之一。
         /// </remarks>
-        /// <param name="edge0">Where the ramp starts.</param>
-        /// <param name="edge1">Where the ramp ends.</param>
-        /// <param name="x">The value to ramp.</param>
-        /// <returns>Zero below the first edge, one above the second, smooth between.</returns>
+        /// <param name="edge0">渐变起点。</param>
+        /// <param name="edge1">渐变终点。</param>
+        /// <param name="x">参与渐变的值。</param>
+        /// <returns>低于第一边缘为零，高于第二边缘为一，中间平滑变化。</returns>
         public static float Edge(float edge0, float edge1, float x) =>
             Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(edge0, edge1, x));
 
         /// <summary>
-        /// A white texture whose alpha comes from a function, saved as an asset.
+        /// Alpha 由函数生成、保存为资产的白色纹理。
         /// </summary>
         /// <remarks>
-        /// Saved as a Unity texture asset rather than encoded to PNG, because image encoding lives in an
-        /// engine module this project does not include.
+        /// 保存为 Unity 纹理资产而不编码为 PNG，因为项目未包含图像编码所在的引擎模块。
         /// </remarks>
         private static Texture2D GetOrCreateTexture(string name, int width, int height, System.Func<float, float, float> alpha)
         {
@@ -1067,7 +1049,7 @@ namespace AdaptiveBossArena.Editor.Environment
             return texture;
         }
 
-        /// <summary>Three unit planes crossed at 60 degrees about the vertical, spanning y from -0.5 to 0.5.</summary>
+        /// <summary>三个单位平面绕竖轴以 60 度交叉，y 从 -0.5 到 0.5。</summary>
         private static Mesh GetOrCreateCrossedPlanes()
         {
             string path = TiledMeshes.MeshFolder + "/CrossedPlanes.asset";

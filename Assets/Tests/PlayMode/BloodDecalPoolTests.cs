@@ -8,7 +8,7 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that floor blood is laid down under a blow and never piles up past its pool.
+    /// 测试攻击下方会产生地面血迹，且积累量永远不超过对象池容量。
     /// </summary>
     [TestFixture]
     public sealed class BloodDecalPoolTests

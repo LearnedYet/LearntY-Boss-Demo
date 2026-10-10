@@ -4,17 +4,16 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Marks the brute with a small ring while the camera is locked on to it.
+    /// 相机锁定巨兽时，用小圆环标记它。
     /// </summary>
     /// <remarks>
-    /// Lock-on changes how the camera and the knight behave - the view tracks the brute, the knight faces it and
-    /// strafes - so whether it is engaged has to be visible at a glance, not inferred from how the camera moves.
-    /// Presentation only: it reads the camera's state and never changes it.
+    /// 锁定会改变相机与骑士行为：视角追踪巨兽，骑士面向它并侧移，因此必须一眼看出是否锁定，
+    /// 而非从相机移动方式推测。这里只负责表现，读取相机状态，绝不修改它。
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class LockOnReticle : MonoBehaviour
     {
-        /// <summary>Height on the brute the ring sits at: its chest, where the eye already goes.</summary>
+        /// <summary>圆环位于巨兽胸口高度，那里本来就是视线关注点。</summary>
         private const float ChestHeight = 1.9f;
 
         private const int RingTextureSize = 64;
@@ -34,10 +33,10 @@ namespace AdaptiveBossArena.Game
         private Canvas _canvas;
         private RectTransform _canvasRect;
 
-        /// <summary>Assigns the camera, the target and the ring. Used by the scene generator.</summary>
-        /// <param name="rig">The camera rig.</param>
-        /// <param name="target">The brute.</param>
-        /// <param name="marker">The ring's rect, under the HUD canvas.</param>
+        /// <summary>分配相机、目标和圆环，供场景生成器使用。</summary>
+        /// <param name="rig">相机装置。</param>
+        /// <param name="target">巨兽。</param>
+        /// <param name="marker">HUD 画布下圆环的矩形变换。</param>
         public void Bind(ArenaCameraRig rig, Transform target, RectTransform marker)
         {
             _rig = rig;
@@ -50,7 +49,7 @@ namespace AdaptiveBossArena.Game
             _canvas = GetComponentInParent<Canvas>();
             _canvasRect = _canvas != null ? _canvas.transform as RectTransform : null;
 
-            // The ring is drawn in code rather than imported, like every other asset here.
+            // 与这里其他资源一样，圆环由代码绘制，而非导入。
             if (_marker != null && _marker.TryGetComponent(out Image image))
             {
                 image.sprite = RingSprite();
@@ -70,7 +69,7 @@ namespace AdaptiveBossArena.Game
 
             Vector3 screen = show ? view.WorldToScreenPoint(_target.position + Vector3.up * ChestHeight) : Vector3.zero;
 
-            // Behind the camera, the projection lands in mirror image on screen; hide rather than point the wrong way.
+            // 相机后方目标投影会在屏幕上镜像反转；此时隐藏圆环，避免指向错误方向。
             show &= screen.z > 0f;
 
             if (_marker.gameObject.activeSelf != show)
@@ -91,7 +90,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>A thin bright ring with a soft edge.</summary>
+        /// <summary>边缘柔和的细亮圆环。</summary>
         private static Sprite RingSprite()
         {
             var texture = new Texture2D(RingTextureSize, RingTextureSize, TextureFormat.RGBA32, false)

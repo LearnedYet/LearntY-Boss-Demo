@@ -5,14 +5,12 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.UI
 {
     /// <summary>
-    /// Shows the name of the weapon currently in hand.
+    /// 显示当前手中武器的名称。
     /// </summary>
     /// <remarks>
-    /// The three weapons swing genuinely different movesets now, so which one is drawn is real
-    /// information rather than a cosmetic choice. The swing colour hints at it, but a player mid-fight
-    /// should not have to infer their own loadout from a flash — a quiet label near their vitals says
-    /// it plainly. It updates on the same "weapon drawn" signal that fires on the opening equip and on
-    /// every swap, so it always names the current weapon.
+    /// 三种武器有不同招式，当前装备具有实际意义。挥击颜色有所提示，
+    /// 但战斗中玩家不应靠闪光推测自己的武器；生命附近的标签直接说明。
+    /// 首次装备和每次切换的同一信号更新标签，使其始终显示当前武器。
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class WeaponDisplay : MonoBehaviour
@@ -41,9 +39,9 @@ namespace AdaptiveBossArena.UI
             }
         }
 
-        /// <summary>Assigns the channel and label. Used by the interface generator.</summary>
-        /// <param name="weaponChannel">Weapon-drawn channel.</param>
-        /// <param name="label">Label to write into.</param>
+        /// <summary>指定通道和标签，供界面生成器使用。</summary>
+        /// <param name="weaponChannel">武器装备通道。</param>
+        /// <param name="label">要写入的标签。</param>
         public void Bind(StringEventChannel weaponChannel, Text label)
         {
             _weaponChannel = weaponChannel;

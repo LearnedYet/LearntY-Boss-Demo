@@ -10,12 +10,11 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests knockdowns, launches and wall impacts on the player in the real arena.
+    /// 在真实竞技场中测试玩家击倒、挑飞和撞墙。
     /// </summary>
     /// <remarks>
-    /// The reaction gate's rules are pinned in EditMode. These check the part a unit test cannot: that
-    /// the state machine, the motor and the damage path actually honour them, so a floored player is
-    /// really untouchable and really gets up.
+    /// 反应门控规则已由 EditMode 测试固定。此处检查单元测试无法覆盖的部分：状态机、
+    /// 移动器和伤害路径确实遵守规则，使倒地玩家真的不可伤害，也真的能够起身。
     /// </remarks>
     [TestFixture]
     public sealed class KnockdownTests
@@ -58,7 +57,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             Assert.Less(waited, GiveUpAfterSeconds, "The fight never started.");
         }
 
-        /// <summary>A boss blow that does nothing but ask for a reaction, so no other system muddies the result.</summary>
+        /// <summary>只请求受击反应的首领攻击，避免其它系统干扰结果。</summary>
         private static DamageInfo Blow(ImpactReaction reaction, float amount = 0.001f) => new DamageInfo
         {
             Amount = amount,
@@ -110,7 +109,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             Assert.AreEqual(DamageOutcome.Ignored, slam.Outcome, "A slam hurt a player lying on the floor.");
             Assert.AreEqual(health, _context.Health.Current, 0.0001f);
 
-            // And the player does get up.
+            // 玩家也确实起身。
             float waited = 0f;
 
             while (Seen == ObservableActionState.KnockedDown && waited < 3f)

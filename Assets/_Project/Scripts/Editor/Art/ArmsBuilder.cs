@@ -5,32 +5,29 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Builds the fighters' swords, the knight's shield and the brute's cleaver as real shapes, and mounts them on the rigs.
+    /// 将双方的剑、骑士的盾牌和巨兽的砍刀构建为真实形体，并安装到骨骼上。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A weapon made of stretched boxes is the single fastest way to make a character read as a prototype: from
-    /// any angle it is a plank. These are built as meshes instead - a blade with a diamond cross-section that
-    /// narrows to a point, so light breaks along its ridge; a heater shield curved like beaten metal - and cost
-    /// a few hundred triangles each.
+    /// 用拉长的盒子做武器最容易让角色显得像原型：从任何角度看都像木板。这里改用网格：
+    /// 剑刃采用向尖端收窄的菱形截面，让光线沿脊线分开；鸢形盾像锻打金属一样弯曲。每件仅需数百个三角形。
     /// </para>
     /// <para>
-    /// Mounting is read off each rig's own bones rather than from fixed offsets, because a hand bone's axes are
-    /// whatever the model's author chose: a sword runs across the knuckles, a shield rides the outside of the
-    /// forearm with its point toward the hand.
+    /// 安装方向从各自骨骼读取，不使用固定偏移，因为手骨轴向由模型作者决定：剑刃横过指关节，
+    /// 盾牌贴在前臂外侧且尖端朝向手部。
     /// </para>
     /// </remarks>
     public static class ArmsBuilder
     {
-        /// <summary>Folder the generated weapon meshes are saved in.</summary>
+        /// <summary>保存生成武器网格的文件夹。</summary>
         public const string MeshFolder = "Assets/_Project/Meshes/Arms";
 
-        /// <summary>Loads or creates a double-edged blade along +Z from its base, narrowing to a point.</summary>
-        /// <param name="length">Blade length, base to point, in metres.</param>
-        /// <param name="width">Width at the base.</param>
-        /// <param name="thickness">Thickness along the central ridge.</param>
-        /// <param name="tipFraction">Fraction of the length taken by the point.</param>
-        /// <returns>The mesh asset.</returns>
+        /// <summary>加载或创建从底部沿 +Z 延伸、逐渐收窄至尖端的双刃剑。</summary>
+        /// <param name="length">剑刃从底部到尖端的长度，单位为米。</param>
+        /// <param name="width">底部宽度。</param>
+        /// <param name="thickness">中央脊线的厚度。</param>
+        /// <param name="tipFraction">尖端占总长度的比例。</param>
+        /// <returns>网格资产。</returns>
         public static Mesh Blade(float length, float width, float thickness, float tipFraction)
         {
             string name = Invariant($"Blade_{length:0.##}x{width:0.###}x{thickness:0.###}_{tipFraction:0.##}");
@@ -39,8 +36,7 @@ namespace AdaptiveBossArena.Editor.Art
             {
                 float tipStart = length * (1f - tipFraction);
 
-                // Stations along the blade: full width at the base, a slight taper to the start of the point,
-                // then nothing at the point itself.
+                // 剑刃上的截面位置：底部为完整宽度，略微收窄到尖端起点，最后在尖端归零。
                 var stations = new[]
                 {
                     (z: 0f, halfWidth: width * 0.5f, halfThickness: thickness * 0.5f),
@@ -68,15 +64,15 @@ namespace AdaptiveBossArena.Editor.Art
             });
         }
 
-        /// <summary>Loads or creates a heater shield in the XY plane, face toward +Z, point toward -Y.</summary>
-        /// <param name="width">Width across the top.</param>
-        /// <param name="height">Height, top edge to point.</param>
-        /// <param name="thickness">Thickness at the rim.</param>
-        /// <param name="bulge">How far the face domes forward at its centre.</param>
-        /// <returns>The mesh asset.</returns>
+        /// <summary>加载或创建位于 XY 平面、正面朝 +Z、尖端朝 -Y 的鸢形盾。</summary>
+        /// <param name="width">顶部宽度。</param>
+        /// <param name="height">从顶边到尖端的高度。</param>
+        /// <param name="thickness">边缘厚度。</param>
+        /// <param name="bulge">盾面中心向前凸出的距离。</param>
+        /// <returns>网格资产。</returns>
         public static Mesh HeaterShield(float width, float height, float thickness, float bulge)
         {
-            // "uv": the shield carries planar texture coordinates for its painted face; earlier meshes had none.
+            // “uv”：盾牌带有用于涂装正面的平面纹理坐标；早期网格没有此数据。
             string name = Invariant($"HeaterShield_{width:0.##}x{height:0.##}x{thickness:0.###}_{bulge:0.###}_uv");
 
             return LoadOrSave(name, () =>
@@ -106,24 +102,23 @@ namespace AdaptiveBossArena.Editor.Art
             });
         }
 
-        /// <summary>Width of the knight's shield in metres.</summary>
+        /// <summary>骑士盾牌宽度，单位为米。</summary>
         public const float ShieldWidth = 0.52f;
 
-        /// <summary>Height of the knight's shield in metres.</summary>
+        /// <summary>骑士盾牌高度，单位为米。</summary>
         public const float ShieldHeight = 0.72f;
 
         /// <summary>
-        /// The face of a heater shield: painted planks worn to the wood, an iron rim, a boss and rivets.
+        /// 鸢形盾正面：磨损露木的涂装木板、铁边、盾心凸起和铆钉。
         /// </summary>
         /// <remarks>
-        /// Untextured, the shield was one flat plane of colour, and under the boss's glow it read as a coloured
-        /// card strapped to the knight's arm. Generated to the same outline as the mesh, so the rim follows its
-        /// edge; mapped across the shield's width and height by the planar coordinates <see cref="HeaterShield"/>
-        /// gives it.
+        /// 没有纹理时，盾牌仅是一片纯色平面，在首领的光照下像绑在骑士手臂上的彩色卡片。
+        /// 纹理按与网格相同的轮廓生成，让铁边跟随外沿；通过以下方法提供的平面坐标映射到盾牌的宽高：
+        /// <see cref="HeaterShield"/>。
         /// </remarks>
-        /// <param name="width">Shield width in metres, as given to <see cref="HeaterShield"/>.</param>
-        /// <param name="height">Shield height in metres, as given to <see cref="HeaterShield"/>.</param>
-        /// <returns>The texture asset.</returns>
+        /// <param name="width">传给以下方法的盾牌宽度，单位为米： <see cref="HeaterShield"/>.</param>
+        /// <param name="height">传给以下方法的盾牌高度，单位为米： <see cref="HeaterShield"/>.</param>
+        /// <returns>纹理资产。</returns>
         public static Texture2D ShieldFace(float width, float height)
         {
             const int Width = 256, Height = 352;
@@ -151,7 +146,7 @@ namespace AdaptiveBossArena.Editor.Art
                     var point = new Vector2((u - 0.5f) * width, (v - 0.5f) * height);
                     float edge = DistanceToOutline(point, outline);
 
-                    // Grain runs down the planks; wear shows the wood through the paint in noisy patches.
+                    // 木纹沿木板纵向延伸；磨损以噪声斑块形式露出漆层下的木材。
                     int plank = Mathf.Min(Planks - 1, (int)(u * Planks));
                     float grain = Mathf.PerlinNoise(u * 40f + plank * 7.3f, v * 3f);
                     float wear = Mathf.PerlinNoise(u * 6f + 3.1f, v * 6f + 9.7f);
@@ -172,7 +167,7 @@ namespace AdaptiveBossArena.Editor.Art
                         colour = iron * (0.75f + pitting * 0.5f) * (onBoss ? 1f + (0.065f - boss) * 6f : 1f);
                     }
 
-                    // Grime darkening toward the edge, where hands and blows have worn it.
+                    // 污垢向边缘逐渐加深，表现手部接触和打击磨损。
                     colour *= Mathf.Lerp(0.7f, 1f, Mathf.Clamp01(edge / 0.12f));
                     colour.a = 1f;
                     texture.SetPixel(x, y, colour);
@@ -194,7 +189,7 @@ namespace AdaptiveBossArena.Editor.Art
             return texture;
         }
 
-        /// <summary>Distance from a point to the nearest edge of a closed outline.</summary>
+        /// <summary>点到闭合轮廓最近边缘的距离。</summary>
         private static float DistanceToOutline(Vector2 point, List<Vector2> outline)
         {
             float nearest = float.MaxValue;
@@ -211,17 +206,15 @@ namespace AdaptiveBossArena.Editor.Art
         }
 
         /// <summary>
-        /// How a weapon sits in a closed hand, from the rig's own finger bones.
+        /// 从骨骼自身的指骨确定武器在握拳中的姿态。
         /// </summary>
         /// <remarks>
-        /// A sword held in a fist runs across the knuckles, from the little finger's side out past the index
-        /// finger, so that line is the blade's forward, and the blade's flat faces along the fingers. Weapons are
-        /// built along +Z, which is why the result is a look rotation. Without finger bones the hand's own
-        /// orientation is kept.
+        /// 拳中握剑时，剑刃横跨指关节，从小指侧伸过食指，因此这条线就是剑刃前向，剑刃平面沿手指展开。
+        /// 武器沿 +Z构建，所以结果采用朝向旋转。没有指骨时保留手骨本身的方向。
         /// </remarks>
-        /// <param name="rig">The rig's humanoid Animator.</param>
-        /// <param name="right">True for the right hand.</param>
-        /// <returns>The world rotation for a weapon held in that hand.</returns>
+        /// <param name="rig">骨架的 Humanoid Animator。</param>
+        /// <param name="right">右手时为 true。</param>
+        /// <returns>该手握持武器时的世界旋转。</returns>
         public static Quaternion GripRotation(Animator rig, bool right)
         {
             Transform hand = rig.GetBoneTransform(right ? HumanBodyBones.RightHand : HumanBodyBones.LeftHand);
@@ -242,9 +235,9 @@ namespace AdaptiveBossArena.Editor.Art
                 : Quaternion.LookRotation(alongBlade.normalized, alongFingers.normalized);
         }
 
-        /// <summary>Straps a shield to the outside of the left forearm, point toward the hand.</summary>
-        /// <param name="rig">The rig's humanoid Animator.</param>
-        /// <param name="material">The shield's material.</param>
+        /// <summary>将盾牌绑在左前臂外侧，尖端朝向手部。</summary>
+        /// <param name="rig">骨架的 Humanoid Animator。</param>
+        /// <param name="material">盾牌材质。</param>
         public static void MountShield(Animator rig, Material material)
         {
             Transform forearm = rig.GetBoneTransform(HumanBodyBones.LeftLowerArm);
@@ -274,10 +267,10 @@ namespace AdaptiveBossArena.Editor.Art
             shield.AddComponent<MeshRenderer>().sharedMaterial = material;
         }
 
-        /// <summary>Puts a heavy cleaver in a rig's right hand.</summary>
-        /// <param name="rig">The rig's humanoid Animator.</param>
-        /// <param name="bladeMaterial">The blade's material.</param>
-        /// <param name="gripMaterial">The grip's material.</param>
+        /// <summary>在骨架右手放置一把重砍刀。</summary>
+        /// <param name="rig">骨架的 Humanoid Animator。</param>
+        /// <param name="bladeMaterial">刀刃材质。</param>
+        /// <param name="gripMaterial">握柄材质。</param>
         public static void MountCleaver(Animator rig, Material bladeMaterial, Material gripMaterial)
         {
             Transform hand = rig.GetBoneTransform(HumanBodyBones.RightHand);
@@ -292,7 +285,7 @@ namespace AdaptiveBossArena.Editor.Art
             cleaver.transform.localPosition = Vector3.zero;
             cleaver.transform.rotation = GripRotation(rig, right: true);
 
-            // Undoes the hand's inherited scale, so the cleaver's size is its size in metres at any rig scale.
+            // 抵消手部继承的缩放，使砍刀在任意骨架缩放下都保持按米计的尺寸。
             float scale = 1f / Mathf.Max(0.01f, hand.lossyScale.x);
 
             AddPart(cleaver.transform, "Grip", gripMaterial, Blade(0.42f, 0.05f, 0.05f, 0.02f), new Vector3(0f, 0f, -0.28f) * scale, scale);
@@ -318,7 +311,7 @@ namespace AdaptiveBossArena.Editor.Art
             new Vector3(0f, -station.halfThickness, station.z)
         };
 
-        /// <summary>A heater shield's outline: straight top, sides that bow out and sweep in to a point.</summary>
+        /// <summary>鸢形盾轮廓：平直顶边、向外鼓起再向内收尖的两侧。</summary>
         private static List<Vector2> HeaterOutline(float width, float height, int segmentsPerSide)
         {
             float halfWidth = width * 0.5f;
@@ -362,12 +355,12 @@ namespace AdaptiveBossArena.Editor.Art
         private static string Invariant(System.FormattableString text) => System.FormattableString.Invariant(text);
 
         /// <summary>
-        /// Collects flat-shaded faces, each wound to face away from a point inside the solid.
+        /// 收集平面着色面，每个面的绕序都使其背离实体内部的一点。
         /// </summary>
         /// <remarks>
-        /// Winding is decided per face against the interior point rather than by vertex order, so faces can be
-        /// added in whatever order is natural to generate and still render from outside. Unity's front faces are
-        /// clockwise as seen from outside, for which <c>Cross(b - a, c - a)</c> points outward.
+        /// 面绕序根据内部参考点逐面决定，而不是依赖顶点顺序，因此可以按生成时最自然的顺序添加面，
+        /// 同时保证从外部可见。Unity 正面从外部看为顺时针绕序，此时以下向量指向外部：
+        /// 计算式为 <c>Cross(b - a, c - a)</c>。
         /// </remarks>
         private sealed class FacetedMesh
         {
@@ -407,8 +400,7 @@ namespace AdaptiveBossArena.Editor.Art
             }
 
             /// <param name="planarUv">
-            /// Whether to give the mesh texture coordinates spread across its width and height, for a face seen
-            /// straight on, like a shield's.
+            /// 是否为网格生成覆盖其宽高的纹理坐标，适合正面观察的平面，例如盾面。
             /// </param>
             public Mesh Build(bool planarUv = false)
             {

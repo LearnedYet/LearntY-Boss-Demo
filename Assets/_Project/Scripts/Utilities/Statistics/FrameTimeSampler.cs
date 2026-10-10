@@ -3,18 +3,15 @@ using System;
 namespace AdaptiveBossArena.Utilities.Statistics
 {
     /// <summary>
-    /// Collects frame times and reports the percentiles a performance budget is written in.
+    /// 收集帧时间，报告性能预算使用的百分位数。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Percentiles rather than an average, because an average hides exactly what a player feels. A
-    /// fight that runs at 4 ms for most frames and 40 ms whenever a slam lands averages to something
-    /// that looks fine, and plays like a stutter. The 95th percentile is the number the budget is set
-    /// against; the median says what an ordinary frame costs.
+    /// 平均值会掩盖玩家感受到的卡顿：多数帧4 ms、砸地时40 ms，平均看似正常却仍卡顿。预算使用第95百分位，
+    /// 中位数表示普通帧成本。
     /// </para>
     /// <para>
-    /// Samples are kept in a fixed array allocated once, so measuring the game does not itself add
-    /// garbage-collection spikes to the frames being measured.
+    /// 样本保存在一次分配的固定数组中，避免测量本身给被测帧增加GC峰值。
     /// </para>
     /// </remarks>
     public sealed class FrameTimeSampler
@@ -23,10 +20,9 @@ namespace AdaptiveBossArena.Utilities.Statistics
         private float[] _sortBuffer;
         private int _count;
 
-        /// <summary>Creates a sampler that holds up to a fixed number of frames.</summary>
+        /// <summary>创建最多保存固定帧数的采样器。</summary>
         /// <param name="capacity">
-        /// Maximum samples kept. Frames past this are dropped rather than overwriting old ones, so a
-        /// capture always describes the start of its window consistently.
+        /// 最大样本数，超出时丢弃新帧而不覆盖旧帧，让采样始终描述窗口开头。
         /// </param>
         public FrameTimeSampler(int capacity)
         {
@@ -38,14 +34,14 @@ namespace AdaptiveBossArena.Utilities.Statistics
             _samples = new float[capacity];
         }
 
-        /// <summary>Number of samples collected.</summary>
+        /// <summary>已采集样本数。</summary>
         public int Count => _count;
 
-        /// <summary>Whether the sampler has no room for more samples.</summary>
+        /// <summary>采样器是否已无剩余容量。</summary>
         public bool IsFull => _count >= _samples.Length;
 
-        /// <summary>Records one frame's duration.</summary>
-        /// <param name="seconds">How long the frame took, in seconds. Non-positive values are ignored.</param>
+        /// <summary>记录一帧耗时。</summary>
+        /// <param name="seconds">帧耗时，单位为秒；忽略非正值。</param>
         public void Add(float seconds)
         {
             if (seconds <= 0f || IsFull)
@@ -56,18 +52,17 @@ namespace AdaptiveBossArena.Utilities.Statistics
             _samples[_count++] = seconds;
         }
 
-        /// <summary>Discards every sample.</summary>
+        /// <summary>丢弃全部样本。</summary>
         public void Clear() => _count = 0;
 
         /// <summary>
-        /// The frame time below which the given fraction of samples fall, in milliseconds.
+        /// 指定比例样本低于的帧时间，单位为毫秒。
         /// </summary>
         /// <remarks>
-        /// Nearest-rank, which always returns a frame time that actually occurred. Interpolating
-        /// between ranks would report a p95 that no frame ever took.
+        /// 采用最近秩法，始终返回实际发生过的帧时间，不在秩之间插值生成未出现的p95。
         /// </remarks>
-        /// <param name="fraction">Between zero and one; 0.95 for the 95th percentile.</param>
-        /// <returns>The percentile in milliseconds, or zero when nothing has been sampled.</returns>
+        /// <param name="fraction">零到一的比例，0.95表示第95百分位。</param>
+        /// <returns>百分位帧时间，单位为毫秒；没有样本时为零。</returns>
         public float PercentileMilliseconds(float fraction)
         {
             if (_count == 0)
@@ -90,7 +85,7 @@ namespace AdaptiveBossArena.Utilities.Statistics
             return _sortBuffer[rank] * 1000f;
         }
 
-        /// <summary>The longest frame recorded, in milliseconds.</summary>
+        /// <summary>记录的最长帧时间，单位为毫秒。</summary>
         public float MaxMilliseconds => PercentileMilliseconds(1f);
     }
 }

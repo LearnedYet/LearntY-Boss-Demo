@@ -7,10 +7,10 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the ground warning's shape: bright at its boundary, faint inside, and never past the hitbox.
+    /// 测试地面预警形状：边界亮、内部淡，不越过命中框。
     /// </summary>
     /// <remarks>
-    /// It was a shape filled at one opacity, which read as a coloured disc lying on the floor.
+    /// 原先整片相同透明度，看起来像铺在地上的彩色圆盘。
     /// </remarks>
     [TestFixture]
     public sealed class AttackOverlayShapeTests

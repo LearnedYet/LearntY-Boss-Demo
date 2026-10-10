@@ -3,17 +3,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// A fixed set of physical stone pieces, reused so breaking things never allocates or grows.
+    /// 一组固定、可复用的物理石块，确保破坏物体不会产生分配或不断增长。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Capped by platform tier: a WebGL build keeps far fewer live bodies than a desktop one. When every
-    /// piece is in use the oldest is taken back, so a long fight full of slams keeps its newest, most
-    /// visible debris and never exceeds the budget.
+    /// 按平台档位限制：WebGL 构建保留的活动身体远少于桌面版本。所有碎片都在使用时取回最旧的，
+    /// 让充满砸击的长战斗保留最新、最明显的碎片，同时始终不超预算。
     /// </para>
     /// <para>
-    /// A piece settles into a static body once it sleeps or its settle time passes. A floor littered with
-    /// awake rigidbodies costs the solver every frame for pieces nobody is looking at.
+    /// 碎片休眠或超过稳定时间后会变为静态身体。地面充满清醒刚体时，
+    /// 求解器每帧都为无人关注的碎片付出成本。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -48,10 +47,10 @@ namespace AdaptiveBossArena.Combat.Feel
         private int _next;
         private float _settleSeconds;
 
-        /// <summary>How many pieces this platform may have live at once.</summary>
+        /// <summary>此平台允许同时活动的碎片数量。</summary>
         public int Capacity => _pieces?.Length ?? 0;
 
-        /// <summary>How many pieces are currently in the world.</summary>
+        /// <summary>当前世界中的碎片数量。</summary>
         public int ActiveCount
         {
             get
@@ -70,10 +69,10 @@ namespace AdaptiveBossArena.Combat.Feel
             }
         }
 
-        /// <summary>Assigns the material and budgets. Used by the scene generator.</summary>
-        /// <param name="material">Material for the pieces.</param>
-        /// <param name="webCapacity">WebGL ceiling on live pieces.</param>
-        /// <param name="desktopCapacity">Desktop ceiling on live pieces.</param>
+        /// <summary>指定材质与预算，由场景生成器使用。</summary>
+        /// <param name="material">碎片材质。</param>
+        /// <param name="webCapacity">WebGL 活动碎片上限。</param>
+        /// <param name="desktopCapacity">桌面活动碎片上限。</param>
         public void Bind(Material material, int webCapacity, int desktopCapacity)
         {
             _material = material;
@@ -110,12 +109,12 @@ namespace AdaptiveBossArena.Combat.Feel
             }
         }
 
-        /// <summary>Throws one piece into the world, taking back the oldest if all are in use.</summary>
-        /// <param name="position">Where the piece starts.</param>
-        /// <param name="rotation">Its starting orientation.</param>
-        /// <param name="size">Its dimensions, in metres.</param>
-        /// <param name="velocity">Its initial velocity.</param>
-        /// <param name="spin">Its initial angular velocity, in radians per second.</param>
+        /// <summary>将一个碎片抛入世界；全部占用时取回最旧的。</summary>
+        /// <param name="position">碎片起始位置。</param>
+        /// <param name="rotation">初始朝向。</param>
+        /// <param name="size">尺寸，单位为米。</param>
+        /// <param name="velocity">初始速度。</param>
+        /// <param name="spin">初始角速度，单位为弧度每秒。</param>
         public void Launch(Vector3 position, Quaternion rotation, Vector3 size, Vector3 velocity, Vector3 spin)
         {
             if (_pieces == null || _pieces.Length == 0)
@@ -137,7 +136,7 @@ namespace AdaptiveBossArena.Combat.Feel
             body.angularVelocity = spin;
         }
 
-        /// <summary>Removes every piece, for a retry.</summary>
+        /// <summary>移除所有碎片，用于重试。</summary>
         public void Clear()
         {
             if (_pieces == null)

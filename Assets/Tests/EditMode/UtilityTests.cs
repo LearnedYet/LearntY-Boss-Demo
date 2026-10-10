@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.Tests.EditMode
 {
-    /// <summary>Tests for the shared numeric helpers.</summary>
+    /// <summary>测试共享数值辅助函数。</summary>
     [TestFixture]
     public sealed class MathUtilTests
     {
@@ -53,8 +53,8 @@ namespace AdaptiveBossArena.Tests.EditMode
                 fine = MathUtil.Damp(fine, 10f, halfLife, totalTime / steps);
             }
 
-            // The whole reason this exists instead of a Lerp against deltaTime: the same elapsed
-            // time must produce the same result at any frame rate.
+            // 使用此算法而非按 deltaTime 做 Lerp 的全部理由：任何帧率下，
+            // 相同经过时间必须得到相同结果。
             Assert.AreEqual(coarse, fine, 0.001f);
         }
 
@@ -115,7 +115,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         }
     }
 
-    /// <summary>Tests for the externally ticked countdown timer.</summary>
+    /// <summary>测试由外部驱动更新的倒计时计时器。</summary>
     [TestFixture]
     public sealed class CountdownTimerTests
     {

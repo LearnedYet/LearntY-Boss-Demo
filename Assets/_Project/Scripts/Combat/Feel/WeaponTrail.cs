@@ -3,35 +3,31 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// A smear swept by the blade's whole length through a swing.
+    /// 挥击过程中由整段刀刃扫过形成的拖影。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The single cheapest way to make an attack look like it travelled somewhere. Without it a
-    /// swing is a pose change between two frames; with it the arc is visible after the fact, which is
-    /// what lets a player read range and direction from an attack they only half saw.
+    /// 这是让攻击看起来实际经过一段路径的最低成本方式。没有它，挥击只是两帧之间的姿势变化；有了它，
+    /// 挥击后仍可见弧线，让玩家从只看清一半的攻击中判断范围和方向。
     /// </para>
     /// <para>
-    /// A surface between the blade's base and tip, not a ribbon behind one point. The ribbon followed a
-    /// fixed point beside the body, so it traced a circle around the fighter rather than the arc of the
-    /// blade, and when a swing ended it was left hanging in the air as a flat coloured card.
+    /// 它是刀刃根部与尖端之间的表面，而不是单点后方的带状轨迹。旧带状轨迹跟随身体旁边的固定点，
+    /// 因此描绘的是战斗者周围的圆，而不是刀刃弧线；挥击结束后，它会像平面的彩色卡片一样悬在空中。
     /// </para>
     /// <para>
-    /// The trail is emitted only during the swing and then left to fade on its own. Clearing it on
-    /// stop would cut the smear off mid-air at the exact moment the eye is following it.
+    /// 轨迹只在挥击期间生成，之后自行淡出。停止时清除它会恰好在眼睛追踪拖影的瞬间将它截断在空中。
     /// </para>
     /// <para>
-    /// Ages on game time, so a hit-stop holds the smear with the frozen blade instead of letting it
-    /// evaporate while the frozen frame is still on screen.
+    /// 按游戏时间衰老，因此顿帧会让拖影随冻结刀刃停留，而不是在冻结画面仍显示时消失。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class WeaponTrail : MonoBehaviour
     {
-        /// <summary>Most blade positions kept at once. At sixty frames this covers well over the lifetime.</summary>
+        /// <summary>同时保留的最多刀刃位置数量，在每秒六十帧时足以覆盖远长于存活期的时间。</summary>
         private const int Capacity = 24;
 
-        /// <summary>Points inserted between two recorded positions, so a fast swing curves instead of kinking.</summary>
+        /// <summary>两次记录位置间插入的点数，让快速挥击呈现曲线而不是折角。</summary>
         private const int Subdivisions = 3;
 
         [SerializeField]
@@ -78,17 +74,17 @@ namespace AdaptiveBossArena.Combat.Feel
         private float _remaining;
         private bool _meshEmpty = true;
 
-        /// <summary>True while the blade is laying down a smear.</summary>
+        /// <summary>刀刃正在留下拖影时为 true。</summary>
         public bool IsEmitting => _remaining > 0f;
 
-        /// <summary>How many blade positions the smear is currently drawn through.</summary>
+        /// <summary>当前绘制拖影经过的刀刃位置数量。</summary>
         public int VisibleSamples => _count;
 
-        /// <summary>Configures the smear. Used by the prefab generator.</summary>
-        /// <param name="baseDistance">Inner edge's distance along this transform's forward.</param>
-        /// <param name="tipDistance">Outer edge's distance along this transform's forward.</param>
-        /// <param name="colour">Colour at the head of the smear.</param>
-        /// <param name="material">The additive smear material.</param>
+        /// <summary>配置拖影，由预制体生成器使用。</summary>
+        /// <param name="baseDistance">内边缘沿此 Transform 前向的距离。</param>
+        /// <param name="tipDistance">外边缘沿此 Transform 前向的距离。</param>
+        /// <param name="colour">拖影头部的颜色。</param>
+        /// <param name="material">加法混合拖影材质。</param>
         public void Configure(float baseDistance, float tipDistance, Color colour, Material material)
         {
             _baseDistance = baseDistance;
@@ -97,11 +93,10 @@ namespace AdaptiveBossArena.Combat.Feel
             _material = material;
         }
 
-        /// <summary>Starts emitting, or extends emission if a swing is already under way.</summary>
+        /// <summary>开始生成；若挥击已经进行，则延长生成时间。</summary>
         public void Begin()
         {
-            // Restarting rather than accumulating: a combo's second hit should get a full smear, not
-            // an ever-lengthening one.
+            // 重新开始而不是累积：连击第二次命中应获得完整拖影，而不是越来越长的拖影。
             _remaining = _emitSeconds;
         }
 
@@ -116,8 +111,8 @@ namespace AdaptiveBossArena.Combat.Feel
             _mesh = new Mesh { name = "BladeSmear" };
             _mesh.MarkDynamic();
 
-            // In world space and outside the fighter's hierarchy: the recorded positions are already world
-            // positions, and a parent that moves or scales would carry the smear along with the body.
+            // 放在世界空间且位于战斗者层级之外：记录的位置已经是世界位置，若父对象移动或缩放，
+            // 就会让拖影随身体一起运动。
             _surface = new GameObject(name + "Smear");
             _surface.AddComponent<MeshFilter>().sharedMesh = _mesh;
 
@@ -142,7 +137,7 @@ namespace AdaptiveBossArena.Combat.Feel
 
         private void LateUpdate()
         {
-            // Game time: frozen with the blade during hit-stop.
+            // 使用游戏时间：顿帧期间随刀刃冻结。
             float delta = Time.deltaTime;
             _clock += delta;
 
@@ -176,14 +171,14 @@ namespace AdaptiveBossArena.Combat.Feel
             }
         }
 
-        /// <summary>The ring-buffer slot of the sample a number of steps older than the newest.</summary>
+        /// <summary>比最新采样旧指定步数的采样在环形缓冲区中的槽位。</summary>
         private int Index(int stepsBack) => (_head - stepsBack + Capacity) % Capacity;
 
         private void Rebuild()
         {
             if (_count < 2)
             {
-                // Idle almost all the fight; clearing an already empty mesh every frame was pure waste.
+                // 战斗绝大多数时间处于空闲；每帧清除已经为空的网格纯属浪费。
                 if (!_meshEmpty)
                 {
                     _mesh.Clear();
@@ -200,7 +195,7 @@ namespace AdaptiveBossArena.Combat.Feel
 
             for (int p = 0; p < points; p++)
             {
-                // Position along the recorded samples, newest first, as a sample index with a fraction.
+                // 沿记录采样的位置，以最新采样为先，表示为带小数的采样索引。
                 float along = p / (float)Subdivisions;
                 int i = Mathf.Min((int)along, _count - 2);
                 float t = along - i;
@@ -236,7 +231,7 @@ namespace AdaptiveBossArena.Combat.Feel
             _mesh.SetTriangles(_triangles, 0, triangle, 0, calculateBounds: true);
         }
 
-        /// <summary>A Catmull-Rom point between two recorded samples, using their neighbours for the curve.</summary>
+        /// <summary>使用相邻采样构造曲线，取得两个记录采样之间的 Catmull-Rom 点。</summary>
         private Vector3 Sample(Vector3[] positions, int i, float t)
         {
             Vector3 p1 = positions[Index(i)];

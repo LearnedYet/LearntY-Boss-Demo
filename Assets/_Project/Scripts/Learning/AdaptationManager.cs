@@ -6,24 +6,20 @@ using UnityEngine;
 namespace AdaptiveBossArena.Learning
 {
     /// <summary>
-    /// Owns the whole learning loop and decides when the boss is allowed to change.
+    /// 管理完整学习循环，决定首领何时可以改变行为。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The pacing authority. Analysis runs on an interval, adaptations are separated by a cooldown,
-    /// and each one eases in over several seconds. Those three limits exist for the same reason: an
-    /// adaptive boss that changes quickly is indistinguishable from one that is cheating, and the
-    /// player has to be given room to notice a change and answer it before the next arrives.
+    /// 掌控适应节奏：分析按间隔执行，适应之间有冷却，每次变化都用数秒平滑生效。这三项限制出于同一原因：
+    /// 变化过快的自适应首领与作弊首领难以区分，玩家必须有时间察觉并应对变化，下一次变化才能到来。
     /// </para>
     /// <para>
-    /// Every adopted strategy announces itself through <see cref="StrategyAdopted"/>. This is not
-    /// presentation polish; it is what makes the mechanic legible. An adaptation the player cannot
-    /// perceive is one they will attribute to the boss reading their input.
+    /// 每项采纳的策略都会通过 <see cref="StrategyAdopted"/> 宣告。这不是表现上的点缀，而是让机制可读。
+    /// 玩家无法察觉的适应，会被归因于首领读取了玩家输入。
     /// </para>
     /// <para>
-    /// The class is deliberately free of engine types beyond <c>Mathf</c>, so a whole fight's worth
-    /// of adaptation can be simulated in an edit-mode test by feeding it synthetic events and
-    /// stepping its clock.
+    /// 除 <c>Mathf</c> 外，此类刻意不依赖引擎类型，因此整场战斗的适应可以通过输入模拟事件、推进时钟，
+    /// 在编辑模式测试中模拟。
     /// </para>
     /// </remarks>
     public sealed class AdaptationManager
@@ -47,20 +43,20 @@ namespace AdaptiveBossArena.Learning
         private float _adaptationRateMultiplier = 1f;
         private float _currentEaseHalfLife = DefaultEaseHalfLifeSeconds;
 
-        /// <summary>Ease half-life used before any strategy has been adopted.</summary>
+        /// <summary>尚未采纳任何策略时采用的平滑半衰期。</summary>
         private const float DefaultEaseHalfLifeSeconds = 3f;
 
-        /// <summary>Creates a manager wired to the boss's learning components.</summary>
-        /// <param name="memory">Where witnessed occurrences are recorded.</param>
-        /// <param name="tracker">Running statistics.</param>
-        /// <param name="profile">The habits derived from those statistics.</param>
-        /// <param name="tuning">Behaviour numbers this manager adjusts.</param>
-        /// <param name="catalogue">Every strategy the boss could develop.</param>
-        /// <param name="random">Seedable randomness for strategy selection.</param>
-        /// <param name="analysisIntervalSeconds">How often habits are recomputed.</param>
-        /// <param name="minSecondsBetweenAdaptations">Shortest gap between adaptations taking effect.</param>
-        /// <param name="forgetHalfLifeSeconds">Time for an unreinforced adjustment to half-decay.</param>
-        /// <exception cref="ArgumentNullException">Thrown when a required dependency is missing.</exception>
+        /// <summary>创建已接入首领学习组件的管理器。</summary>
+        /// <param name="memory">记录观察事件的位置。</param>
+        /// <param name="tracker">累计统计跟踪器。</param>
+        /// <param name="profile">从统计中推导出的习惯。</param>
+        /// <param name="tuning">管理器调整的行为数值。</param>
+        /// <param name="catalogue">首领能够形成的全部策略。</param>
+        /// <param name="random">供策略选择使用、可设置种子的随机源。</param>
+        /// <param name="analysisIntervalSeconds">重新计算习惯的时间间隔。</param>
+        /// <param name="minSecondsBetweenAdaptations">两次适应生效之间的最短间隔。</param>
+        /// <param name="forgetHalfLifeSeconds">未被强化的调整衰减至一半所需的时间。</param>
+        /// <exception cref="ArgumentNullException">缺少必要依赖时抛出。</exception>
         public AdaptationManager(
             CombatMemory memory,
             BehaviorTracker tracker,
@@ -85,47 +81,45 @@ namespace AdaptiveBossArena.Learning
             _minSecondsBetweenAdaptations = Mathf.Max(0f, minSecondsBetweenAdaptations);
             _forgetHalfLifeSeconds = Mathf.Max(1f, forgetHalfLifeSeconds);
 
-            // The boss must not adapt in the opening seconds, before it has seen anything worth
-            // adapting to.
+            // 首领不能在开场最初几秒就适应，因为此时尚未观察到值得针对的习惯。
             _nextAnalysisAt = _analysisIntervalSeconds;
             _nextAdaptationAllowedAt = _minSecondsBetweenAdaptations;
         }
 
-        /// <summary>The boss's current picture of the player.</summary>
+        /// <summary>首领当前的玩家画像。</summary>
         public BehaviorProfile Profile => _profile;
 
-        /// <summary>Strategies the boss has developed so far this fight.</summary>
+        /// <summary>本次战斗中首领已经形成的策略。</summary>
         public IReadOnlyCollection<CounterStrategy> AdoptedStrategies => _adopted;
 
-        /// <summary>Combat-clock time habits were last recomputed.</summary>
+        /// <summary>上次重新计算习惯时的战斗时钟时间。</summary>
         public float LastAnalysisAt => _profile.LastUpdatedAt;
 
-        /// <summary>Raised when the boss develops a new answer, carrying its player-facing tell.</summary>
+        /// <summary>首领形成新应对时触发，并携带面向玩家的提示。</summary>
         public event Action<CounterStrategy> StrategyAdopted;
 
-        /// <summary>Scales how readily the boss adapts, raised by later phases.</summary>
-        /// <param name="multiplier">Multiplier on the adaptation rate.</param>
+        /// <summary>缩放首领的适应速度，后续阶段会提高该值。</summary>
+        /// <param name="multiplier">适应速率倍率。</param>
         public void SetAdaptationRateMultiplier(float multiplier) =>
             _adaptationRateMultiplier = Mathf.Max(0.1f, multiplier);
 
-        /// <summary>Records a witnessed occurrence.</summary>
-        /// <param name="combatEvent">What happened.</param>
+        /// <summary>记录一个观察到的事件。</summary>
+        /// <param name="combatEvent">发生的事件。</param>
         public void OnCombatEvent(in Core.Combat.CombatEvent combatEvent) =>
             _tracker.OnCombatEvent(combatEvent);
 
         /// <summary>
-        /// Advances the learning loop.
+        /// 推进学习循环。
         /// </summary>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
-        /// <param name="timeNow">Current combat-clock time.</param>
-        /// <param name="separationDistance">Current distance between the combatants.</param>
-        /// <param name="currentPhase">One-based phase currently in effect.</param>
+        /// <param name="deltaTime">经过缩放的时间增量。</param>
+        /// <param name="timeNow">当前战斗时钟时间。</param>
+        /// <param name="separationDistance">交战双方当前的距离。</param>
+        /// <param name="currentPhase">当前阶段，从一开始编号。</param>
         public void Tick(float deltaTime, float timeNow, float separationDistance, int currentPhase)
         {
             _tracker.Tick(deltaTime, timeNow, separationDistance);
 
-            // Eased every frame regardless of whether an adaptation happened, so an adjustment
-            // arrives gradually and an unreinforced one drains away just as gradually.
+            // 无论是否发生新适应，都逐帧平滑调整，确保变化渐进到来，未被强化的变化也同样渐进消退。
             _tuning.Tick(deltaTime, _currentEaseHalfLife, _forgetHalfLifeSeconds);
 
             if (timeNow < _nextAnalysisAt)
@@ -139,7 +133,7 @@ namespace AdaptiveBossArena.Learning
             TryAdapt(timeNow, currentPhase);
         }
 
-        /// <summary>Adopts a new strategy if the cooldown has elapsed and one is eligible.</summary>
+        /// <summary>冷却结束且存在符合条件的策略时，采纳新策略。</summary>
         private void TryAdapt(float timeNow, int currentPhase)
         {
             if (timeNow < _nextAdaptationAllowedAt)
@@ -163,10 +157,9 @@ namespace AdaptiveBossArena.Learning
             StrategyAdopted?.Invoke(chosen);
         }
 
-        /// <summary>Points the affected tuning values at their new targets.</summary>
+        /// <summary>将受影响的行为参数指向新目标值。</summary>
         /// <remarks>
-        /// Targets are set, not values. The boss does not become different at this instant; it
-        /// begins becoming different, over the strategy's own ease-in time.
+        /// 设置目标而非当前值。首领不会在这一瞬间突变；它会在策略自己的平滑时间内逐步改变。
         /// </remarks>
         private void Apply(CounterStrategy strategy)
         {
@@ -185,7 +178,7 @@ namespace AdaptiveBossArena.Learning
             }
         }
 
-        /// <summary>Clears everything learned, for use when a fight restarts.</summary>
+        /// <summary>清除全部学习结果，供战斗重试使用。</summary>
         public void Reset()
         {
             _memory.Clear();

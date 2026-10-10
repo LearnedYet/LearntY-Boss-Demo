@@ -3,44 +3,39 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.Combat
 {
-    /// <summary>How a weapon answers an incoming attack.</summary>
+    /// <summary>武器应对来袭攻击的方式。</summary>
     /// <remarks>
-    /// Each weapon defends differently on purpose. If all three deflected identically the choice
-    /// would be cosmetic, and the boss's adaptation would have nothing meaningful to read from which
-    /// one the player favours.
+    /// 每种武器有意采用不同的防御方式。如果三种武器的弹反完全相同，选择就只会影响外观，
+    /// 首领也无法从玩家偏爱的武器中读出有意义的信息用于适应。
     /// </remarks>
     public enum DefenceStyle
     {
-        /// <summary>A tight deflect window rewarded with a riposte. Demanding and decisive.</summary>
+        /// <summary>严格的弹反窗口，以反击作为奖励，要求高且效果明确。</summary>
         Deflect = 0,
 
         /// <summary>
-        /// No parry. Attacks carry through incoming hits instead.
+        /// 无法招架，改为让攻击在受到来袭命中后继续进行。
         /// </summary>
         /// <remarks>
-        /// Trades safety for certainty: this weapon wins exchanges it commits to, and loses badly
-        /// when the commitment was wrong.
+        /// 以安全换取确定性：这把武器能赢得其投入的交锋，但在投入决策错误时会严重受挫。
         /// </remarks>
         HyperArmour = 1,
 
-        /// <summary>A guard that can be held, draining stamina, rather than timed precisely.</summary>
+        /// <summary>可持续维持、消耗耐力的防御，无需精确把握时机。</summary>
         SustainedGuard = 2
     }
 
     /// <summary>
-    /// A complete weapon: its moveset, its defence, and how it changes the fight.
+    /// 完整武器：招式、防御方式以及它如何改变战斗。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The moveset lives here rather than on the character, so switching weapon genuinely changes
-    /// how the player fights rather than reskinning the same attacks.
+    /// 招式配置放在这里，而不是角色上，因此切换武器真正改变玩家的战斗方式，而不是只给相同攻击换个外观。
     /// </para>
     /// <para>
-    /// Three weapons is a deliberate ceiling, not a starting point. The boss builds its picture of
-    /// the player from repetition within a fight of a few minutes; spreading that same budget across
-    /// a dozen weapons would leave every habit below the confidence threshold and the boss would
-    /// quietly stop adapting at all. Three is enough for the choice to matter and few enough that
-    /// each still gets seen often enough to be learned from.
+    /// 三把武器是刻意设定的上限，而不是起点。首领通过几分钟战斗内的重复行为建立玩家画像；
+    /// 如果将相同的观察预算分散到十几把武器，每种习惯都会低于置信度阈值，首领便会悄然完全停止适应。
+    /// 三把足以让选择有意义，又少到每把仍能被频繁观察并从中学习。
     /// </para>
     /// </remarks>
     [CreateAssetMenu(
@@ -116,56 +111,55 @@ namespace AdaptiveBossArena.Combat
         [Tooltip("Multiplier on stamina costs. Heavier weapons cost more per swing.")]
         private float _staminaCostMultiplier = 1f;
 
-        /// <summary>Name shown when the weapon is drawn.</summary>
+        /// <summary>拔出武器时显示的名称。</summary>
         public string DisplayName => _displayName;
 
-        /// <summary>Colour used for this weapon's attack overlays.</summary>
+        /// <summary>此武器攻击叠加效果使用的颜色。</summary>
         public Color SignatureColor => _signatureColor;
 
         /// <summary>
-        /// Cue played when this weapon swings, or empty to use the generic one.
+        /// 此武器挥击时播放的音效标识；为空则使用通用音效。
         /// </summary>
         /// <remarks>
-        /// A plain string rather than a clip reference, because Combat sits below the audio service
-        /// in the assembly graph and must not depend on it. It is the same arrangement the hazard
-        /// zone uses for its own cue.
+        /// 采用普通字符串而不是片段引用，因为 Combat 在程序集依赖图中位于音频服务下层，
+        /// 不能依赖音频服务。危险区域自身的音效标识也采用相同的安排。
         /// </remarks>
         public string SwingCueId => _swingCueId;
 
-        /// <summary>Optional model shown in hand while drawn, or null to show none.</summary>
+        /// <summary>拔出时显示在手中的可选模型；为 null 则不显示。</summary>
         public GameObject ModelPrefab => _modelPrefab;
 
-        /// <summary>Light attack chain in execution order.</summary>
+        /// <summary>按执行顺序排列的轻攻击连段。</summary>
         public AttackDefinition[] LightComboChain => _lightComboChain;
 
-        /// <summary>The heavy attack.</summary>
+        /// <summary>重攻击。</summary>
         public AttackDefinition HeavyAttack => _heavyAttack;
 
-        /// <summary>The special ability attack.</summary>
+        /// <summary>特殊技能攻击。</summary>
         public AttackDefinition SpecialAttack => _specialAttack;
 
-        /// <summary>Stronger special used when focus is full, or null to reuse the normal special.</summary>
+        /// <summary>专注值满时使用的强化特殊攻击；为 null 则复用普通特殊攻击。</summary>
         public AttackDefinition EmpoweredSpecialAttack => _empoweredSpecialAttack;
 
-        /// <summary>Strike used to punish a broken guard.</summary>
+        /// <summary>用于惩罚防御破坏的打击。</summary>
         public AttackDefinition RiposteAttack => _riposteAttack;
 
-        /// <summary>How this weapon answers an incoming attack.</summary>
+        /// <summary>此武器应对来袭攻击的方式。</summary>
         public DefenceStyle Defence => _defence;
 
-        /// <summary>Deflect window in seconds.</summary>
+        /// <summary>弹反窗口，单位为秒。</summary>
         public float DeflectWindowSeconds => _deflectWindowSeconds;
 
-        /// <summary>Posture a clean deflect deals.</summary>
+        /// <summary>成功弹反造成的姿态伤害。</summary>
         public float DeflectPostureDamage => _deflectPostureDamage;
 
-        /// <summary>Movement speed multiplier while drawn.</summary>
+        /// <summary>拔出时的移动速度倍率。</summary>
         public float MoveSpeedMultiplier => _moveSpeedMultiplier;
 
-        /// <summary>Stamina cost multiplier while drawn.</summary>
+        /// <summary>拔出时的耐力消耗倍率。</summary>
         public float StaminaCostMultiplier => _staminaCostMultiplier;
 
-        /// <summary>True when this weapon can deflect at all.</summary>
+        /// <summary>此武器能够弹反时为 true。</summary>
         public bool CanDeflect => _defence != DefenceStyle.HyperArmour;
     }
 }

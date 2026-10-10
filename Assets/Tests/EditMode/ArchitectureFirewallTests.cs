@@ -5,20 +5,17 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Guards the project's central design constraint: the boss cannot read player input.
+    /// 保护项目核心约束：首领不能读取玩家输入。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This is the most important test in the project, and the one least likely to fail for an
-    /// ordinary reason. It fails when somebody adds an assembly reference to make an inconvenient
-    /// compile error go away, and in doing so quietly converts the boss from something that learns
-    /// into something that peeks.
+    /// 这是项目最重要且最不容易因普通原因失败的测试。有人为消除棘手编译错误新增程序集引用时，
+    /// 它会失败，避免首领悄然从学习者变成窥探者。
     /// </para>
     /// <para>
-    /// If this test fails, the fix is never to relax the test. It is to move whatever needed player
-    /// state behind
-    /// <see cref="AdaptiveBossArena.Core.Perception.IObservablePlayer"/>, and to check that the
-    /// state in question is something a human opponent could actually perceive.
+    /// 失败时不应放宽测试，而应把需要的玩家状态移到以下接口后面：
+    /// <see cref="AdaptiveBossArena.Core.Perception.IObservablePlayer"/>，
+    /// 并确认人类对手确实能够感知这种状态。
     /// </para>
     /// </remarks>
     [TestFixture]

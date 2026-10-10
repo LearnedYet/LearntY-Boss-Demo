@@ -3,30 +3,28 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// Maps an attack's timeline onto a clip, so the animation strikes exactly when the hitbox is live.
+    /// 将攻击时间轴映射到片段，让动画恰好在命中盒生效时打击。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Hit detection is authored in the attack's own frame data and is the authority on when a swing
-    /// connects. A clip has its own idea of when the blade lands, and it will not match: played at its
-    /// natural speed the blade visibly arrives before or after the hitbox opens.
+    /// 命中检测由攻击自身帧数据定义，是挥击何时命中的权威依据。片段有自己的刀刃落下时机，两者不会匹配：
+    /// 按自然速度播放，刀刃会在命中盒开启之前或之后明显抵达。
     /// </para>
     /// <para>
-    /// So the clip is warped piecewise. Startup plays the wind-up up to just before the contact point,
-    /// the active window plays the contact, and recovery plays the rest. One clip serves a quick light
-    /// swing and a slow heavy one, each landing inside its own active window. The input is the attack's
-    /// elapsed time, which stops during hit-stop, so the pose freezes on the impact with everything else.
+    /// 因此对片段分段变形。前摇播放蓄势直到接触点之前，生效窗口播放接触动作，后摇播放余下部分。
+    /// 同一片段能服务快速轻击和缓慢重击，并分别在自身生效窗口内落下。输入是攻击经过时间，顿帧期间停止，
+    /// 因此姿势和其他对象一起冻结在命中时刻。
     /// </para>
     /// </remarks>
     public readonly struct AttackClipTimeWarp
     {
-        /// <summary>Creates a warp for one attack and one clip.</summary>
-        /// <param name="startupSeconds">The attack's wind-up.</param>
-        /// <param name="activeSeconds">The attack's live window.</param>
-        /// <param name="recoverySeconds">The attack's recovery.</param>
-        /// <param name="clipLengthSeconds">The clip's natural length.</param>
-        /// <param name="clipContactSeconds">When, in the clip's own time, the blade lands.</param>
-        /// <param name="contactSpanSeconds">Clip time around the contact point the active window plays.</param>
+        /// <summary>为一次攻击和一个片段创建时间变形。</summary>
+        /// <param name="startupSeconds">攻击前摇。</param>
+        /// <param name="activeSeconds">攻击生效窗口。</param>
+        /// <param name="recoverySeconds">攻击后摇。</param>
+        /// <param name="clipLengthSeconds">片段自然时长。</param>
+        /// <param name="clipContactSeconds">刀刃在片段自身时间中的落下时刻。</param>
+        /// <param name="contactSpanSeconds">生效窗口播放的接触点周围片段时间。</param>
         public AttackClipTimeWarp(
             float startupSeconds,
             float activeSeconds,
@@ -47,27 +45,27 @@ namespace AdaptiveBossArena.Combat.Feel
             ContactEnd = Mathf.Clamp(contact + halfSpan, ContactStart, ClipLengthSeconds);
         }
 
-        /// <summary>The attack's wind-up.</summary>
+        /// <summary>攻击前摇。</summary>
         public float StartupSeconds { get; }
 
-        /// <summary>The attack's live window.</summary>
+        /// <summary>攻击生效窗口。</summary>
         public float ActiveSeconds { get; }
 
-        /// <summary>The attack's recovery.</summary>
+        /// <summary>攻击后摇。</summary>
         public float RecoverySeconds { get; }
 
-        /// <summary>The clip's natural length.</summary>
+        /// <summary>片段自然时长。</summary>
         public float ClipLengthSeconds { get; }
 
-        /// <summary>Clip time at which the active window begins.</summary>
+        /// <summary>生效窗口开始时的片段时间。</summary>
         public float ContactStart { get; }
 
-        /// <summary>Clip time at which the active window ends.</summary>
+        /// <summary>生效窗口结束时的片段时间。</summary>
         public float ContactEnd { get; }
 
-        /// <summary>The clip time to show at a point in the attack.</summary>
-        /// <param name="attackElapsedSeconds">Time since the attack began.</param>
-        /// <returns>Seconds into the clip.</returns>
+        /// <summary>攻击某一时刻应显示的片段时间。</summary>
+        /// <param name="attackElapsedSeconds">自攻击开始以来的时间。</param>
+        /// <returns>片段内的秒数。</returns>
         public float ClipTimeAt(float attackElapsedSeconds)
         {
             float t = Mathf.Max(0f, attackElapsedSeconds);
@@ -87,9 +85,9 @@ namespace AdaptiveBossArena.Combat.Feel
             return Remap(t, activeEnd, activeEnd + RecoverySeconds, ContactEnd, ClipLengthSeconds);
         }
 
-        /// <summary>The same position as a fraction of the clip, as an Animator's normalised time takes it.</summary>
-        /// <param name="attackElapsedSeconds">Time since the attack began.</param>
-        /// <returns>Normalised clip time, from zero to one.</returns>
+        /// <summary>以片段比例表示的相同位置，供 Animator 的归一化时间使用。</summary>
+        /// <param name="attackElapsedSeconds">自攻击开始以来的时间。</param>
+        /// <returns>归一化片段时间，从零到一。</returns>
         public float NormalizedTimeAt(float attackElapsedSeconds) =>
             Mathf.Clamp01(ClipTimeAt(attackElapsedSeconds) / ClipLengthSeconds);
 

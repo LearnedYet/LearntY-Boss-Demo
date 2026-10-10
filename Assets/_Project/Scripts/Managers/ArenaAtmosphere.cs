@@ -4,30 +4,25 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Shifts the arena's light, ambience and fog as the boss escalates.
+    /// 首领升级时改变竞技场光照、氛围与雾。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The arena is one flat disc for the whole fight, so nothing about the space itself tells the
-    /// player the encounter is turning against them. This lets the room answer the boss: cool and
-    /// even at the start, warmer and closer as it presses, and a hot, hazy red once it is desperate.
-    /// It reads as pressure mounting rather than as a number on a bar.
+    /// 整场战斗都在同一平面圆盘上进行，空间本身无法告诉玩家局势正在恶化。这里让房间呼应首领：
+    /// 开场冷色而均匀，施压时变暖、变紧，绝境时变成灼热朦胧的红色。呈现压力不断上升，而非进度条上的数值。
     /// </para>
     /// <para>
-    /// Driven off the same boss-phase channel as the roar and the aura, so the whole world turns on
-    /// one signal. It only ever reads that channel — it is pure presentation and tells the boss
-    /// nothing. Values ease on unscaled time so a phase change during a hit-stop still transitions
-    /// smoothly rather than snapping.
+    /// 由咆哮与光环使用的同一首领阶段通道驱动，让整个世界响应同一信号。这里只读取通道，纯粹负责表现，
+    /// 不向首领回传信息。使用未缩放时间平滑变化，确保顿帧期间的阶段切换也能自然过渡，而非瞬间跳变。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class ArenaAtmosphere : MonoBehaviour
     {
-        /// <summary>Everything about the room's mood for one phase.</summary>
+        /// <summary>某一阶段房间氛围的完整配置。</summary>
         /// <remarks>
-        /// Light and ambient only; the fog is not a separate palette but derived from these through
-        /// <see cref="HazeColor"/>. An earlier version drove fog colours of its own and fell to black
-        /// beyond the near fighters. A haze made from the room's own light, with a luminance floor, cannot.
+        /// 只配置灯光与环境色；雾不是独立配色，而是通过<see cref="HazeColor"/> 从这些值推导。
+        /// 早期版本单独驱动雾色，导致近处角色之外陷入黑暗。由房间光照生成且有亮度下限的薄雾不会如此。
         /// </remarks>
         private readonly struct Profile
         {
@@ -49,37 +44,36 @@ namespace AdaptiveBossArena.Game
             public Color Ground { get; }
         }
 
-        /// <summary>Half-life of the mood transition, in seconds. Slow, so it reads as a mood, not a switch.</summary>
+        /// <summary>氛围过渡的半衰期，单位为秒。保持缓慢，使其像氛围变化而非开关。</summary>
         private const float TransitionHalfLife = 0.8f;
 
         /// <summary>
-        /// Distance the haze begins. Beyond the far edge of the fighting floor from anywhere on it, so the
-        /// fighters and every telegraph stay perfectly clear and only the ruin fades.
+        /// 薄雾开始的距离；从战斗地面任意位置看，都超过地面对侧边缘，使交战角色和全部预警保持清晰，
+        /// 只有废墟逐渐淡入雾中。
         /// </summary>
         public const float FogStart = 14f;
 
-        /// <summary>Distance at which the haze is complete, roughly the far outer wall.</summary>
+        /// <summary>薄雾完全生效的距离，大致位于最远外墙。</summary>
         public const float FogEnd = 60f;
 
         private static readonly Profile[] Profiles =
         {
-            // Phase 0 — measured: cool, even.
+            // 阶段 0：克制，冷色且均匀。
             new Profile(
                 new Color(1f, 0.96f, 0.9f), 1.15f,
                 new Color(0.22f, 0.24f, 0.30f), new Color(0.14f, 0.14f, 0.17f), new Color(0.06f, 0.06f, 0.08f)),
 
-            // Phase 1 — pressing: warmer, the room closing in a little.
+            // 阶段 1：施压，更暖，房间略显紧迫。
             new Profile(
                 new Color(1f, 0.82f, 0.62f), 1.25f,
                 new Color(0.34f, 0.24f, 0.22f), new Color(0.22f, 0.14f, 0.13f), new Color(0.11f, 0.07f, 0.07f)),
 
-            // Phase 2 — relentless: hot and red.
+            // 阶段 2：猛烈，灼热而鲜红。
             new Profile(
                 new Color(1f, 0.55f, 0.4f), 1.4f,
                 new Color(0.46f, 0.18f, 0.17f), new Color(0.30f, 0.11f, 0.11f), new Color(0.16f, 0.06f, 0.06f)),
 
-            // Phase 3 — Last Stand: a violent, blown-out crimson shading toward violet, brighter than
-            // the rest so the desperation phase reads as the fight's climax at a glance.
+            // 阶段 3：最后一搏，强烈、过曝的绯红渐近紫色，比其他阶段更亮，让绝境阶段一眼显出战斗高潮。
             new Profile(
                 new Color(1f, 0.4f, 0.5f), 1.6f,
                 new Color(0.52f, 0.14f, 0.26f), new Color(0.34f, 0.09f, 0.18f), new Color(0.18f, 0.05f, 0.10f))
@@ -93,14 +87,14 @@ namespace AdaptiveBossArena.Game
         [Tooltip("Carries the boss phase index that drives the mood.")]
         private IntEventChannel _phaseChannel;
 
-        /// <summary>The light probes as baked, under the opening ambience. Null when the scene has none.</summary>
+        /// <summary>开场氛围下烘焙的光照探针，场景无探针时为 null。</summary>
         private UnityEngine.Rendering.SphericalHarmonicsL2[] _bakedProbes;
 
         private UnityEngine.Rendering.SphericalHarmonicsL2[] _tintedProbes;
-        /// <summary>Starts impossible, so the first frame always writes the probes and applies the ambient floor.</summary>
+        /// <summary>初始值刻意不可达，使首帧必定写入探针并应用环境光下限。</summary>
         private Color _probeGain = Color.clear;
 
-        /// <summary>The room's ambient light as the scene loaded, which the tinted probes never fall below.</summary>
+        /// <summary>场景加载时的房间环境光，染色探针不能低于它。</summary>
         private UnityEngine.Rendering.SphericalHarmonicsL2 _ambientFloor;
 
         private int _targetPhase;
@@ -128,15 +122,15 @@ namespace AdaptiveBossArena.Game
 
         private void Start()
         {
-            // Ambient must be Trilight for the three-band colours to apply, which the scene builder
-            // already sets; asserted here in case a future scene forgets, along with the fog.
+            // 环境模式必须为 Trilight，三个色带才能生效；场景构建器已设置，这里连同雾再次确保，
+            // 防止未来场景遗漏。
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogStartDistance = FogStart;
             RenderSettings.fogEndDistance = FogEnd;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
 
-            // Captured before anything is tinted: every later tint is measured from the bake, never compounded.
+            // 在任何染色前缓存；后续每次染色都以烘焙值为基准，不累乘。
             LightProbes probes = LightmapSettings.lightProbes;
 
             if (probes != null && probes.count > 0)
@@ -146,7 +140,7 @@ namespace AdaptiveBossArena.Game
                 _tintedProbes = new UnityEngine.Rendering.SphericalHarmonicsL2[_bakedProbes.Length];
             }
 
-            // Snap to the opening mood so the fight does not fade in from whatever the editor left set.
+            // 直接切到开场氛围，避免从编辑器遗留的设置渐变进入战斗。
             _targetPhase = 0;
             SnapTo(Profiles[0]);
             Apply();
@@ -166,9 +160,9 @@ namespace AdaptiveBossArena.Game
             Apply();
         }
 
-        /// <summary>Assigns the references. Used by the scene generator.</summary>
-        /// <param name="directionalLight">The arena's directional light.</param>
-        /// <param name="phaseChannel">Boss phase index channel.</param>
+        /// <summary>分配引用，供场景生成器使用。</summary>
+        /// <param name="directionalLight">竞技场方向光。</param>
+        /// <param name="phaseChannel">首领阶段索引通道。</param>
         public void Bind(Light directionalLight, IntEventChannel phaseChannel)
         {
             _directionalLight = directionalLight;
@@ -202,10 +196,9 @@ namespace AdaptiveBossArena.Game
             TintBakedLight();
         }
 
-        /// <summary>Carries the current ambience into the probes baked under the opening one.</summary>
+        /// <summary>将当前氛围映射到开场氛围下烘焙的探针。</summary>
         /// <remarks>
-        /// Skipped while the gain has not moved, so the probes are only rewritten during a phase transition
-        /// rather than every frame of a fight.
+        /// 增益未变化时跳过，因此只在阶段过渡时重写探针，而非整场战斗逐帧重写。
         /// </remarks>
         private void TintBakedLight()
         {

@@ -1,95 +1,93 @@
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// The state and parameter names shared by the generated Animator controller and the bridge.
+    /// 生成的 Animator 控制器与桥接组件共用的状态和参数名称。
     /// </summary>
     /// <remarks>
-    /// One definition, because the controller is built by the editor and driven by the runtime, and a
-    /// name spelled differently on either side fails silently: a crossfade to a state that does not exist
-    /// logs nothing and leaves the character frozen in its last pose.
+    /// 只定义一份，因为控制器由编辑器构建、由运行时驱动，任何一方的名称拼写不同都会静默失败：
+    /// 向不存在状态进行交叉淡化不会记录日志，并会让角色冻结在最后姿势。
     /// </remarks>
     public static class CharacterAnimatorParameters
     {
-        /// <summary>Planar speed from zero to one, driving the locomotion blend.</summary>
+        /// <summary>零到一的水平速度，驱动移动混合。</summary>
         public const string Speed = "Speed";
 
-        /// <summary>Movement across the facing, scaled by speed: right is positive. Drives strafes.</summary>
+        /// <summary>按速度缩放的朝向横向移动，右侧为正，驱动侧移。</summary>
         public const string MoveX = "MoveX";
 
-        /// <summary>Movement along the facing, scaled by speed: forward is positive. Drives walks, runs and back-steps.</summary>
+        /// <summary>按速度缩放的朝向纵向移动，前方为正，驱动行走、奔跑和后退。</summary>
         public const string MoveZ = "MoveZ";
 
-        /// <summary>Normalised clip time for the attack state playing, set from the attack's timeline.</summary>
+        /// <summary>正在播放的攻击状态的归一化片段时间，由攻击时间轴设置。</summary>
         public const string AttackTime = "AttackTime";
 
         /// <summary>
-        /// Normalised progress through rising from the floor, scrubbing the get-up clip.
+        /// 从地面起身的归一化进度，用于定位起身片段。
         /// </summary>
         /// <remarks>
-        /// Held at zero while lying down, which is the clip's first frame: the one clip serves as both the
-        /// body on the floor and the rise from it, so the two can never disagree about the pose.
+        /// 躺下时保持零，即片段首帧：同一个片段同时承担倒地身体和起身过程，因此两者的姿势不会互相矛盾。
         /// </remarks>
         public const string ReactionTime = "ReactionTime";
 
-        /// <summary>Idle, walk, jog and sprint, blended by speed.</summary>
+        /// <summary>按速度混合的空闲、行走、慢跑和冲刺。</summary>
         public const string LocomotionState = "Locomotion";
 
-        /// <summary>The dodge roll.</summary>
+        /// <summary>闪避翻滚。</summary>
         public const string RollState = "Roll";
 
-        /// <summary>The raised guard.</summary>
+        /// <summary>举起防御。</summary>
         public const string GuardState = "Guard";
 
-        /// <summary>A broken stance.</summary>
+        /// <summary>被打破的姿态。</summary>
         public const string StaggerState = "Stagger";
 
-        /// <summary>The parry stance: a bash thrown forward to turn a blow aside.</summary>
+        /// <summary>招架姿态：向前撞击以化解打击。</summary>
         public const string ParryState = "Parry";
 
-        /// <summary>The roar a phase transition plays, scrubbed across the transformation.</summary>
+        /// <summary>阶段转换播放的咆哮，按变身进度定位。</summary>
         public const string RoarState = "Roar";
 
         /// <summary>
-        /// Suffix of each attack state's identical twin, which a repeated swing blends into.
+        /// 各攻击状态相同副本的后缀，重复挥击时会混合到该副本。
         /// </summary>
         /// <remarks>
-        /// Unity cannot cross-fade a state into itself: asked to, it restarts the state with no blend, and the body
-        /// jumps from the end of one swing to the start of the next. Two copies of every attack state let a
-        /// combo that repeats a clip blend from one into the other.
+        /// Unity 无法让状态向自身交叉淡化：若要求如此，它会直接重新开始而不混合，
+        /// 身体便从一次挥击末尾跳到下次开头。每个攻击状态保留两个副本，
+        /// 让重复片段的连击能够从一个混合到另一个。
         /// </remarks>
         public const string AlternateSuffix = " B";
 
-        /// <summary>Thrown through the air.</summary>
+        /// <summary>被抛到空中。</summary>
         public const string AirborneState = "Airborne";
 
-        /// <summary>On the floor, and rising from it.</summary>
+        /// <summary>倒在地面并从地面起身。</summary>
         public const string KnockedDownState = "KnockedDown";
 
         /// <summary>
-        /// The layer a landed blow plays on, masked to the upper body.
+        /// 成功命中时播放的层，遮罩限制到上半身。
         /// </summary>
         /// <remarks>
-        /// Masked so the torso and arms take the blow while the legs keep whatever stance or step they were in:
-        /// a hit that does not break the fighter's footing should not reset it either.
+        /// 使用遮罩让躯干与手臂承受打击，双腿则保持原有姿态或步伐：没有破坏站立能力的命中，
+        /// 也不应重置脚步。
         /// </remarks>
         public const string HitLayer = "Hits";
 
-        /// <summary>The flinch played on the hit layer.</summary>
+        /// <summary>在受击层播放的轻微受击动作。</summary>
         public const string HitState = "Hit";
 
-        /// <summary>The hit layer's resting state, playing nothing.</summary>
+        /// <summary>受击层的静止状态，不播放任何内容。</summary>
         public const string HitRestState = "Rest";
 
-        /// <summary>Defeat.</summary>
+        /// <summary>战败。</summary>
         public const string DeathState = "Death";
 
-        /// <summary>The attack state used for a light swing when no binding names one.</summary>
+        /// <summary>没有绑定指定名称时，轻挥击使用的攻击状态。</summary>
         public const string DefaultLightState = "Light1";
 
-        /// <summary>The attack state used for a heavy swing when no binding names one.</summary>
+        /// <summary>没有绑定指定名称时，重挥击使用的攻击状态。</summary>
         public const string DefaultHeavyState = "Heavy";
 
-        /// <summary>The attack state used for a special when no binding names one.</summary>
+        /// <summary>没有绑定指定名称时，特殊技能使用的攻击状态。</summary>
         public const string DefaultSpecialState = "Special";
     }
 }

@@ -5,18 +5,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the synthesised audio, which is generated rather than authored.
+    /// 测试生成而非人工编写的合成音频。
     /// </summary>
     /// <remarks>
-    /// Every sound in the game is a buffer of numbers built at startup, so its faults are arithmetic
-    /// and can be asserted rather than listened for. These pin the three that made the game sound
-    /// weak: loudness that depended on timbre, buffers that stopped without fading, and loops whose
-    /// ends did not meet their beginnings.
+    /// 游戏每个声音都是启动时构建的数字缓冲区，因此故障属于算术问题，可通过断言而非听觉检查。
+    /// 这里固定曾让声音单薄的三个问题：响度依赖音色，缓冲区没有淡出就停止，循环末尾不接合开头。
     /// </remarks>
     [TestFixture]
     public sealed class ToneGeneratorTests
     {
-        /// <summary>Tolerance on a peak, generous enough to survive resampling differences.</summary>
+        /// <summary>峰值容差，足够宽松以承受重采样差异。</summary>
         private const float PeakTolerance = 0.02f;
 
         private static float[] Read(AudioClip clip)
@@ -52,10 +50,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void LoudnessDoesNotDependOnTimbre()
         {
-            // The bug this exists for: the one-pole low-pass attenuates in proportion to its cutoff,
-            // so the duller a sound was made the quieter it came out. The heavy hit, the execution
-            // and the low-health heartbeat were all several times quieter than a light jab, which is
-            // exactly backwards. Cutoff must choose timbre and nothing else.
+            // 此测试针对的故障：单极低通按截止频率衰减，因此声音越沉闷，音量就越低。重击、
+            // 处决和低生命心跳曾比轻刺安静数倍，恰好颠倒。截止频率只能决定音色，不能影响其它内容。
             AudioClip bright = ToneGenerator.CreateImpact("test.bright", lowPassHz: 2200f, peak: 0.7f);
             AudioClip dull = ToneGenerator.CreateImpact("test.dull", lowPassHz: 85f, peak: 0.7f);
 
@@ -69,8 +65,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void AOneShotFadesOutRatherThanStopping()
         {
-            // An exponential decay never reaches zero, so a buffer that simply ends is a step, and a
-            // step is a click. The stumble was the worst: it ended at a fifth of its peak.
+            // 指数衰减永远不达到零，因此直接结束缓冲区会产生阶跃，而阶跃就是咔哒声。踉跄音效最严重，
+            // 结束时仍有峰值的五分之一。
             AudioClip clip = ToneGenerator.CreateStumble("test.stumble");
             float[] samples = Read(clip);
 
@@ -108,8 +104,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ALoopMeetsItsOwnBeginning()
         {
-            // A loop is played end-to-start forever, so a mismatch between the last sample and the
-            // first is a tick once per cycle — far more noticeable than the drone carrying it.
+            // 循环永远从末尾回到开头，因此末采样与首采样不一致会每周期产生一次杂音，
+            // 比承载它的持续低鸣明显得多。
             AudioClip clip = ToneGenerator.CreateDrone("test.drone");
             float[] samples = Read(clip);
 
@@ -123,8 +119,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ALoopIsNotFadedToSilenceAtItsEnd()
         {
-            // Tapering a loop would punch a hole in it once per cycle, so the release ramp applied to
-            // one-shots must not be applied here.
+            // 淡出循环会每周期造成一次声音缺口，因此单次音效使用的释放斜坡不能用于这里。
             AudioClip clip = ToneGenerator.CreatePulse("test.pulse");
             float[] samples = Read(clip);
 
@@ -140,8 +135,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ClipsAreBuiltAtTheOutputSampleRate()
         {
-            // Building at a fixed rate while the output runs at another means every clip is resampled
-            // on every play, for nothing.
+            // 以固定采样率生成而输出使用另一采样率，会无意义地在每次播放时重采样所有片段。
             AudioClip clip = ToneGenerator.CreateImpact("test.rate");
 
             Assert.AreEqual(ToneGenerator.SampleRate, clip.frequency);

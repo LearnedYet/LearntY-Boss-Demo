@@ -10,15 +10,13 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that the player can be interrupted but not held there indefinitely.
+    /// 测试玩家可被打断，但不能永久困在硬直中。
     /// </summary>
     /// <remarks>
-    /// The play-test complaint was "I feel stuck for a second before the next move" and "when I'm
-    /// knocked I'm not able to come down". Both were the same fault: every landed hit called for a
-    /// stagger outright, and the stagger state extends itself when another arrives, so a boss
-    /// landing hits faster than 0.35s apart held the player in place with no way out. The boss was
-    /// never exposed to this, because its identical situation ran through a poise pool that discards
-    /// poise damage while broken.
+    /// 试玩反馈是“下一动作前感觉卡住一秒”和“被击飞后无法落下来”。两者是同一故障：
+    /// 每次命中都直接请求硬直，新请求到来时硬直状态会延长，
+    /// 因此首领以小于 0.35秒间隔命中就会将玩家定住，无法脱离。首领不会遭遇该问题，
+    /// 因为其相同情况通过架势池处理，而架势池破防期间丢弃架势伤害。
     /// </remarks>
     [TestFixture]
     public sealed class PlayerStaggerTests
@@ -40,7 +38,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             _player = Object.FindAnyObjectByType<PlayerController>();
         }
 
-        /// <summary>A boss blow of the kind that used to interrupt outright, every time.</summary>
+        /// <summary>首领攻击，正是过去每次都直接打断玩家的类型。</summary>
         private static DamageInfo BossBlow(float poiseDamage) => new DamageInfo
         {
             Amount = 1f,
@@ -55,12 +53,11 @@ namespace AdaptiveBossArena.Tests.PlayMode
         private bool IsStaggered =>
             _player.CaptureObservation(0f).ActionState == ObservableActionState.Staggered;
 
-        /// <summary>Waits until the intro releases and the combat clock is actually running.</summary>
+        /// <summary>等待开场动画放行，且战斗时钟确实运行。</summary>
         /// <remarks>
-        /// The encounter opens frozen for its ready-fight intro, so the player's state machine is not
-        /// ticking yet. A stagger requested then sits unconsumed and never becomes a state, which reads
-        /// exactly like a stagger that was never requested. Waiting for the clock rather than a fixed
-        /// frame count keeps this independent of how long the intro is tuned to run.
+        /// 遭遇在准备战斗开场期间冻结，因此玩家状态机尚未更新，此时请求硬直只会停留未消费，
+        /// 永远不成为状态，看起来与未曾请求硬直完全相同。等待时钟而非固定帧数，
+        /// 使测试不依赖开场动画时长。
         /// </remarks>
         private static IEnumerator WaitForTheFightToStart()
         {
@@ -78,7 +75,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             Assert.Less(waited, GiveUpAfterSeconds, "The fight never started.");
         }
 
-        /// <summary>Lets the deferred stagger request become a state.</summary>
+        /// <summary>让延后的硬直请求转为状态。</summary>
         private static IEnumerator LetReactionsResolve()
         {
             for (int i = 0; i < 3; i++)
@@ -90,9 +87,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator ARecoilHoldsForTheWholeFreezeItCausedInsteadOfFadingThroughIt()
         {
-            // The recoil's envelope used to count down on real time. A heavy hit's freeze lasts about
-            // as long as the recoil does, so by the time the world resumed the shove was already
-            // gone - the freeze and the impact played one after the other and neither read as a hit.
+            // 后仰包络原先按真实时间递减。重击冻结时长与后仰相近，因此世界恢复时推力已消失；
+            // 冻结与冲击接连播放，两者都不像命中。
             Assert.IsNotNull(_player, "No player in the arena scene.");
             yield return WaitForTheFightToStart();
 
@@ -110,7 +106,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             time.RequestHitStop(0.5f);
             _player.TakeDamage(BossBlow(1f));
 
-            // Well past the 0.22 s the recoil lasts in real time, but inside the freeze.
+            // 真实时间远超后仰的 0.22 秒，但仍处于冻结期内。
             yield return new WaitForSecondsRealtime(0.3f);
 
             Vector3 shove = body.transform.localPosition - before;
@@ -118,9 +114,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
 
             if (rigged)
             {
-                // A rigged body takes the blow in its own flinch clip, and is never pushed bodily across the
-                // floor: shoving the whole model on top of a motion-captured clip is what made it slide off
-                // the hitbox the fight is decided on.
+                // 绑定骨架的身体以自身受击动画承受攻击，绝不整个人被推过地面：
+                // 在动作捕捉片段上再推移整个模型，正是它滑离战斗判定框的原因。
                 Assert.Greater(
                     rig.HitWeight, 0.5f,
                     "The flinch had faded before the freeze it belongs to was over.");
@@ -136,7 +131,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             }
         }
 
-        /// <summary>Starts a roll directly, so the test does not depend on simulated input.</summary>
+        /// <summary>直接开始翻滚，使测试不依赖模拟输入。</summary>
         private Player.States.PlayerDashState ForceRoll(out PlayerContext context)
         {
             var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
@@ -155,8 +150,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator TheRollKeepsItsDistanceAndItsInvincibilityWindow()
         {
-            // The dodge became a longer roll. Two numbers the boss was tuned against must not move
-            // with it: how far a dodge carries the player, and when its invincibility ends.
+            // 闪避变为更长的翻滚。首领调节所依据的两个数值不能随之变化：闪避位移距离，
+            // 以及无敌结束时刻。
             Assert.IsNotNull(_player);
             yield return WaitForTheFightToStart();
 
@@ -193,7 +188,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             PlayerContext context = ForceRollAwayFromTheBoss();
             float startedAt = context.Time.CombatTime;
 
-            // Pressed during the tail, where the roll allows a cancel.
+            // 在允许取消的翻滚尾段按下。
             while (context.Time.CombatTime - startedAt < context.Config.DashDurationSeconds * 0.75f)
             {
                 yield return null;
@@ -216,7 +211,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
             var context = (PlayerContext)typeof(PlayerController).GetField("_context", flags).GetValue(_player);
 
-            // Faces away from the boss toward open floor, so neither the boss nor a wall shortens it.
+            // 背向首领并面向空地，使首领和墙壁都不会缩短翻滚距离。
             context.Motor.SnapToDirection(Vector3.back);
             ForceRoll(out _);
 
@@ -248,8 +243,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             Assert.IsNotNull(_player, "No player in the arena scene.");
             yield return WaitForTheFightToStart();
 
-            // Absorbing hits must not mean ignoring them. A sustained flurry has to land eventually,
-            // or the player simply cannot be pressured.
+            // 吸收攻击不能等同忽略攻击。持续连击最终必须奏效，否则玩家根本无法被压制。
             for (int i = 0; i < 5; i++)
             {
                 _player.TakeDamage(BossBlow(30f));
@@ -276,9 +270,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
             yield return LetReactionsResolve();
             Assert.IsTrue(IsStaggered, "Setup failed: the player was not broken to begin with.");
 
-            // The bug, exactly: keep hitting a player who is already down. Every one of these used
-            // to call for a fresh stagger and the state took the longer of the two, so the player
-            // never got up for as long as the boss kept swinging.
+            // 确切的故障：持续攻击已倒地的玩家。每次攻击原先都请求新的硬直，状态取两者较长值，
+            // 因此只要首领继续挥击，玩家就永远无法起身。
             float waited = 0f;
 
             while (waited < 4f)

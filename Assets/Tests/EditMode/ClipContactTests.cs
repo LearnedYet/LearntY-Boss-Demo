@@ -5,12 +5,11 @@ using UnityEditor;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests how an attack clip's moment of contact is found from its weapon hand's motion.
+    /// 测试如何从持武器手运动找出攻击片段接触时刻。
     /// </summary>
     /// <remarks>
-    /// Every clip used to be assumed to connect 45 per cent of the way through. The Mixamo attacks range from a
-    /// one-second cut to a two-second leap, so a single guess put the blade's arc visibly before or after the
-    /// hit on most of them. A swing is fastest where it strikes; that is what is measured.
+    /// 原先假定所有片段在 45% 处接触。Mixamo 从一秒斩击到两秒跃击差异大，
+    /// 统一猜值让多数刀刃弧线早于或晚于命中。挥击打击处最快，因此测量速度峰值。
     /// </remarks>
     [TestFixture]
     public sealed class ClipContactTests
@@ -26,7 +25,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void AFlourishAtTheVeryStartOrEndIsNotTakenForTheStrike()
         {
-            // A clip that whips the hand back to guard in its last frames must not be timed as striking at the end.
+            // 片段最后快速收手回防，不能被误认作结尾打击。
             float[] speeds = { 3f, 0.4f, 0.9f, 1.2f, 0.8f, 0.3f, 0.2f, 0.4f, 5f };
 
             float contact = ClipContact.PeakFraction(speeds);

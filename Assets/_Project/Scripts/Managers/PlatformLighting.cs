@@ -5,19 +5,17 @@ using UnityEngine.Rendering.Universal;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// The lighting choices that differ between the WebGL build and the desktop build.
+    /// WebGL 与桌面构建之间不同的光照选择。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Two, both decided once when the scene starts. The desktop build gives the sun a cookie - the shadow
-    /// of the broken roof's beams and fallen slabs lying across the floor - which the web build skips as
-    /// one more sampled texture on every lit pixel of a budget it cannot spare.
+    /// 有两项，均在场景启动时决定。桌面为太阳添加光照遮罩，呈现破屋顶横梁与倒塌石板投到地面的阴影；
+    /// 网页端省略它，避免每个受光像素再多采样一张预算无法承受的纹理。
     /// </para>
     /// <para>
-    /// The web build draws its sun shafts fainter. The same additive planes read noticeably brighter in
-    /// the browser than on desktop, where anti-aliasing and ambient occlusion soften everything around
-    /// them; a shaft that is atmosphere on one reads as a bright stripe on the other. Swapping to a second
-    /// material rather than editing the shared one keeps the asset untouched and the batching intact.
+    /// 网页端的太阳光束更淡。相同叠加平面在浏览器中明显比桌面更亮，
+    /// 因为桌面的抗锯齿和环境光遮蔽会柔化周围画面；同一光束在一端像氛围，在另一端像亮条。
+    /// 切换第二个材质而非编辑共享材质，可保持资源原样及合批完整。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -64,39 +62,39 @@ namespace AdaptiveBossArena.Game
         [Tooltip("The candle lights, switched off on the web; their flames still glow.")]
         private Light[] _candles = new Light[0];
 
-        /// <summary>How many sun shafts the web build keeps; the rest are pure overdraw it cannot afford.</summary>
+        /// <summary>网页端保留的太阳光束数；其余只有无法承受的重复绘制开销。</summary>
         public const int WebShaftCount = 3;
 
-        /// <summary>Most dust motes drifting at once on the web, down from the desktop's 260.</summary>
+        /// <summary>网页端同时漂浮的尘埃上限，低于桌面的 260 个。</summary>
         public const int WebDustParticles = 80;
 
-        /// <summary>Whether a platform takes the lighter web lighting.</summary>
-        /// <param name="platform">The platform running.</param>
-        /// <returns>True for the WebGL player.</returns>
+        /// <summary>平台是否采用较轻量的网页光照。</summary>
+        /// <param name="platform">运行平台。</param>
+        /// <returns>WebGL 播放器时为 true。</returns>
         public static bool UsesWebLighting(RuntimePlatform platform) => platform == RuntimePlatform.WebGLPlayer;
 
-        /// <summary>Assigns the shafts and their web material. Used by the scene generator.</summary>
-        /// <param name="shafts">The shaft renderers.</param>
-        /// <param name="webShaftMaterial">The fainter material for the web.</param>
+        /// <summary>分配光束及网页材质，供场景生成器使用。</summary>
+        /// <param name="shafts">光束渲染器。</param>
+        /// <param name="webShaftMaterial">网页端较淡的材质。</param>
         public void BindShafts(Renderer[] shafts, Material webShaftMaterial)
         {
             _shafts = shafts ?? new Renderer[0];
             _webShaftMaterial = webShaftMaterial;
         }
 
-        /// <summary>Assigns the sun and its cookie. Used by the scene generator.</summary>
-        /// <param name="sun">The directional light.</param>
-        /// <param name="cookie">The roof shadow pattern.</param>
+        /// <summary>分配太阳与光照遮罩，供场景生成器使用。</summary>
+        /// <param name="sun">方向光。</param>
+        /// <param name="cookie">屋顶阴影图案。</param>
         public void BindSun(Light sun, Texture2D cookie)
         {
             _sun = sun;
             _sunCookie = cookie;
         }
 
-        /// <summary>Assigns the post-processing and camera the web build cheapens. Used by the scene generator.</summary>
-        /// <param name="volume">The global volume.</param>
-        /// <param name="webProfile">The browser's profile.</param>
-        /// <param name="camera">The main camera's URP data.</param>
+        /// <summary>分配网页端将简化的后处理与相机，供场景生成器使用。</summary>
+        /// <param name="volume">全局后处理体积。</param>
+        /// <param name="webProfile">浏览器配置。</param>
+        /// <param name="camera">主相机的 URP 数据。</param>
         public void BindWebBudget(
             UnityEngine.Rendering.Volume volume, UnityEngine.Rendering.VolumeProfile webProfile, UniversalAdditionalCameraData camera)
         {
@@ -105,19 +103,19 @@ namespace AdaptiveBossArena.Game
             _camera = camera;
         }
 
-        /// <summary>Assigns the scene dressing the web build thins. Used by the scene generator.</summary>
-        /// <param name="dust">The drifting dust.</param>
-        /// <param name="candles">The candle lights.</param>
+        /// <summary>分配网页端将减少的场景装饰，供场景生成器使用。</summary>
+        /// <param name="dust">漂浮尘埃。</param>
+        /// <param name="candles">蜡烛灯光。</param>
         public void BindSceneBudget(ParticleSystem dust, Light[] candles)
         {
             _dust = dust;
             _candles = candles ?? new Light[0];
         }
 
-        /// <summary>Whether the volume renders with the browser's cheaper profile. Exposed for tests.</summary>
+        /// <summary>体积是否使用浏览器的低成本配置渲染，公开供测试。</summary>
         public bool RendersWebProfile => _volume != null && _webProfile != null && _volume.sharedProfile == _webProfile;
 
-        // Before any Start, so ScreenEffects clones the profile the quality actually renders with.
+        // 在所有 Start 之前执行，使 ScreenEffects 克隆实际画质使用的配置。
         private void Awake()
         {
             RememberFullScene();
@@ -131,11 +129,11 @@ namespace AdaptiveBossArena.Game
         {
             Apply(quality);
 
-            // The screen effects write into the volume's own copy of the profile; the swap just replaced it.
+            // 屏幕效果写入体积自己的配置副本；切换刚刚替换了该副本。
             FindAnyObjectByType<ScreenEffects>()?.RebindProfile();
         }
 
-        /// <summary>The scene as built, so a step down in quality can be stepped back up.</summary>
+        /// <summary>构建时的场景状态，使画质降低后还能恢复。</summary>
         private Material[] _fullShaftMaterials;
         private UnityEngine.Rendering.VolumeProfile _fullProfile;
         private AntialiasingMode _fullAntialiasing;
@@ -168,14 +166,14 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Applies one platform's lighting. Kept for the tests that compare the two.</summary>
-        /// <param name="web">True for the browser's cheapest lighting, false for the full scene.</param>
+        /// <summary>应用某个平台的光照，保留供比较两个平台的测试使用。</summary>
+        /// <param name="web">浏览器最简光照时为 true，完整场景时为 false。</param>
         public void Apply(bool web) => Apply(web ? GraphicsQuality.Low : GraphicsQuality.High);
 
         /// <summary>
-        /// Applies a graphics quality's lighting: the Low budget, or the full scene restored.
+        /// 应用指定画质的光照：低画质预算，或恢复完整场景。
         /// </summary>
-        /// <param name="quality">The quality to light the arena for.</param>
+        /// <param name="quality">竞技场使用的画质。</param>
         public void Apply(GraphicsQuality quality)
         {
             RememberFullScene();
@@ -185,7 +183,7 @@ namespace AdaptiveBossArena.Game
             {
                 _sun.cookie = web ? null : _sunCookie;
 
-                // URP sizes a directional cookie through its own light data, not the built-in property.
+                // URP 通过自身灯光数据而非内置属性设置方向光遮罩尺寸。
                 if (_sun.TryGetComponent(out UniversalAdditionalLightData data))
                 {
                     data.lightCookieSize = new Vector2(_cookieSize, _cookieSize);
@@ -210,7 +208,7 @@ namespace AdaptiveBossArena.Game
                     _shafts[i].sharedMaterial = _webShaftMaterial;
                 }
 
-                // Each shaft is a tall additive plane covering much of the screen; three still read as sunlight.
+                // 每个光束都是覆盖大块屏幕的高叠加平面；三个仍足以表现太阳光。
                 _shafts[i].enabled = i < WebShaftCount;
             }
 
@@ -218,12 +216,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Cheapens what the browser renders on a laptop's integrated graphics.
+        /// 降低浏览器在笔记本集成显卡上的渲染成本。
         /// </summary>
         /// <remarks>
-        /// Each cut was chosen to cost the least of the look: the grade survives whole in the cheaper profile;
-        /// fast approximate anti-aliasing is one pass where the subpixel kind is three; candle flames keep glowing
-        /// through bloom with only their per-pixel light removed; the dust thins rather than disappears.
+        /// 每项削减都尽量少影响外观：低成本配置保留完整调色；快速近似抗锯齿只需一次处理，
+        /// 子像素方案需要三次；只移除蜡烛逐像素照明，火焰仍通过泛光发亮；尘埃减少而非消失。
         /// </remarks>
         private void ApplyWebBudget()
         {
@@ -252,7 +249,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Puts back everything the Low budget took away.</summary>
+        /// <summary>恢复低画质预算移除的全部内容。</summary>
         private void RestoreFullScene()
         {
             for (int i = 0; i < _shafts.Length; i++)
@@ -296,12 +293,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Renders the volume with another profile.
+        /// 让体积使用另一份配置渲染。
         /// </summary>
         /// <remarks>
-        /// Once anything has read the volume's profile, the volume renders from its own private copy and the shared
-        /// profile is ignored - so a swap made after the fight began used to change nothing on screen. Clearing the
-        /// copy makes the next read clone the new profile.
+        /// 任何对象读取体积配置后，体积都会使用自己的私有副本，忽略共享配置，
+        /// 因此过去在战斗开始后切换共享配置不会改变画面。清除副本后，下次读取会克隆新配置。
         /// </remarks>
         private void SwapProfile(UnityEngine.Rendering.VolumeProfile profile)
         {

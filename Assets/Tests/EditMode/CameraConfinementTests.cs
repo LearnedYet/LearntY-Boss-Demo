@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts the camera is kept inside the arena's wall ring, so the wall never stands between it and the fight.
+    /// 断言摄像机留在竞技场墙环内部，让墙不会遮在战斗前方。
     /// </summary>
     [TestFixture]
     public sealed class CameraConfinementTests
@@ -26,8 +26,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ACameraBehindTheWallIsPulledInAlongItsBoom()
         {
-            // The player against the wall at z = -15.2, framing toward the middle, camera wanting to be 3.6 m
-            // further out - behind the wall.
+            // 玩家靠墙 z = -15.2，构图朝中心，摄像机希望再向外 3.6米，已经在墙后。
             var focus = new Vector3(0f, 0f, -15.2f);
             var desired = new Vector3(0f, 2.5f, -18.8f);
 

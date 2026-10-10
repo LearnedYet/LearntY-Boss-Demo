@@ -3,31 +3,28 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Movement
 {
     /// <summary>
-    /// Combines steered movement, external impulses and gravity into one velocity per frame.
+    /// 每帧将主动移动、外部冲量和重力合成为一个速度。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Both motors used to hold a single planar velocity that anything could overwrite. Steering,
-    /// lunges and knockback all wrote the same field, so the last writer won: a knockback applied on
-    /// the frame of impact was replaced by the victim's movement input on the next, and the boss never
-    /// honoured knockback at all. A blow that cannot move anyone reads as weightless.
+    /// 过去两个移动器都只有一个可被任何对象覆盖的水平速度。主动移动、突进和击退都写同一字段，
+    /// 最后写入者生效：命中帧施加的击退，会在下一帧被受击者的移动输入替换，而首领则从不响应击退。
+    /// 无法推动任何人的打击会显得毫无重量。
     /// </para>
     /// <para>
-    /// This keeps what is <em>imposed</em> on a character apart from what the character is
-    /// <em>doing</em>. State code keeps setting steered velocity exactly as before. Impulses are only
-    /// ever added, decay on their own half-life, and survive any number of steering writes — so a shove
-    /// plays out whether or not the victim is holding a direction. Vertical velocity is real gravity,
-    /// held at a small downward speed while grounded so the controller's ground contact stays stable.
+    /// 这里将角色<em>被施加的运动</em>与角色自身<em>正在进行的运动</em>分开。
+    /// 状态代码仍和以前一样设置主动移动速度。冲量只会累加，按自身半衰期衰减，
+    /// 且不会被任何次数的主动移动写入覆盖——因此推力无论受击者是否按住方向都会继续。
+    /// 垂直速度采用实际重力，落地时维持较小的向下速度，让控制器接地保持稳定。
     /// </para>
     /// <para>
-    /// Pure C# with no engine calls, shared by the player's and the boss's motors from the Combat
-    /// assembly both already see. The two motors stay separate types, because their handling is
-    /// tuned against each other; only this arithmetic is common.
+    /// 采用纯 C#，没有引擎调用，放在玩家和首领移动器都已引用的 Combat程序集内共用。
+    /// 两个移动器仍保持为不同类型，因为它们的操控需要相互协调调参；只有这里的计算共用。
     /// </para>
     /// </remarks>
     public sealed class MotionIntegrator
     {
-        /// <summary>Below this speed an impulse is treated as spent and cleared.</summary>
+        /// <summary>低于此速度的冲量视为耗尽并清除。</summary>
         private const float SpentImpulseSpeed = 0.01f;
 
         private readonly float _gravity;
@@ -36,11 +33,10 @@ namespace AdaptiveBossArena.Combat.Movement
         private Vector3 _impulse;
         private float _verticalVelocity;
 
-        /// <summary>Creates an integrator.</summary>
-        /// <param name="gravity">Downward acceleration, as a positive number, in metres per second squared.</param>
+        /// <summary>创建积分器。</summary>
+        /// <param name="gravity">向下加速度，以正数表示，单位为米每平方秒。</param>
         /// <param name="groundedSpeed">
-        /// Downward speed held while grounded, as a negative number. Keeps the controller pressed onto
-        /// the floor without accumulating speed a fall would then start from.
+        /// 落地时保持的向下速度，以负数表示。让控制器贴住地面，而不累积会影响下次坠落初速的速度。
         /// </param>
         public MotionIntegrator(float gravity, float groundedSpeed)
         {
@@ -49,44 +45,43 @@ namespace AdaptiveBossArena.Combat.Movement
             _verticalVelocity = _groundedSpeed;
         }
 
-        /// <summary>The imposed horizontal velocity still playing out.</summary>
+        /// <summary>仍在持续的外加水平速度。</summary>
         public Vector3 Impulse => _impulse;
 
-        /// <summary>Current vertical velocity.</summary>
+        /// <summary>当前垂直速度。</summary>
         public float VerticalVelocity => _verticalVelocity;
 
         /// <summary>
-        /// Adds an imposed horizontal velocity, such as knockback.
+        /// 添加外加水平速度，例如击退。
         /// </summary>
         /// <remarks>
-        /// Added rather than assigned, so two blows landing close together push further than one.
-        /// The vertical component is discarded; launches are a separate, deliberate act.
+        /// 累加而不是赋值，因此短时间内连续两次打击比一次推得更远。丢弃垂直分量；击飞是单独的、
+        /// 明确的操作。
         /// </remarks>
-        /// <param name="velocity">Velocity to add.</param>
+        /// <param name="velocity">要添加的速度。</param>
         public void AddImpulse(Vector3 velocity)
         {
             _impulse.x += velocity.x;
             _impulse.z += velocity.z;
         }
 
-        /// <summary>Throws the body upward, replacing whatever vertical speed it had.</summary>
+        /// <summary>将身体向上抛起，替换原有垂直速度。</summary>
         /// <remarks>
-        /// Replaces rather than adds: a body standing on the floor carries the small downward contact
-        /// speed, and adding to that would make the same launch a little lower every time.
+        /// 替换而不是累加：站在地面的身体带有较小的向下接地速度，累加会让同样的击飞每次都稍低一点。
         /// </remarks>
-        /// <param name="upwardSpeed">Initial upward speed, in metres per second.</param>
+        /// <param name="upwardSpeed">初始向上速度，单位为米每秒。</param>
         public void Launch(float upwardSpeed)
         {
             _verticalVelocity = Mathf.Max(0f, upwardSpeed);
         }
 
-        /// <summary>Discards the imposed shove, as when a wall stops the body it was carrying.</summary>
+        /// <summary>丢弃外加推力，例如墙壁挡住被它推动的身体时。</summary>
         public void StopImpulse()
         {
             _impulse = Vector3.zero;
         }
 
-        /// <summary>Clears every imposed velocity, for a teleport or a retry.</summary>
+        /// <summary>清除所有外加速度，用于传送或重试。</summary>
         public void Reset()
         {
             _impulse = Vector3.zero;
@@ -94,15 +89,15 @@ namespace AdaptiveBossArena.Combat.Movement
         }
 
         /// <summary>
-        /// Advances the imposed motion and returns the full velocity to move by this frame.
+        /// 推进外加运动，并返回本帧移动所需的完整速度。
         /// </summary>
-        /// <param name="steeredVelocity">What the character is doing on its own. Its vertical component is ignored.</param>
+        /// <param name="steeredVelocity">角色自身的主动运动，忽略其垂直分量。</param>
         /// <param name="impulseHalfLifeSeconds">
-        /// How long an impulse takes to lose half its speed. Heavier bodies shed a shove faster.
+        /// 冲量速度减半所需的时间。更重的身体会更快消减推力。
         /// </param>
-        /// <param name="isGrounded">Whether the character was on the ground after its last move.</param>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
-        /// <returns>The combined velocity.</returns>
+        /// <param name="isGrounded">角色上次移动后是否位于地面。</param>
+        /// <param name="deltaTime">经过缩放的时间增量。</param>
+        /// <returns>合成速度。</returns>
         public Vector3 Step(Vector3 steeredVelocity, float impulseHalfLifeSeconds, bool isGrounded, float deltaTime)
         {
             if (deltaTime <= 0f)
@@ -110,7 +105,7 @@ namespace AdaptiveBossArena.Combat.Movement
                 return new Vector3(steeredVelocity.x + _impulse.x, 0f, steeredVelocity.z + _impulse.z);
             }
 
-            // Sampled before decay so a shove moves its victim on the very frame it lands.
+            // 在衰减前采样，让推力在命中当帧就能移动受击者。
             Vector3 imposed = _impulse;
             DecayImpulse(impulseHalfLifeSeconds, deltaTime);
             AdvanceVertical(isGrounded, deltaTime);
@@ -121,7 +116,7 @@ namespace AdaptiveBossArena.Combat.Movement
                 steeredVelocity.z + imposed.z);
         }
 
-        /// <summary>Exponential decay by half-life, so the result does not depend on frame rate.</summary>
+        /// <summary>按半衰期指数衰减，让结果不依赖帧率。</summary>
         private void DecayImpulse(float halfLifeSeconds, float deltaTime)
         {
             if (halfLifeSeconds <= 0f)
@@ -140,9 +135,8 @@ namespace AdaptiveBossArena.Combat.Movement
 
         private void AdvanceVertical(bool isGrounded, float deltaTime)
         {
-            // Grounded and not rising: hold the small contact speed rather than accumulating gravity.
-            // A character that has been standing still for a minute must not fall off a ledge at
-            // terminal velocity on the first frame it leaves the ground.
+            // 落地且不在上升时：保持较小的接地速度，而不累积重力。静止站立一分钟的角色，
+            // 不应在离开地面的首帧就以终端速度跌下台阶。
             if (isGrounded && _verticalVelocity <= 0f)
             {
                 _verticalVelocity = _groundedSpeed;

@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the rule that makes the boss movable in proportion to how worn down its stance is.
+    /// 测试使首领可被推动程度随站姿损耗变化的规则。
     /// </summary>
     [TestFixture]
     public sealed class KnockbackResistanceTests
@@ -23,8 +23,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ABrokenStanceTakesTheWholeBlow()
         {
-            // Checked with full poise reported, because the pool refills to full at the end of a break
-            // and must not be read as a fresh stance while the break is still in effect.
+            // 按报告满架势的情况检查，因为破防结束时资源池补满，破防仍生效期间不能将其视为全新的站姿。
             float shove = KnockbackResistance.ShoveMultiplier(1f, true, AtFull, WhenBroken);
 
             Assert.AreEqual(1f, shove, 0.001f);

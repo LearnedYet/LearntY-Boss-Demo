@@ -1,20 +1,19 @@
 namespace AdaptiveBossArena.Core.StateMachine
 {
     /// <summary>
-    /// Convenience base that turns every state callback into an opt-in override.
+    /// 便捷基类，使各状态回调都可选择性重写。
     /// </summary>
     /// <remarks>
-    /// Most states care about two or three of the five members. Deriving from this keeps concrete
-    /// states down to the logic that distinguishes them, and supplies the time-in-state bookkeeping
-    /// that attack timing and telegraph length both depend on.
+    /// 多数状态只关心五个成员中的两三个。继承此类可让具体状态仅保留其特有逻辑，
+    /// 并提供攻击时序和预警时长依赖的状态计时。
     /// </remarks>
-    /// <typeparam name="TContext">Data and services the state operates on.</typeparam>
+    /// <typeparam name="TContext">状态操作的数据和服务。</typeparam>
     public abstract class StateBase<TContext> : IState<TContext>
     {
         /// <inheritdoc />
         public virtual string Name => GetType().Name;
 
-        /// <summary>Seconds elapsed since this state was entered, in scaled time.</summary>
+        /// <summary>进入此状态后经过的缩放时间秒数。</summary>
         public float TimeInState { get; private set; }
 
         /// <inheritdoc />
@@ -39,21 +38,21 @@ namespace AdaptiveBossArena.Core.StateMachine
         /// <inheritdoc />
         public void Exit(TContext context) => OnExit(context);
 
-        /// <summary>Override to run entry logic.</summary>
-        /// <param name="context">The machine's context.</param>
+        /// <summary>重写以执行进入逻辑。</summary>
+        /// <param name="context">状态机上下文。</param>
         protected virtual void OnEnter(TContext context)
         {
         }
 
-        /// <summary>Override to run per-frame logic.</summary>
-        /// <param name="context">The machine's context.</param>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <summary>重写以执行每帧逻辑。</summary>
+        /// <param name="context">状态机上下文。</param>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         protected virtual void OnTick(TContext context, float deltaTime)
         {
         }
 
-        /// <summary>Override to run exit logic.</summary>
-        /// <param name="context">The machine's context.</param>
+        /// <summary>重写以执行退出逻辑。</summary>
+        /// <param name="context">状态机上下文。</param>
         protected virtual void OnExit(TContext context)
         {
         }

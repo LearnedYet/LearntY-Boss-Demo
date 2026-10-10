@@ -5,13 +5,11 @@ using UnityEditor;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Guards that a build actually ships the two scenes, title first.
+    /// 保护构建确实包含两个场景，且标题在前。
     /// </summary>
     /// <remarks>
-    /// A build compiles cleanly even with an empty scene list and then boots to a black screen, which
-    /// is the kind of failure that only shows up after the artefact has been handed to someone. The
-    /// scene generator pins this order; this test makes a regression fail in CI instead of in a player's
-    /// hands.
+    /// 空场景列表也能编译，运行却黑屏，产物交给人后才发现。生成器固定顺序，
+    /// 此测试让回归在 CI 而非玩家手上失败。
     /// </remarks>
     [TestFixture]
     public sealed class BuildSettingsTests

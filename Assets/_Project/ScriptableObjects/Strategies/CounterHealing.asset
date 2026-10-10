@@ -27,5 +27,5 @@ MonoBehaviour:
   - _parameter: 3
     _targetValue: 0.6
   _easeInSeconds: 6
-  _tellMessage: It lunges the instant you falter.
+  _tellMessage: 它会在你露出破绽时立刻突进。
   _tellAudioCueId: 

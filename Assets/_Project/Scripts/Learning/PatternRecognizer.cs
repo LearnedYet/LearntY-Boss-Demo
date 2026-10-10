@@ -3,24 +3,21 @@ using UnityEngine;
 namespace AdaptiveBossArena.Learning
 {
     /// <summary>
-    /// Turns the tracker's raw statistics into the habits the boss reasons about.
+    /// 将跟踪器的原始统计转为首领据以推理的习惯。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Runs on a slow interval, not per frame. That cadence is a design constraint rather than an
-    /// optimisation: a boss that re-derived its picture of the player continuously could respond to
-    /// a single action, and the whole encounter is built on it responding to trends instead.
+    /// 按较慢间隔运行，而非逐帧运行。这种节奏是设计约束，而非性能优化：
+    /// 持续重新推导画像的首领可能会针对单个动作作出反应，而整个遭遇战要求它响应趋势。
     /// </para>
     /// <para>
-    /// Every habit is normalised to zero through one and carries a confidence derived from how many
-    /// observations it rests on. The half-confidence counts below are judgements about how much
-    /// evidence each conclusion deserves: a dash-direction bias needs a good many dashes before it
-    /// means anything, whereas a player's preferred distance is apparent from a handful of samples.
+    /// 每项习惯都归一化到零至一，并附带由观察次数决定的可信度。
+    /// 下面的半可信度样本数表达了各类结论所需证据量的判断：闪避方向偏好需要观察较多闪避才有意义，
+    /// 而偏好距离通过少量采样就能看出。
     /// </para>
     /// <para>
-    /// This class is deliberately pure. It reads a tracker and a memory and writes a profile, with
-    /// no engine dependencies at all, so the boss's conclusions can be tested by feeding synthetic
-    /// fights through it.
+    /// 此类刻意保持为纯逻辑：读取跟踪器与记忆，写入画像，不依赖任何引擎对象，
+    /// 因此可以输入模拟战斗来检验首领的推断。
     /// </para>
     /// </remarks>
     public sealed class PatternRecognizer
@@ -33,25 +30,24 @@ namespace AdaptiveBossArena.Learning
         private const int HealSamplesForConfidence = 2;
 
         /// <summary>
-        /// Guarded exchanges before a defensive read is trusted.
+        /// 信任防御画像之前所需的防御交锋次数。
         /// </summary>
         /// <remarks>
-        /// Higher than the evasion count because a guard answer is a deliberate, repeated choice
-        /// rather than a one-off reaction, and because the counters it invites — unblockables and
-        /// feints — are among the most punishing the boss has. It should be sure first.
+        /// 比闪避所需次数更高，因为防御应答是刻意、重复的选择，而非一次性反应；
+        /// 同时它会引发不可格挡攻击和佯攻等最严厉的反制。首领应先确认判断。
         /// </remarks>
         private const int GuardSamplesForConfidence = 8;
 
-        /// <summary>Heals in a fight above which healing is treated as a defining habit.</summary>
+        /// <summary>达到此治疗次数后，治疗被视为玩家的显著习惯。</summary>
         private const float HealFrequencyCeiling = 4f;
 
         /// <summary>
-        /// Recomputes every habit from the current statistics.
+        /// 根据当前统计重新计算全部习惯。
         /// </summary>
-        /// <param name="tracker">Running statistics.</param>
-        /// <param name="memory">Witnessed occurrences and their running counts.</param>
-        /// <param name="profile">Profile to write the conclusions into.</param>
-        /// <param name="timeNow">Combat-clock time, recorded on the profile.</param>
+        /// <param name="tracker">累计统计跟踪器。</param>
+        /// <param name="memory">观察事件及其累计计数。</param>
+        /// <param name="profile">接收推断结果的画像。</param>
+        /// <param name="timeNow">记录到画像上的战斗时钟时间。</param>
         public void Analyse(
             BehaviorTracker tracker,
             CombatMemory memory,
@@ -67,7 +63,7 @@ namespace AdaptiveBossArena.Learning
             profile.MarkUpdated(timeNow);
         }
 
-        /// <summary>Derives how the player attacks.</summary>
+        /// <summary>推导玩家的攻击方式。</summary>
         private static void AnalyseOffence(
             BehaviorTracker tracker,
             CombatMemory memory,
@@ -85,15 +81,15 @@ namespace AdaptiveBossArena.Learning
                 memory.PlayerAttacksThrown,
                 AttackSamplesForConfidence);
 
-            // A high whiff ratio marks a player swinging at where the boss was rather than where it
-            // is, which is an opening worth pressing rather than one worth respecting.
+            // 较高空挥率表示玩家攻击的是首领先前而非当前的位置，这暴露了值得追击的破绽，
+            // 而非需要尊重的威胁。
             profile.Set(
                 BehaviorFeature.WhiffRatio,
                 Ratio(memory.PlayerAttacksWhiffed, memory.PlayerAttacksThrown),
                 memory.PlayerAttacksThrown,
                 AttackSamplesForConfidence);
 
-            // The habit the brief names outright: attacking on reflex the moment a dodge ends.
+            // 设计明确指出的习惯：闪避刚结束就本能地攻击。
             profile.Set(
                 BehaviorFeature.PostDodgeAggression,
                 Ratio(tracker.PostDodgeAttacks, tracker.DodgeOpportunities),
@@ -101,7 +97,7 @@ namespace AdaptiveBossArena.Learning
                 DodgeSamplesForConfidence);
         }
 
-        /// <summary>Derives how the player moves and where they like to stand.</summary>
+        /// <summary>推导玩家的移动方式和偏好站位。</summary>
         private static void AnalyseMovement(BehaviorTracker tracker, BehaviorProfile profile)
         {
             profile.Set(
@@ -116,8 +112,7 @@ namespace AdaptiveBossArena.Learning
                 tracker.DistanceSampleCount,
                 DistanceSamplesForConfidence);
 
-            // Predictability is already an entropy measure over the direction histogram, so it is a
-            // habit strength directly rather than something needing further normalisation.
+            // 可预测性已经是方向直方图的熵度量，因此可以直接作为习惯强度，无需进一步归一化。
             profile.Set(
                 BehaviorFeature.DashDirectionBias,
                 tracker.DashDirections.Predictability,
@@ -125,7 +120,7 @@ namespace AdaptiveBossArena.Learning
                 DirectionSamplesForConfidence);
         }
 
-        /// <summary>Derives how well the player avoids what the boss throws.</summary>
+        /// <summary>推导玩家躲避首领攻击的水平。</summary>
         private static void AnalyseEvasion(
             BehaviorTracker tracker,
             CombatMemory memory,
@@ -134,8 +129,8 @@ namespace AdaptiveBossArena.Learning
             int bossAttacksResolved =
                 memory.BossAttacksLanded + memory.BossAttacksEvaded + memory.BossAttacksWhiffed;
 
-            // The boss's overall read on how much trouble this player is. A high value is what
-            // eventually pushes it toward attacks that cover ground instead of attacks that aim.
+            // 首领对玩家难缠程度的总体判断。较高时最终会推动首领选择覆盖地面的攻击，
+            // 而非精确瞄准的攻击。
             profile.Set(
                 BehaviorFeature.EvasionSuccess,
                 Ratio(memory.BossAttacksEvaded + memory.BossAttacksWhiffed, bossAttacksResolved),
@@ -150,15 +145,12 @@ namespace AdaptiveBossArena.Learning
         }
 
         /// <summary>
-        /// Derives how the player defends: whether they hold ground behind the guard, and how
-        /// precisely they use it.
+        /// 推导玩家的防御方式：是否依靠防御站住原地，以及防御时机有多精准。
         /// </summary>
         /// <remarks>
-        /// The two are deliberately separate reads. Reliance is measured against everything the boss
-        /// threw, so it answers "do they stand and block?"; skill is measured only against the
-        /// attacks they actually met with the guard, so it answers "and are they good at it?". A
-        /// cautious novice scores high on the first and low on the second, and the two habits deserve
-        /// different answers — unblockables for the turtle, feints for the metronome.
+        /// 这两项刻意分开判断。依赖程度以首领全部攻击为分母，回答“玩家是否站住格挡”；
+        /// 技巧只以真正被防御接下的攻击为分母，回答“玩家是否擅长防御”。谨慎的新手前者高、后者低，
+        /// 两类习惯应该分别用不可格挡攻击应对龟缩，用佯攻扰乱精准节奏。
         /// </remarks>
         private static void AnalyseDefence(CombatMemory memory, BehaviorProfile profile)
         {
@@ -174,8 +166,8 @@ namespace AdaptiveBossArena.Learning
                 bossAttacksResolved,
                 GuardSamplesForConfidence);
 
-            // Rested on the guarded answers alone, so a player who blocks twice and deflects both
-            // does not read as a master until they have done it often enough to mean something.
+            // 只依据已被防御接下的攻击，因此即便玩家接下两次攻击且全部弹反，也必须反复做到足够多次，
+            // 才会被判断为高手。
             profile.Set(
                 BehaviorFeature.DeflectSkill,
                 Ratio(memory.PlayerDeflects, guardedAnswers),
@@ -183,7 +175,7 @@ namespace AdaptiveBossArena.Learning
                 GuardSamplesForConfidence);
         }
 
-        /// <summary>Derives how readily the player disengages to recover.</summary>
+        /// <summary>推导玩家主动脱离战斗恢复的倾向。</summary>
         private static void AnalyseSustain(CombatMemory memory, BehaviorProfile profile) =>
             profile.Set(
                 BehaviorFeature.HealFrequency,
@@ -191,7 +183,7 @@ namespace AdaptiveBossArena.Learning
                 memory.PlayerHealsStarted,
                 HealSamplesForConfidence);
 
-        /// <summary>Safe division that treats "no observations" as zero rather than as a habit.</summary>
+        /// <summary>安全除法：无观察数据时返回零，不把数据缺失误当成习惯。</summary>
         private static float Ratio(int numerator, int denominator) =>
             denominator <= 0 ? 0f : Mathf.Clamp01((float)numerator / denominator);
     }

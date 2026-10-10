@@ -4,18 +4,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// Plays a footstep every stride of actual travel, giving movement an audible weight.
+    /// 实际每移动一个步幅播放一次脚步，让移动具有可听见的重量。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Driven by <em>distance moved</em> rather than by speed or a timer, so steps land in cadence
-    /// with the character's real motion and stop the instant it does — including during a hit-stop,
-    /// when the transform simply is not moving, so no clock needs consulting.
+    /// 由<em>移动距离</em>而不是速度或计时器驱动，让脚步节奏与角色实际运动一致，
+    /// 并在角色停止瞬间停止——包括顿帧期间，此时 Transform 根本没有移动，因此无需查看任何时钟。
     /// </para>
     /// <para>
-    /// Presentation only: it reads its own transform and plays a sound, and knows nothing of combat.
-    /// The player and boss use the same component with different cues and stride lengths, so the boss
-    /// lands heavier, slower footfalls than the player without any special-casing.
+    /// 仅用于表现：读取自己的 Transform 并播放声音，不了解战斗。玩家和首领使用同一组件、
+    /// 不同音效标识和步幅，让首领产生比玩家更重、更慢的脚步，无需特殊分支。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -37,7 +35,7 @@ namespace AdaptiveBossArena.Combat.Feel
         [Tooltip("Rough width of the dust a footfall lifts, in metres.")]
         private float _dustSize = 0.35f;
 
-        /// <summary>Height the dust starts at: just off the floor, where a boot meets the stone.</summary>
+        /// <summary>灰尘起始高度，刚离开地面，位于靴子接触石头的位置。</summary>
         private const float DustHeight = 0.05f;
 
         [SerializeField]
@@ -46,7 +44,7 @@ namespace AdaptiveBossArena.Combat.Feel
         [Range(0f, 0.3f)]
         private float _tremor;
 
-        /// <summary>Distance within which a heavy footfall is felt through the camera.</summary>
+        /// <summary>重脚步可通过摄像机被感受到的距离。</summary>
         private const float TremorRange = 7f;
 
         private IAudioService _audio;
@@ -56,25 +54,25 @@ namespace AdaptiveBossArena.Combat.Feel
         private float _accumulated;
 
         /// <summary>
-        /// How many motes a footfall lifts at a speed.
+        /// 某一速度的脚步扬起多少微粒。
         /// </summary>
         /// <remarks>
-        /// A walk barely disturbs the floor; a run drives grit off it. Below a walk nothing is lifted at all, so
-        /// a fighter edging into range does not trail dust behind them.
+        /// 行走几乎不扰动地面；奔跑则踢起砂砾。低于步行速度时完全不扬尘，
+        /// 让慢慢逼近攻击范围的战斗者不会拖着灰尘。
         /// </remarks>
-        /// <param name="speed01">Planar speed as a fraction of top speed.</param>
-        /// <returns>How many motes the step lifts.</returns>
+        /// <param name="speed01">水平速度占最高速度的比例。</param>
+        /// <returns>脚步扬起的微粒数量。</returns>
         public static int PuffCount(float speed01) =>
             speed01 < 0.25f
                 ? 0
                 : Mathf.RoundToInt(Mathf.Lerp(2f, 7f, Mathf.InverseLerp(0.25f, 1f, Mathf.Clamp01(speed01))));
 
-        /// <summary>Assigns the cue, stride and dust. Used by the prefab generator.</summary>
-        /// <param name="cueId">Footstep cue to play.</param>
-        /// <param name="strideLength">Distance between steps.</param>
-        /// <param name="dustMaterial">Material for the dust a footfall lifts, or null for none.</param>
-        /// <param name="dustSize">Rough width of that dust, in metres.</param>
-        /// <param name="tremor">Camera trauma per footfall when close; zero for none.</param>
+        /// <summary>指定音效标识、步幅和灰尘，由预制体生成器使用。</summary>
+        /// <param name="cueId">要播放的脚步音效标识。</param>
+        /// <param name="strideLength">两步之间的距离。</param>
+        /// <param name="dustMaterial">脚步扬尘材质；为 null 则不产生灰尘。</param>
+        /// <param name="dustSize">灰尘的大致宽度，单位为米。</param>
+        /// <param name="tremor">靠近时每次脚步的摄像机震动强度；零表示没有。</param>
         public void Configure(
             string cueId, float strideLength, Material dustMaterial = null, float dustSize = 0.35f, float tremor = 0f)
         {
@@ -89,8 +87,7 @@ namespace AdaptiveBossArena.Combat.Feel
         {
             _lastPosition = transform.position;
 
-            // Primed so the first footstep lands almost as soon as the character starts moving,
-            // rather than after a full silent stride.
+            // 预先准备，让首个脚步几乎在角色开始移动时就落下，而不是先无声移动完整一步。
             _accumulated = _strideLength * 0.6f;
         }
 
@@ -108,8 +105,7 @@ namespace AdaptiveBossArena.Combat.Feel
 
             float moved = travel.magnitude;
 
-            // A jump larger than a stride is a teleport (a retry respawn), not a step — skip it so the
-            // reset does not fire a footstep at the spawn point.
+            // 大于一个步幅的跳变是传送（重试重生），不是脚步——跳过它，避免重置在出生点触发脚步声。
             if (moved <= 0f || moved > _strideLength)
             {
                 return;
@@ -123,8 +119,8 @@ namespace AdaptiveBossArena.Combat.Feel
                 _audio?.PlayCue(_cueId, position);
                 Tremble(position);
 
-                // Speed measured against four strides a second, roughly a run: enough to tell a walk from a
-                // sprint without this component being told anything about the character it is on.
+                // 速度以每秒四步作为基准，约等于奔跑：足以区分行走和冲刺，
+                // 而不需要组件知道所属角色的任何信息。
                 float seconds = Time.deltaTime;
                 float speed01 = seconds > Mathf.Epsilon
                     ? Mathf.Clamp01(moved / seconds / (_strideLength * 4f))
@@ -135,12 +131,11 @@ namespace AdaptiveBossArena.Combat.Feel
         }
 
         /// <summary>
-        /// Shakes the camera a little under a heavy footfall nearby.
+        /// 附近的重脚步会轻微震动摄像机。
         /// </summary>
         /// <remarks>
-        /// The brute's weight should be felt as well as seen: a step close by jolts the view, fading to nothing
-        /// with distance, so its slow approach carries a physical threat. Judged from the camera, which sits by
-        /// the player, so this needs no knowledge of the player at all.
+        /// 巨兽的重量应当可感受，也可见：近处一步震动画面，随距离减弱到零，让缓慢接近带有物理威胁。
+        /// 以位于玩家附近的摄像机作为判断依据，因此完全无需了解玩家。
         /// </remarks>
         private void Tremble(Vector3 position)
         {
@@ -169,7 +164,7 @@ namespace AdaptiveBossArena.Combat.Feel
             }
         }
 
-        /// <summary>Lifts dust where the foot came down, drifting back along the travel.</summary>
+        /// <summary>在脚落地的位置扬尘，沿移动反方向飘散。</summary>
         private void LiftDust(Vector3 position, Vector3 travel, float speed01)
         {
             int count = PuffCount(speed01);
@@ -204,11 +199,10 @@ namespace AdaptiveBossArena.Combat.Feel
         }
 
         /// <summary>
-        /// Builds the one particle system every footfall emits from.
+        /// 构建每次脚步共用的唯一粒子系统。
         /// </summary>
         /// <remarks>
-        /// Manual emission into a permanently playing system, as the impact bursts do: restarting a system per
-        /// step costs more and drops the dust still hanging from the step before.
+        /// 和命中爆发一样，向始终播放的系统手动发射：每步重启系统成本更高，还会丢弃上一步仍悬浮的灰尘。
         /// </remarks>
         private void BuildDust()
         {
@@ -227,7 +221,7 @@ namespace AdaptiveBossArena.Combat.Feel
             main.startSize = _dustSize;
             main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.38f, 0.35f, 0.3f, 0.24f));
 
-            // Slightly buoyant: kicked grit hangs before it settles.
+            // 略有浮力：踢起的砂砾先悬浮再落下。
             main.gravityModifier = -0.02f;
 
             ParticleSystem.EmissionModule emission = _dust.emission;

@@ -6,18 +6,16 @@ using UnityEngine.Rendering.Universal;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Creates and populates the post-processing volume profile.
+    /// 创建并填充后处理 Volume Profile。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// With the arena built from untextured primitives, post-processing is doing most of the work
-    /// that art would normally do. Bloom gives the attack overlays and the boss's weak point a sense
-    /// of emission rather than flatness; vignette focuses attention toward the centre where the duel
-    /// happens; a slight tonemap and colour grade stop everything reading as raw untextured grey.
+    /// 竞技场由未贴纹理的基础模型组成，后处理承担多数通常由美术承担的工作。
+    /// Bloom 让攻击覆盖图和首领弱点有发光感，暗角将注意力集中到决斗中心，
+    /// 轻微色调映射和调色避免全场像原始无纹理灰模。
     /// </para>
     /// <para>
-    /// The values are deliberately restrained. Heavy post-processing on abstract shapes reads as a
-    /// screensaver; the goal is for the arena to look considered rather than processed.
+    /// 数值刻意克制。抽象形状加重后处理像屏保；目标是让竞技场看起来经过设计，而非过度加工。
     /// </para>
     /// </remarks>
     public static class PostProcessingConfigurator
@@ -25,18 +23,16 @@ namespace AdaptiveBossArena.Editor
         private const string ProfilePath = "Assets/_Project/Settings/ArenaVolumeProfile.asset";
 
         /// <summary>
-        /// The browser's profile: the same grade, without the effects that cost a full-screen pass each.
+        /// 浏览器配置：保留同一调色，但去掉各需一次全屏处理的效果。
         /// </summary>
         /// <remarks>
-        /// Once post-processing actually rendered, the browser build on a laptop's integrated graphics stuttered.
-        /// Film grain and chromatic aberration each add a full-resolution pass for a look the eye barely separates
-        /// from the grade itself, and bloom at half resolution with high-quality filtering is the most expensive
-        /// bloom there is. The grade - exposure, contrast, split tone, white balance, tonemapping - all folds into
-        /// one lookup table, so it costs the same either way and is kept.
+        /// 后处理实际渲染后，集显笔记本的浏览器版本开始卡顿。胶片颗粒和色差各增加一次全分辨率处理，
+        /// 视觉收益却难与调色区分；半分辨率加高质量滤波是最昂贵 Bloom。曝光、对比度、分离色调、
+        /// 白平衡和色调映射都合并到一张查找表，成本不变，因此保留。
         /// </remarks>
         public const string WebProfilePath = "Assets/_Project/Settings/ArenaVolumeProfile_Web.asset";
 
-        /// <summary>Creates both profiles if absent and fills in the effect overrides.</summary>
+        /// <summary>创建尚不存在的两个配置，并填充效果覆盖项。</summary>
         [MenuItem(EditorMenus.Setup + "Configure Post Processing",
             priority = EditorMenus.SetupPriorityConfigureProject + 2)]
         public static void ConfigurePostProcessing()
@@ -69,13 +65,13 @@ namespace AdaptiveBossArena.Editor
             Debug.Log("[Adaptive Boss Arena] Post-processing profiles written: desktop and web.");
         }
 
-        /// <summary>Loads the generated profile, for the scene builder.</summary>
-        /// <returns>The profile, or null when it has not been generated yet.</returns>
+        /// <summary>为场景构建器加载生成配置。</summary>
+        /// <returns>配置；尚未生成时返回 null。</returns>
         public static VolumeProfile LoadProfile() =>
             GeneratedAssets.ForceImportAndLoad<VolumeProfile>(ProfilePath);
 
-        /// <summary>Loads the browser's profile, for the scene builder.</summary>
-        /// <returns>The profile, or null when it has not been generated yet.</returns>
+        /// <summary>为场景构建器加载浏览器配置。</summary>
+        /// <returns>配置；尚未生成时返回 null。</returns>
         public static VolumeProfile LoadWebProfile() =>
             GeneratedAssets.ForceImportAndLoad<VolumeProfile>(WebProfilePath);
 
@@ -89,18 +85,17 @@ namespace AdaptiveBossArena.Editor
                 AssetDatabase.CreateAsset(profile, path);
             }
 
-            // Entries left null by earlier runs, which added effects without saving them; see GetOrAdd.
+            // 此前添加效果却未保存，导致条目为 null；参见 GetOrAdd。
             profile.components.RemoveAll(component => component == null);
 
             return profile;
         }
 
         /// <summary>
-        /// Makes the browser's bloom the cheap kind: quarter resolution, simple filtering, fewer passes.
+        /// 将浏览器 Bloom 设为低成本：四分之一分辨率、简单滤波、更少通道。
         /// </summary>
         /// <remarks>
-        /// Film grain and chromatic aberration are simply never added to this profile. They are not removed
-        /// here, because a component removed from a profile's list leaves its saved sub-asset behind.
+        /// 此配置从不添加胶片颗粒和色差。这里不移除它们，因为从列表移除组件仍会留下已保存子资产。
         /// </remarks>
         private static void MakeCheapForTheBrowser(VolumeProfile profile)
         {
@@ -113,12 +108,11 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Makes bright surfaces glow.
+        /// 让明亮表面泛光。
         /// </summary>
         /// <remarks>
-        /// The single highest-value effect here. Attack overlays, the boss's weak point and the
-        /// deflect flash all rely on reading as emissive, and without bloom they are simply flat
-        /// coloured shapes.
+        /// 此处价值最高的单项效果。攻击覆盖图、首领弱点和弹反闪光依赖发光观感，
+        /// 没有 Bloom 就只是平面纯色。
         /// </remarks>
         private static void ConfigureBloom(VolumeProfile profile)
         {
@@ -130,7 +124,7 @@ namespace AdaptiveBossArena.Editor
             bloom.tint.Override(new Color(1f, 0.96f, 0.92f));
         }
 
-        /// <summary>Darkens the edges, pulling the eye toward the duel.</summary>
+        /// <summary>压暗边缘，将视线拉向决斗。</summary>
         private static void ConfigureVignette(VolumeProfile profile)
         {
             Vignette vignette = GetOrAdd<Vignette>(profile);
@@ -140,11 +134,10 @@ namespace AdaptiveBossArena.Editor
             vignette.color.Override(new Color(0.02f, 0.01f, 0.04f));
         }
 
-        /// <summary>Drains colour and deepens contrast toward a grim, overcast palette.</summary>
+        /// <summary>降低饱和度并增强对比，形成阴沉多云配色。</summary>
         /// <remarks>
-        /// With textured characters and stone the image no longer needs lifting; it needs weight. At nearly
-        /// full saturation the green hide, bright bars and orange light read as a cartoon. Exposure comes down
-        /// only a little, because a darker grade than this lost the fighters against the floor.
+        /// 角色和石材有纹理后，图像不再需要提亮，而需要重量感。近乎全饱和的绿皮、亮资源条和橙光像卡通。
+        /// 仅略降曝光，因为再暗会让角色与地板混在一起。
         /// </remarks>
         private static void ConfigureColorAdjustments(VolumeProfile profile)
         {
@@ -156,7 +149,7 @@ namespace AdaptiveBossArena.Editor
             color.colorFilter.Override(new Color(0.94f, 0.96f, 1f));
         }
 
-        /// <summary>Applies a filmic curve so bright areas roll off rather than clipping.</summary>
+        /// <summary>应用电影曲线，让亮部逐渐过渡而非直接裁切。</summary>
         private static void ConfigureTonemapping(VolumeProfile profile)
         {
             Tonemapping tonemapping = GetOrAdd<Tonemapping>(profile);
@@ -164,11 +157,10 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// A trace of lens fringing at the edges.
+        /// 边缘轻微镜头色散。
         /// </summary>
         /// <remarks>
-        /// Kept very low. This is the effect most often overdone, and past a few percent it reads as
-        /// a fault in the display rather than as character.
+        /// 保持很低。这是最常被过度使用的效果，超过几个百分点会像显示器故障而非风格。
         /// </remarks>
         private static void ConfigureChromaticAberration(VolumeProfile profile)
         {
@@ -177,13 +169,11 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// A fine layer of grain over everything.
+        /// 在全画面叠加细颗粒。
         /// </summary>
         /// <remarks>
-        /// Cheap, and unusually valuable in this project specifically. Untextured generated surfaces
-        /// produce perfectly smooth gradients, which is one of the strongest signals that what you
-        /// are looking at was not photographed or painted. Grain breaks those gradients up and reads
-        /// as film rather than as noise, provided it stays quiet enough not to be noticed directly.
+        /// 成本低，且对本项目特别有价值。无纹理生成表面形成完美平滑渐变，强烈暗示并非摄影或绘画。
+        /// 颗粒打破渐变，足够轻微、不被直接察觉时会像胶片而非噪声。
         /// </remarks>
         private static void ConfigureFilmGrain(VolumeProfile profile)
         {
@@ -192,35 +182,33 @@ namespace AdaptiveBossArena.Editor
             grain.type.Override(FilmGrainLookup.Medium1);
             grain.intensity.Override(0.28f);
 
-            // Lets the grain fade out of bright areas, which is how it behaves on real stock.
+            // 让亮部颗粒淡出，符合真实胶片表现。
             grain.response.Override(0.8f);
         }
 
         /// <summary>
-        /// Cools the shadows and warms the highlights.
+        /// 冷却阴影，暖化高光。
         /// </summary>
         /// <remarks>
-        /// The difference between a graded image and one that has had a contrast slider pushed.
-        /// Cool shadows against warm light is the oldest trick there is for making a dark scene feel
-        /// deliberate, and it suits an arena lit by one cold key and four fires.
+        /// 这是完整调色与仅提高对比滑杆的区别。冷影对暖光是使暗景有意图感的经典方法，
+        /// 适合一盏冷主光和四处火光照亮的竞技场。
         /// </remarks>
         private static void ConfigureSplitToning(VolumeProfile profile)
         {
             ShadowsMidtonesHighlights grading = GetOrAdd<ShadowsMidtonesHighlights>(profile);
 
-            // The fourth channel of each is the overall weight of that band, not alpha.
+            // 各颜色第四通道是该区间总权重，不是 Alpha。
             grading.shadows.Override(new Vector4(0.9f, 0.95f, 1.05f, 0f));
             grading.midtones.Override(new Vector4(1f, 0.98f, 0.95f, 0f));
             grading.highlights.Override(new Vector4(1.06f, 1f, 0.9f, 0f));
         }
 
         /// <summary>
-        /// Shifts the whole image cold.
+        /// 整体图像偏冷。
         /// </summary>
         /// <remarks>
-        /// A genuine chromatic adaptation rather than the colour filter previously used to fake one.
-        /// A filter multiplies every channel and dims as it tints; white balance shifts what counts
-        /// as white and keeps the exposure.
+        /// 使用真正色适应，而非此前用颜色滤镜模拟。滤镜逐通道相乘，着色时也压暗；
+        /// 白平衡改变何为白色并保留曝光。
         /// </remarks>
         private static void ConfigureWhiteBalance(VolumeProfile profile)
         {
@@ -230,12 +218,11 @@ namespace AdaptiveBossArena.Editor
             balance.tint.Override(2f);
         }
 
-        /// <summary>Returns an override from the profile, adding it when absent.</summary>
+        /// <summary>返回配置中的覆盖项，缺失时添加。</summary>
         /// <remarks>
-        /// <see cref="VolumeProfile.Add{T}"/> only creates the effect in memory. Unless it is also saved into
-        /// the profile's asset, the profile reloads with a null in its place - which is how every build shipped
-        /// with no bloom, tonemapping, vignette or grade at all, while the editor session that ran setup
-        /// looked right.
+        /// <see cref="VolumeProfile.Add{T}"/> 只在内存创建效果。未保存为配置子资产时，
+        /// 重新加载会变成 null，曾让所有构建没有 Bloom、色调映射、暗角和调色，
+        /// 而执行设置的编辑器会话看起来正确。
         /// </remarks>
         private static TComponent GetOrAdd<TComponent>(VolumeProfile profile)
             where TComponent : VolumeComponent

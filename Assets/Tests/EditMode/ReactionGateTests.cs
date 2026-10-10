@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the rules that stop knockdowns and launches being chained into a character who never recovers.
+    /// 测试防止击倒和挑飞连成永远无法恢复控制的规则。
     /// </summary>
     [TestFixture]
     public sealed class ReactionGateTests
@@ -94,9 +94,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ASustainedBarrageCannotHoldTheCharacterDownPastTheCap()
         {
-            // A launch or knockdown every tenth of a second for thirty seconds, against a character
-            // whose states take the configured times. Every stretch without control must stay inside
-            // the cap, however the hits fall.
+            // 三十秒内每十分之一秒施加一次挑飞或击倒，角色各状态按配置时长运行。无论如何受击，
+            // 每段无法控制的时间都必须保持在上限内。
             const float Air = 1.2f, Down = 0.9f, GetUp = 0.6f, Step = 0.1f;
             float cap = ReactionGate.WorstCaseSecondsWithoutControl(Air, Down, GetUp);
 

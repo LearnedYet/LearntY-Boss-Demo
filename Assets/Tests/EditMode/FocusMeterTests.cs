@@ -4,12 +4,11 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the meter that rewards good defence with a stronger special.
+    /// 测试以强化特殊攻击奖励良好防御的专注条。
     /// </summary>
     /// <remarks>
-    /// The contract that matters: focus is earned, never granted; it only empowers a special when
-    /// genuinely full; and a stagger takes all of it. Those three rules are what make it a risk worth
-    /// managing rather than a bar that fills on its own.
+    /// 重要契约：专注靠赢得而非赠送，真正满条才强化，硬直会清空。三条规则使它值得风险管理，
+    /// 而非自动增长的条。
     /// </remarks>
     [TestFixture]
     public sealed class FocusMeterTests
@@ -56,7 +55,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             Assert.IsFalse(meter.TryConsumeFull(), "A partial meter must not empower.");
 
             meter.AddFromDeflect();
-            meter.AddFromDeflect(); // now full
+            meter.AddFromDeflect(); // 现在已满
 
             Assert.IsTrue(meter.TryConsumeFull(), "A full meter should empower and empty.");
             Assert.AreEqual(0f, meter.Current);

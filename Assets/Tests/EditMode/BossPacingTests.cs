@@ -5,11 +5,10 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests how the boss moves between attacks.
+    /// 测试首领在攻击之间的移动。
     /// </summary>
     /// <remarks>
-    /// The player asked for "slow and heavy walks", and got a boss that circled at a run and flickered between
-    /// closing and backing off at a hard boundary.
+    /// 玩家要求缓慢沉重的行走，结果首领却跑步绕圈，在接近和后退硬边界间闪烁。
     /// </remarks>
     [TestFixture]
     public sealed class BossPacingTests
@@ -35,7 +34,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         {
             float previous = float.PositiveInfinity;
 
-            // Walking the distance in from far to close, the pull toward the player must fall steadily - no edge.
+            // 从远到近行走时，朝玩家移动的驱动力必须持续平缓下降，没有突变边缘。
             for (float distance = 6f; distance >= 0f; distance -= 0.25f)
             {
                 Vector3 move = BossPacing.Stalk(Vector3.forward, distance, preferredRange: 3f, stalkFraction: 1f);

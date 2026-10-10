@@ -4,30 +4,27 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Environment
 {
     /// <summary>
-    /// Box meshes whose texture repeats by world size rather than stretching to fit.
+    /// 纹理按世界尺寸重复、而非拉伸填满的盒形网格。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Unity's cube maps a whole texture onto every face, so a 14-metre column and a half-metre chunk of
-    /// rubble show the same bricks at wildly different sizes, and a long wall shows each brick stretched
-    /// into a plank. A shared material cannot fix that, because tiling on a material applies to every
-    /// object using it. Scaling the UVs by each face's real size can, and lets the whole cathedral share
-    /// three materials.
+    /// Unity 立方体在每面映射整张纹理，导致 14 米柱子和半米碎石显示相同砖块却尺寸悬殊，
+    /// 长墙上的砖像木板。共享材质无法修复，因为材质平铺影响所有使用者。按各面真实尺寸缩放 UV 可以解决，
+    /// 也让整个教堂共用三种材质。
     /// </para>
     /// <para>
-    /// Saved as assets, one per distinct size, so scenes reference them rather than embedding copies,
-    /// and regenerating the scene does not multiply them.
+    /// 每种不同尺寸保存一个资产，让场景引用而非嵌入副本，重新生成场景不会增加网格数量。
     /// </para>
     /// </remarks>
     public static class TiledMeshes
     {
-        /// <summary>Folder the generated meshes are saved in.</summary>
+        /// <summary>生成网格的保存文件夹。</summary>
         public const string MeshFolder = "Assets/_Project/Meshes";
 
-        /// <summary>Loads or creates a centred box of the given size.</summary>
-        /// <param name="size">Width, height and depth in metres.</param>
-        /// <param name="metresPerTile">How many metres one repeat of the texture covers.</param>
-        /// <returns>The mesh asset.</returns>
+        /// <summary>加载或创建指定尺寸、居中放置的盒体。</summary>
+        /// <param name="size">宽、高、深，单位为米。</param>
+        /// <param name="metresPerTile">一次纹理重复覆盖的米数。</param>
+        /// <returns>网格资产。</returns>
         public static Mesh Box(Vector3 size, float metresPerTile)
         {
             string name = string.Format(
@@ -52,19 +49,18 @@ namespace AdaptiveBossArena.Editor.Environment
         }
 
         /// <summary>
-        /// Loads or creates the wall above a pointed window: a slab whose underside is a Gothic arch.
+        /// 加载或创建尖窗上方的墙：底面为哥特式尖拱的墙板。
         /// </summary>
         /// <remarks>
-        /// Laid out like <see cref="Box"/> with size (thickness, height, span), centred, so it drops into the
-        /// place of the flat-bottomed block it replaces. Rectangular window heads read as a warehouse; the
-        /// pointed arch is most of what says cathedral from the fighting floor.
+        /// 布局类似 <see cref="Box"/> ，尺寸为（厚度、高度、跨度）且居中，可替换原平底块的位置。
+        /// 矩形窗顶像仓库，尖拱是在战斗地板视角下辨识大教堂的关键。
         /// </remarks>
-        /// <param name="thickness">Wall thickness in metres, along x.</param>
-        /// <param name="height">Slab height from the arch's springing to its top, along y.</param>
-        /// <param name="span">Window width in metres, along z.</param>
-        /// <param name="rise">Height of the arch's point above its springing; at least half the span.</param>
-        /// <param name="metresPerTile">How many metres one repeat of the texture covers.</param>
-        /// <returns>The mesh asset.</returns>
+        /// <param name="thickness">沿 x 的墙厚，单位为米。</param>
+        /// <param name="height">沿 y 从起拱线到顶面的墙板高度。</param>
+        /// <param name="span">沿 z 的窗宽，单位为米。</param>
+        /// <param name="rise">拱尖高于起拱线的高度，至少为跨度的一半。</param>
+        /// <param name="metresPerTile">一次纹理重复覆盖的米数。</param>
+        /// <returns>网格资产。</returns>
         public static Mesh PointedArchHead(float thickness, float height, float span, float rise, float metresPerTile)
         {
             string name = string.Format(
@@ -88,15 +84,14 @@ namespace AdaptiveBossArena.Editor.Environment
             return mesh;
         }
 
-        /// <summary>Height of a pointed arch's underside above its springing, at a point across its span.</summary>
+        /// <summary>指定横向位置处，尖拱底面高于起拱线的高度。</summary>
         /// <remarks>
-        /// Two circular arcs of equal radius, each centred on the far side of the middle, meeting in a point.
-        /// The radius is the one that brings the point to the requested rise.
+        /// 两个等半径圆弧，各自圆心位于中点另一侧，在尖端相交。半径按要求的拱高确定。
         /// </remarks>
-        /// <param name="z">Position across the span, from minus half the span to plus half.</param>
-        /// <param name="span">Window width.</param>
-        /// <param name="rise">Height of the point.</param>
-        /// <returns>The underside's height.</returns>
+        /// <param name="z">横跨跨度的位置，从负半跨度到正半跨度。</param>
+        /// <param name="span">窗宽。</param>
+        /// <param name="rise">拱尖高度。</param>
+        /// <returns>底面高度。</returns>
         public static float PointedArchHeight(float z, float span, float rise)
         {
             float half = span * 0.5f;
@@ -107,13 +102,13 @@ namespace AdaptiveBossArena.Editor.Environment
             return Mathf.Sqrt(Mathf.Max(0f, radius * radius - fromCentre * fromCentre));
         }
 
-        /// <summary>Builds the arch head without saving it; see <see cref="PointedArchHead"/>.</summary>
-        /// <param name="thickness">Wall thickness in metres, along x.</param>
-        /// <param name="height">Slab height from the arch's springing to its top, along y.</param>
-        /// <param name="span">Window width in metres, along z.</param>
-        /// <param name="rise">Height of the arch's point above its springing.</param>
-        /// <param name="metresPerTile">How many metres one repeat of the texture covers.</param>
-        /// <returns>A new mesh the caller owns.</returns>
+        /// <summary>构建拱顶但不保存，参见 <see cref="PointedArchHead"/>.</summary>
+        /// <param name="thickness">沿 x 的墙厚，单位为米。</param>
+        /// <param name="height">沿 y 从起拱线到顶面的墙板高度。</param>
+        /// <param name="span">沿 z 的窗宽，单位为米。</param>
+        /// <param name="rise">拱尖高于起拱线的高度。</param>
+        /// <param name="metresPerTile">一次纹理重复覆盖的米数。</param>
+        /// <returns>由调用者拥有的新网格。</returns>
         public static Mesh BuildPointedArchHead(float thickness, float height, float span, float rise, float metresPerTile)
         {
             rise = Mathf.Clamp(rise, span * 0.5f, height * 0.95f);
@@ -132,7 +127,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 return new Vector3(x, bottom + PointedArchHeight(z, span, rise), z);
             }
 
-            // The two faces of the wall: each slice is a quad from the arch up to the top.
+            // 墙的两个面：每段是从拱线延伸到顶面的四边形。
             foreach (float x in new[] { halfT, -halfT })
             {
                 var outward = new Vector3(Mathf.Sign(x), 0f, 0f);
@@ -145,7 +140,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 }
             }
 
-            // The arch's underside, facing down into the opening and in toward its middle.
+            // 拱底面，朝下进入开口并朝向开口中心。
             float along = 0f;
 
             for (int i = 0; i < Slices; i++)
@@ -163,7 +158,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 along += length;
             }
 
-            // The top, in case a high camera ever looks down on it.
+            // 顶面，以备高位摄像机俯视。
             AddQuad(new Vector3(halfT, top, -span * 0.5f), new Vector3(halfT, top, span * 0.5f),
                 new Vector3(-halfT, top, span * 0.5f), new Vector3(-halfT, top, -span * 0.5f), Vector3.up,
                 p => new Vector2(p.z / tile, p.x / tile), vertices, uvs, triangles);
@@ -179,7 +174,7 @@ namespace AdaptiveBossArena.Editor.Environment
             return mesh;
         }
 
-        /// <summary>Adds a quad with its own vertices, wound so its front faces the given direction.</summary>
+        /// <summary>添加独立顶点四边形，绕序使正面朝指定方向。</summary>
         private static void AddQuad(
             Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 facing, System.Func<Vector3, Vector2> uv,
             System.Collections.Generic.List<Vector3> vertices, System.Collections.Generic.List<Vector2> uvs,
@@ -189,7 +184,7 @@ namespace AdaptiveBossArena.Editor.Environment
             vertices.Add(a); vertices.Add(b); vertices.Add(c); vertices.Add(d);
             uvs.Add(uv(a)); uvs.Add(uv(b)); uvs.Add(uv(c)); uvs.Add(uv(d));
 
-            // Unity's front face is clockwise seen from outside, where Cross(b - a, c - a) points outward.
+            // Unity 正面从外部看为顺时针，此时 Cross(b - a, c - a) 指向外侧。
             bool outward = Vector3.Dot(Vector3.Cross(b - a, c - a), facing) > 0f;
 
             if (outward)
@@ -210,8 +205,7 @@ namespace AdaptiveBossArena.Editor.Environment
             var uvs = new Vector2[24];
             var triangles = new int[36];
 
-            // Each face: its normal, then the axis the texture's u runs along (normal x v, so the face is
-            // wound to be seen from outside), then v.
+            // 各面依次为：法线、纹理 u 方向轴（normal x v，使绕序从外侧可见），再是 v。
             AddFace(0, Vector3.right, Vector3.forward, Vector3.up, half, size.z, size.y, tile, vertices, normals, uvs, triangles);
             AddFace(1, Vector3.left, Vector3.back, Vector3.up, half, size.z, size.y, tile, vertices, normals, uvs, triangles);
             AddFace(2, Vector3.up, Vector3.right, Vector3.forward, half, size.x, size.z, tile, vertices, normals, uvs, triangles);
@@ -260,7 +254,7 @@ namespace AdaptiveBossArena.Editor.Environment
                 normals[v + i] = normal;
             }
 
-            // Clockwise as seen from outside, which is Unity's front face.
+            // 从外侧看为顺时针，即 Unity 正面。
             int t = face * 6;
             triangles[t] = v;
             triangles[t + 1] = v + 2;

@@ -25,5 +25,5 @@ MonoBehaviour:
   - _parameter: 4
     _targetValue: 0.7
   _easeInSeconds: 6
-  _tellMessage: It knows which way you will roll.
+  _tellMessage: 它已经看穿了你的翻滚方向。
   _tellAudioCueId: 

@@ -3,34 +3,32 @@ using AdaptiveBossArena.Core.Combat;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// How long each class of stagger takes control away for.
+    /// 各类硬直剥夺控制权的时长。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Shared by the player and the boss so that a poise break costs both of them a comparable
-    /// window. Combat legibility depends on the player being able to learn one rule about what a
-    /// stagger means rather than two.
+    /// 玩家与首领共用，使姿态崩溃对双方造成相近的窗口。玩家只需学习一套硬直规则而非两套，
+    /// 战斗才能保持可读。
     /// </para>
     /// <para>
-    /// These are durations of lost control, so they are short by design. A stagger long enough to
-    /// permit a full combo turns a single mistake into a whole health bar, which is the failure mode
-    /// that makes an action game feel unfair rather than demanding.
+    /// 这些是失去控制的时间，因此刻意保持短暂。足够接完整连段的硬直会让一次失误损失整条生命，
+    /// 使动作游戏显得不公，而非要求高。
     /// </para>
     /// </remarks>
     public static class StaggerDurations
     {
-        /// <summary>A flinch does not interrupt; it only registers visually.</summary>
+        /// <summary>轻微受击不打断动作，只在视觉上表现。</summary>
         public const float FlinchSeconds = 0.12f;
 
-        /// <summary>An interrupt cancels the current action and costs a beat.</summary>
+        /// <summary>打断会取消当前动作，并损失一个节拍。</summary>
         public const float InterruptSeconds = 0.35f;
 
-        /// <summary>A poise break opens a real punish window.</summary>
+        /// <summary>姿态崩溃开启真实惩罚窗口。</summary>
         public const float BreakSeconds = 0.9f;
 
-        /// <summary>Resolves the control loss for a stagger class.</summary>
-        /// <param name="strength">The stagger class.</param>
-        /// <returns>Duration in seconds, zero when the hit does not interrupt.</returns>
+        /// <summary>确定某类硬直的失控时间。</summary>
+        /// <param name="strength">硬直类别。</param>
+        /// <returns>时长，单位为秒；命中不打断时为零。</returns>
         public static float For(StaggerStrength strength)
         {
             switch (strength)

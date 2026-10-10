@@ -12,13 +12,12 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Asserts the rigged characters are wired through, in the shipped scene.
+    /// 断言发布场景中的骨架角色完整连接。
     /// </summary>
     /// <remarks>
-    /// Every link from imported model to moving limbs fails silently: an Animator with no controller
-    /// stands in a T-pose, a crossfade to a missing state freezes the last pose, a socket on the wrong
-    /// transform leaves the blade floating while the arm swings. None of it throws. These walk the chain
-    /// in the real scene.
+    /// 从导入模型到运动肢体的每个环节都可能无声失败：Animator 没有控制器会保持 T 字姿势，
+    /// 交叉淡入不存在的状态会冻结上一姿势，挂点放错Transform 会让手臂挥动时刀刃悬空。这些都不抛异常。
+    /// 此处在真实场景中遍历链路。
     /// </remarks>
     [TestFixture]
     public sealed class RiggedCharacterTests

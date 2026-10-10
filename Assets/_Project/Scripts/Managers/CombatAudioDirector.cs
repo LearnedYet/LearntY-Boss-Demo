@@ -6,18 +6,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Turns witnessed combat occurrences into sound.
+    /// 将观察到的战斗事件转换为声音。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Every mapping from "what happened" to "what you hear" lives here, rather than being scattered
-    /// through the combat code. Combat systems publish what occurred and remain entirely unaware
-    /// that audio exists, which is the same separation the heads-up display already uses.
+    /// 所有从“发生了什么”到“听到什么”的映射都集中在这里，不散落于战斗代码。战斗系统发布事件，
+    /// 完全无需知道音频存在，与抬头显示采用相同的分离方式。
     /// </para>
     /// <para>
-    /// It listens to the combat event bus, which already carries exactly the right events at exactly
-    /// the right moments — the bus was built for the learning system, and it turns out that the
-    /// occurrences worth learning from are precisely the ones worth hearing.
+    /// 监听战斗事件总线，它已在准确时刻携带准确事件；总线原为学习系统构建，
+    /// 但值得学习的事件恰好也是值得听见的事件。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -43,11 +41,10 @@ namespace AdaptiveBossArena.Game
         [Tooltip("Carries the drawn weapon's swing cue, so each weapon sounds like itself.")]
         private StringEventChannel _weaponSwingCueChannel;
 
-        /// <summary>The cue the player's current weapon swings with.</summary>
+        /// <summary>玩家当前武器挥动时使用的音效标识。</summary>
         /// <remarks>
-        /// Latched rather than looked up, because the combat event that announces a swing carries no
-        /// weapon: the event struct is deliberately blittable so a fight's worth of them can sit in a
-        /// ring buffer without allocating, and a reference would defeat that.
+        /// 采用缓存而非查询，因为报告挥击的战斗事件不携带武器：事件结构体刻意保持可直接复制，
+        /// 使整场战斗事件能够存放在环形缓冲而不分配内存；引用会破坏这一点。
         /// </remarks>
         private string _playerSwingCue = AudioService.Cues.Whoosh;
 
@@ -58,7 +55,7 @@ namespace AdaptiveBossArena.Game
         private IAudioService _audio;
         private ICombatEventBus _events;
 
-        /// <summary>Latches so the focus-full chime plays once per fill, not every frame it is full.</summary>
+        /// <summary>锁存标记，使专注充满提示每次充满仅播放一次，而非逐帧播放。</summary>
         private bool _focusWasFull;
 
         private void Start()
@@ -102,7 +99,7 @@ namespace AdaptiveBossArena.Game
 
             _audio?.PlayMusic("music.bed");
 
-            // The nave's own air under everything, so silence between blows is a stone hall rather than nothing.
+            // 中殿的环境声贯穿全程，使攻击间的安静仍像石厅，而非完全无声。
             _audio?.PlayAmbience(AudioService.Cues.Ambience);
         }
 
@@ -144,10 +141,10 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Sounds the unsteady stagger the instant the boss overbalances, marking the opening.</summary>
+        /// <summary>首领失衡瞬间播放踉跄声，标记破绽。</summary>
         private void OnOverbalance() => _audio?.PlayCue2D(AudioService.Cues.Overbalance);
 
-        /// <summary>Chimes once the instant focus fills, so the player hears the empowered special arm.</summary>
+        /// <summary>专注充满瞬间鸣响一次，让玩家听见强化特殊技已就绪。</summary>
         private void OnFocusChanged(float normalized)
         {
             bool full = normalized >= 0.999f;
@@ -160,7 +157,7 @@ namespace AdaptiveBossArena.Game
             _focusWasFull = full;
         }
 
-        /// <summary>Maps a witnessed occurrence onto a cue.</summary>
+        /// <summary>将观察事件映射到音效提示。</summary>
         private void OnCombatEvent(CombatEvent combatEvent)
         {
             if (_audio == null)
@@ -171,9 +168,8 @@ namespace AdaptiveBossArena.Game
             switch (combatEvent.Kind)
             {
                 case CombatEventKind.AttackStarted:
-                    // A perilous, unblockable wind-up sounds its warning sting the moment it begins, the audible
-                    // half of "do not block this". Any other wind-up from the brute is a grunt as it heaves into the
-                    // swing - a tell the ear catches even when the eye is elsewhere. The knight winds up quietly.
+                    // 危险、不可格挡攻击前摇开始时立即播放警示音，作为“不要格挡”的声音提示。
+                    // 巨兽其他前摇发出用力挥击的低吼，即使视线转向别处也能听见。骑士前摇则保持安静。
                     if (combatEvent.Unblockable)
                     {
                         _audio.PlayCue(AudioService.Cues.Peril, combatEvent.Position);
@@ -186,8 +182,7 @@ namespace AdaptiveBossArena.Game
                     break;
 
                 case CombatEventKind.AttackActive:
-                    // The swing is heard as the blade moves, not a second early at the wind-up: the player
-                    // reported the sounds as not matching what they saw.
+                    // 刀刃移动时才听见挥击，而非在前摇阶段提前一秒播放；玩家曾反馈声音与所见不匹配。
                     _audio.PlayCue(SwingCueFor(combatEvent), combatEvent.Position);
                     break;
 
@@ -200,16 +195,13 @@ namespace AdaptiveBossArena.Game
                     break;
 
                 case CombatEventKind.Parried when combatEvent.Actor != CombatantTeam.Player:
-                    // The boss parrying. The player's own deflect already rings through the deflect
-                    // channel, flat, because it happens at the player's own ear; this one happened
-                    // somewhere else, so it is placed - and filtered, or a player deflect would
-                    // clang twice.
+                    // 首领招架。玩家自己的弹反已通过弹反通道播放平面声音，因为发生在玩家耳边；
+                    // 这次发生在其他位置，所以使用空间音效并加以过滤，否则玩家弹反会发出两次金属声。
                     _audio.PlayCue(AudioService.Cues.Deflect, combatEvent.Position);
                     break;
 
                 case CombatEventKind.PlayerParried:
-                    // Brighter and harder than the deflect ring that fires with it, so the two are
-                    // never mistaken for each other in the middle of an exchange.
+                    // 比同时触发的弹反鸣响更亮、更重，使两者在交锋中不会被误认。
                     _audio.PlayCue2D(AudioService.Cues.Parry);
                     break;
 
@@ -234,19 +226,18 @@ namespace AdaptiveBossArena.Game
                     break;
 
                 case CombatEventKind.Riposte:
-                    // The execution's own emphatic beat, on top of the impact it lands.
+                    // 处决本身的重音，叠加在实际命中声之上。
                     _audio.PlayCue2D(AudioService.Cues.Execution);
                     break;
 
-                // The four occurrences below were published from the start and heard by nobody.
+                // 下面四类事件从一开始就发布，却没有任何声音响应。
                 case CombatEventKind.AttackWhiffed:
-                    // Air and no contact. Without it a missed swing was indistinguishable from an
-                    // input the game had ignored.
+                    // 只有破风声而没有接触。若没有它，空挥与被游戏忽略的输入无法区分。
                     _audio.PlayCue(AudioService.Cues.Whiff, combatEvent.Position);
                     break;
 
                 case CombatEventKind.AttackEvaded:
-                    // Slipping a blow is a small victory and deserves to be audible as one.
+                    // 躲开攻击是小小胜利，也值得通过声音体现。
                     _audio.PlayCue(AudioService.Cues.PerfectDodge, combatEvent.Position);
                     break;
 
@@ -255,7 +246,7 @@ namespace AdaptiveBossArena.Game
                     break;
 
                 case CombatEventKind.Defeated:
-                    // The most important moment in the fight, and it used to happen in silence.
+                    // 战斗最重要的时刻，过去却在无声中发生。
                     _audio.PlayCue(
                         combatEvent.Actor == CombatantTeam.Player
                             ? AudioService.Cues.PlayerDeath
@@ -265,20 +256,19 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Chooses the sound a wind-up makes.</summary>
+        /// <summary>选择前摇发出的声音。</summary>
         /// <remarks>
-        /// Peril outranks weapon identity: an unblockable attack has to read as danger before it
-        /// reads as anything else.
+        /// 危险优先于武器身份：不可格挡攻击必须先表现为威胁，再表现其他特征。
         /// </remarks>
         private string SwingCueFor(in CombatEvent combatEvent)
         {
-            // The brute swings a great sword, and should sound like it: a heavy cleave, not a generic whoosh.
+            // 巨兽挥舞巨剑，声音也应如此：沉重劈斩，而非普通呼啸。
             return combatEvent.Actor == CombatantTeam.Player
                 ? _playerSwingCue
                 : AudioService.Cues.SwingGreatsword;
         }
 
-        /// <summary>Remembers which weapon the player is now holding.</summary>
+        /// <summary>记住玩家当前持有的武器。</summary>
         private void OnWeaponSwingCueChanged(string cueId)
         {
             if (!string.IsNullOrEmpty(cueId))
@@ -287,7 +277,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Heavier attacks get a duller, longer impact so weight is audible.</summary>
+        /// <summary>更重的攻击使用更低沉、更长的冲击声，让重量可听见。</summary>
         private static string ImpactCueFor(DamageType damageType)
         {
             switch (damageType)
@@ -307,22 +297,22 @@ namespace AdaptiveBossArena.Game
 
         private void OnPhaseChanged(int phaseIndex)
         {
-            // The music thickens with every phase, including the drop back to the bed on a reset.
+            // 音乐随每个阶段逐渐增厚，重置时也会退回基础层。
             _audio?.SetMusicIntensity(phaseIndex);
 
-            // The opening phase is not an escalation, so it gets no roar.
+            // 开场阶段不算升级，因此不播放咆哮。
             if (phaseIndex > 0)
             {
                 _audio?.PlayCue2D(AudioService.Cues.BossRoar);
             }
         }
 
-        /// <summary>Assigns the channels. Used by the scene generator.</summary>
-        /// <param name="deflect">Clean deflect channel.</param>
-        /// <param name="perfectDodge">Perfect dodge channel.</param>
-        /// <param name="phase">Boss phase channel.</param>
-        /// <param name="focus">Normalised player focus channel.</param>
-        /// <param name="overbalance">Boss overbalance channel.</param>
+        /// <summary>分配事件通道，供场景生成器使用。</summary>
+        /// <param name="deflect">精准弹反通道。</param>
+        /// <param name="perfectDodge">完美闪避通道。</param>
+        /// <param name="phase">首领阶段通道。</param>
+        /// <param name="focus">归一化的玩家专注通道。</param>
+        /// <param name="overbalance">首领失衡通道。</param>
         public void Bind(
             VoidEventChannel deflect,
             VoidEventChannel perfectDodge,

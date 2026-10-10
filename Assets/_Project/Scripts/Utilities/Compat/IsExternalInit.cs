@@ -1,22 +1,19 @@
 using System.ComponentModel;
 
-// ReSharper disable once CheckNamespace - this type must live in this exact namespace to work.
+// ReSharper disable once CheckNamespace - 此类型必须位于该命名空间才能生效。
 namespace System.Runtime.CompilerServices
 {
     /// <summary>
-    /// Compiler-required marker that enables init-only setters and positional records.
+    /// 编译器所需标记，支持仅init的访问器和位置record。
     /// </summary>
     /// <remarks>
-    /// Unity's C# 9 support ships without this type in its reference assemblies, so any use of
-    /// <c>init</c> or <c>record</c> fails to compile with "predefined type
-    /// 'System.Runtime.CompilerServices.IsExternalInit' is not defined or imported". Declaring it
-    /// ourselves is the sanctioned workaround and lets immutable data types stay idiomatic across
-    /// the project. It emits no code and has no runtime cost.
+    /// Unity的C#9引用程序集缺少该类型，因此<c>init</c>或<c>record</c>会出现预定义
+    /// System.Runtime.CompilerServices.IsExternalInit未定义或未导入的编译错误。自行声明是兼容方案，
+    /// 让项目使用惯常不可变数据类型，不产生运行时代码或成本。
     /// </remarks>
     /// <remarks>
-    /// Declared public, and exactly once, in the lowest assembly in the dependency graph. An
-    /// internal declaration would only enable <c>init</c> inside Utilities itself, and a second
-    /// declaration in another assembly would make the type ambiguous everywhere.
+    /// 在依赖图最底层程序集公开声明且只声明一次。internal只能支持Utilities内部的<c>init</c>；
+    /// 其他程序集再声明一次会导致类型歧义。
     /// </remarks>
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class IsExternalInit

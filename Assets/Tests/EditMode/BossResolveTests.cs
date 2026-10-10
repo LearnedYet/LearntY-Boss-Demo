@@ -4,13 +4,11 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the boss's Resolve meter: it fills from time and from being dodged, and empties when
-    /// spent.
+    /// 测试首领 Resolve：随时间和被闪避累积，使用后清空。
     /// </summary>
     /// <remarks>
-    /// The fairness point is that Resolve only ever accrues from things the boss legitimately
-    /// witnesses, and that an evasive player fills it faster — the gambit is earned by the fight's
-    /// state, not handed to the boss.
+    /// 公平关键是 Resolve 仅由首领确实观察到的事件累积；善于闪避的玩家使其更快增长。豪赌由战况赢得，
+    /// 不是无偿给首领。
     /// </remarks>
     [TestFixture]
     public sealed class BossResolveTests
@@ -30,7 +28,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         public void TimeFillsIt()
         {
             BossResolve resolve = Resolve();
-            for (int i = 0; i < 200; i++) // 200 * 0.1s = 20s at 5/s = 100
+            for (int i = 0; i < 200; i++) // 200 * 0.1 秒 = 20 秒，以每秒 5 点计为 100
             {
                 resolve.Tick(0.1f);
             }

@@ -4,11 +4,10 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the percentile maths every performance budget in this project is checked against.
+    /// 测试项目全部性能预算所依据的百分位计算。
     /// </summary>
     /// <remarks>
-    /// A budget is only as trustworthy as the number compared with it. A percentile that interpolated,
-    /// or that averaged a spike away, would pass a build that stutters.
+    /// 预算的可信度取决于比较数值。插值或把尖峰平均掉的百分位，会让卡顿构建通过。
     /// </remarks>
     [TestFixture]
     public sealed class FrameTimeSamplerTests
@@ -38,8 +37,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ASingleSpikeShowsUpInTheMaxButNotTheMedian()
         {
-            // The whole reason for percentiles: one 40 ms hitch among ordinary frames must be visible
-            // without dragging the typical frame along with it.
+            // 百分位的意义：普通帧中的一次 40 毫秒卡顿必须可见，又不拖高典型帧。
             var sampler = new FrameTimeSampler(100);
 
             for (int i = 0; i < 99; i++)
@@ -56,8 +54,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ThePercentileIsAlwaysAFrameThatActuallyHappened()
         {
-            // Nearest-rank, not interpolation: the p95 of two very different frames is one of them,
-            // never a value between that no frame took.
+            // 使用最近秩而非插值：两帧差异很大时，p95 必须是其中一帧，而非没有任何帧经历的中间值。
             var sampler = new FrameTimeSampler(10);
             sampler.Add(0.010f);
             sampler.Add(0.030f);
@@ -86,7 +83,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheWebPageAsksForACaptureThroughItsQueryString()
         {
-            // The only way to start a capture on the deployed WebGL build, which has no command line.
+            // 已部署 WebGL 没有命令行，这是开始采样的唯一方式。
             Assert.IsTrue(PerfCaptureRequest.TryReadQuerySeconds(
                 "https://example.test/arena/?perf=60", out float seconds));
             Assert.AreEqual(60f, seconds, 0.001f);
@@ -121,7 +118,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void AnOrdinaryLaunchRequestsNothing()
         {
-            // The shipped game must never skip its title screen or quit on its own.
+            // 发布游戏绝不能自动跳过标题或自行退出。
             PerfCaptureRequest request = PerfCaptureRequest.Read(new[] { "game.exe" }, string.Empty);
 
             Assert.IsFalse(request.IsRequested);
@@ -132,7 +129,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ACaptureCanRecordASequenceOfFrames()
         {
-            // Motion is judged in motion: a single frame cannot show whether a swing has weight.
+            // 运动必须动态判断，单帧看不出挥击重量。
             PerfCaptureRequest request = PerfCaptureRequest.Read(
                 new[] { "game.exe", "-perfCapture", "10", "-perfShots", @"C:\frames", "-perfShotEvery", "0.1" },
                 string.Empty);
@@ -153,8 +150,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void NonPositiveFramesAreIgnored()
         {
-            // A zero delta appears on the first frame after a pause; counting it would drag every
-            // percentile toward a frame that cost nothing.
+            // 暂停后首帧可能 delta 为零，计入会将百分位拉向没有成本的帧。
             var sampler = new FrameTimeSampler(3);
             sampler.Add(0f);
             sampler.Add(-1f);

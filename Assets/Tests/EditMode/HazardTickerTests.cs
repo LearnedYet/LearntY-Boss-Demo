@@ -4,8 +4,7 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the two fairness rules of a ground hazard: it warns before it hurts, and it bites on a
-    /// fixed cadence rather than every frame.
+    /// 测试地面危险区域的两条公平规则：伤害前先预警，并按固定节奏而非逐帧造成伤害。
     /// </summary>
     [TestFixture]
     public sealed class HazardTickerTests
@@ -21,7 +20,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             HazardTicker ticker = Ticker();
             Assert.AreEqual(HazardTicker.Stage.Warning, ticker.CurrentStage);
 
-            // 24 steps = 0.48s, still inside the 0.5s warning: no damage may fire.
+            // 24 步等于 0.48 秒，仍在 0.5 秒预警期内，不能触发伤害。
             bool damaged = false;
             for (int i = 0; i < 24; i++)
             {
@@ -47,8 +46,8 @@ namespace AdaptiveBossArena.Tests.EditMode
                 }
             }
 
-            // The first bite lands just after the 0.5s warning, not a full interval into the active
-            // window — a zone forming under a standing player hurts at once.
+            // 第一次伤害应紧随 0.5 秒预警结束发生，而非进入生效期后再等完整间隔：
+            // 站立玩家脚下形成的区域会立即伤害他。
             Assert.GreaterOrEqual(firstDamageAt, 0.5f);
             Assert.Less(firstDamageAt, 0.58f);
         }
@@ -59,7 +58,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             HazardTicker ticker = Ticker();
 
             int ticks = 0;
-            for (int i = 0; i < 200; i++) // 4s, well past the 3s total life
+            for (int i = 0; i < 200; i++) // 4 秒，已远超 3 秒总存活时间。
             {
                 if (ticker.Advance(Step))
                 {
@@ -67,8 +66,8 @@ namespace AdaptiveBossArena.Tests.EditMode
                 }
             }
 
-            // 2s of active at a 0.4s interval is about five ticks plus the immediate one on entry;
-            // bounded rather than exact so a boundary frame either way does not fail the contract.
+            // 生效 2 秒、间隔 0.4 秒约产生五次周期伤害，加上进入时立即发生的一次；只检查边界范围，
+            // 不检查精确次数，避免相差一帧的边界影响规则成立。
             Assert.GreaterOrEqual(ticks, 5);
             Assert.LessOrEqual(ticks, 7);
         }

@@ -6,20 +6,17 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts every clip a fighter plays keeps its body facing the way the character faces.
+    /// 断言角色播放的每个片段都让身体面向角色朝向。
     /// </summary>
     /// <remarks>
-    /// The bind pose can face forward while a clip turns the whole body away: a clip carries the body
-    /// orientation it was captured with, and one that ends turned round leaves the fighter facing away from
-    /// the fight. A capture of the running build showed the knight facing the camera just after being hit.
-    /// Checking the bind pose alone cannot see it; only playing each state and measuring the hips can.
+    /// 绑定姿势朝前，片段却可能转开全身；片段携带捕捉时身体方向，结束转身会让角色背离战斗。
+    /// 运行截图曾显示骑士受击后朝摄像机。只查绑定姿势无法发现，必须播放各状态并测髋部。
     /// </remarks>
     [TestFixture]
     public sealed class ClipFacingTests
     {
         /// <summary>
-        /// Within about 70 degrees. A sword and shield guard stands side-on (measured at 68 degrees); a wrong
-        /// orientation turns the body round, which scores near minus one.
+        /// 约 70 度以内。剑盾格挡侧身实测 68 度；错误朝向转向背后，评分接近负一。
         /// </summary>
         private const float MinimumAgreement = 0.3f;
 
@@ -43,7 +40,7 @@ namespace AdaptiveBossArena.Tests.EditMode
                 {
                     string state = child.state.name;
 
-                    // Falls and deaths end facing wherever the body fell; they are not a stance.
+                    // 倒地和死亡朝向由倒下位置决定，不是站姿。
                     if (state == "Death" || state == "Airborne" || state == "Roll")
                     {
                         continue;
@@ -51,8 +48,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
                     animator.Rebind();
 
-                    // Rising from the floor is judged where it ends, standing: a get-up that finishes turned round
-                    // hands control back to a knight facing away from the fight.
+                    // 起身按最终站立时判断；结束转身会将控制交回背对战斗的骑士。
                     if (state == "KnockedDown")
                     {
                         animator.SetFloat("ReactionTime", 1f);

@@ -9,35 +9,32 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Points each sound cue at the recorded files that should play for it.
+    /// 将每个声音标识指向应播放的录音文件。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Every sound used to be synthesised from tones and noise, and the player heard them as random and
-    /// inaccurate. The recordings live under <see cref="SoundFolder"/>, downloaded from free (CC0) sources: the
-    /// Kenney impact and RPG packs, and individual Freesound clips kept under their Freesound names, which begin
-    /// with the sound's id.
+    /// 以前所有声音都由音调和噪声合成，玩家听来随机且不准确。录音保存在 <see cref="SoundFolder"/>，
+    /// 下载自免费 CC0 来源：Kenney 冲击与 RPG 音效包，以及保留 Freesound 原名、
+    /// 以声音 ID开头的独立片段。
     /// </para>
     /// <para>
-    /// A cue is matched by file name, so each one names the moment it belongs to rather than a path that moves
-    /// when a pack is unzipped differently. Several matching files become several takes. A cue with no matching
-    /// file keeps its synthesised sound, so the game sounds complete before every download is in.
+    /// 音效按文件名匹配，名称描述所属时刻而非可能因解压方式变化的路径。多个匹配文件构成多个变体。
+    /// 没有匹配文件的音效保留合成声音，因此资源尚未全部下载时游戏声音仍然完整。
     /// </para>
     /// </remarks>
     public static class AudioAssetBuilder
     {
-        /// <summary>Where the downloaded sounds are kept.</summary>
+        /// <summary>下载音效的保存位置。</summary>
         public const string SoundFolder = "Assets/_Project/Audio/ThirdParty";
 
         private static readonly string[] SoundExtensions = { ".ogg", ".wav", ".mp3", ".aif", ".aiff", ".flac" };
 
         /// <summary>
-        /// Which recordings play for each cue, and at what pitch.
+        /// 每个音效标识对应的录音及音高。
         /// </summary>
         /// <remarks>
-        /// The knight's shield is painted wood, so a block is wood; a deflect rings off the blade as metal; a parry
-        /// is the brighter, bell-like clang, so the two are never confused. The brute's footfalls reuse the heavy
-        /// body thud a good deal lower, for the mass.
+        /// 骑士盾牌是涂装木材，因此格挡使用木声；弹反从刀刃发出金属声；招架使用更明亮的钟鸣碰撞声，
+        /// 避免两者混淆。巨兽脚步复用重物撞击声并大幅降低音高，表现质量。
         /// </remarks>
         public static readonly (string Cue, string Pattern, float Pitch)[] Mapping =
         {
@@ -54,9 +51,9 @@ namespace AdaptiveBossArena.Editor
             (AudioService.Cues.GuardRaise, @"^cloth\d+$", 1f),
             (AudioService.Cues.PlayerDeath, @"^impactSoft_heavy_\d+$", 0.85f),
 
-            // Freesound, matched by id. The roars are single sounds and play whole. The swings and grunts came as
-            // compilations - fifty swipes in one file, a long run of groans - and play from the takes cut out of
-            // them at their quiet gaps, one sound each; played whole, one swing fired a burst of whooshes.
+            // Freesound 资源按 ID 匹配。咆哮是单个声音，完整播放；挥击和呻吟原文件是合集，
+            // 包含五十次挥动或一长串呻吟，按安静间隔切成单独声音后播放。
+            // 以前完整播放会让一次挥击触发一串呼啸声。
             (AudioService.Cues.BossRoar, @"^(489901|132874)__", 1f),
             (AudioService.Cues.BossDeath, @"^497056__", 0.9f),
             (AudioService.Cues.SwingGreatsword, @"^507470_take\d+$", 1f),
@@ -66,7 +63,7 @@ namespace AdaptiveBossArena.Editor
             (AudioService.Cues.Ambience, @"^174279_loop$", 1f)
         };
 
-        /// <summary>Every sound file in the downloads folder, by file name without extension.</summary>
+        /// <summary>下载文件夹中所有声音文件，按不含扩展名的文件名索引。</summary>
         private static List<(string Name, string Path)> Sounds()
         {
             if (!Directory.Exists(SoundFolder))
@@ -81,9 +78,9 @@ namespace AdaptiveBossArena.Editor
                 .ToList();
         }
 
-        /// <summary>The recordings found for one cue, in name order.</summary>
-        /// <param name="pattern">The file-name pattern the cue plays.</param>
-        /// <returns>The clips.</returns>
+        /// <summary>某个音效标识匹配的录音，按名称排列。</summary>
+        /// <param name="pattern">该音效播放的文件名模式。</param>
+        /// <returns>音频片段。</returns>
         public static AudioClip[] ClipsMatching(string pattern)
         {
             var regex = new Regex(pattern, RegexOptions.IgnoreCase);
@@ -95,9 +92,9 @@ namespace AdaptiveBossArena.Editor
                 .ToArray();
         }
 
-        /// <summary>Writes the recordings found onto an audio service's cue overrides.</summary>
-        /// <param name="audio">The scene's audio service.</param>
-        /// <returns>How many cues now play recordings.</returns>
+        /// <summary>将找到的录音写入音频服务的音效覆盖配置。</summary>
+        /// <param name="audio">场景音频服务。</param>
+        /// <returns>现在使用录音播放的音效标识数量。</returns>
         public static int Assign(AudioService audio)
         {
             var found = new List<(string Cue, AudioClip[] Clips, float Pitch)>();

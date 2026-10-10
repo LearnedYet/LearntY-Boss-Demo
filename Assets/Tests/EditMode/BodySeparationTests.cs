@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests how two overlapping fighters are pushed apart.
+    /// 测试两名重叠角色如何被推开。
     /// </summary>
     [TestFixture]
     public sealed class BodySeparationTests
@@ -44,8 +44,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheHeavierBodyGivesLessGround()
         {
-            // Four times the mass should move a quarter as far: leaning into the brute shoves it a
-            // little and throws the knight back a lot.
+            // 四倍质量应只移动四分之一距离：顶巨兽只轻推它，却大幅推回骑士。
             BodySeparation.Result result = BodySeparation.Resolve(
                 Vector3.zero, KnightRadius, KnightMass,
                 new Vector3(1f, 0f, 0f), BruteRadius, BruteMass,
@@ -57,9 +56,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void BodiesThatPassedThroughEachOtherArePushedBackToTheSideTheyCameFrom()
         {
-            // Last frame the brute was to the knight's right. A long frame carried the knight's centre
-            // past the brute's. Resolving along the new direction would finish pushing the knight out
-            // of the brute's far side - through it.
+            // 上一帧巨兽在骑士右侧，长帧使骑士中心越过巨兽中心。按新方向分离会从远侧推出骑士，
+            // 让它穿过巨兽。
             Vector3 knight = new Vector3(0.2f, 0f, 0f);
             Vector3 brute = Vector3.zero;
 
@@ -77,8 +75,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void BodiesMovedFarApartDeliberatelyAreNotYankedBack()
         {
-            // A retry teleports both fighters. Being on opposite sides from last frame is expected
-            // then, and must not read as having passed through each other.
+            // 重试会传送双方，此时与上一帧相对位置颠倒属于正常，不应视为互相穿过。
             BodySeparation.Result result = BodySeparation.Resolve(
                 new Vector3(10f, 0f, 0f), KnightRadius, KnightMass,
                 Vector3.zero, BruteRadius, BruteMass,

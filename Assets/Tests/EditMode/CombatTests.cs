@@ -8,13 +8,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the attack timeline that stands in for animation events.
+    /// 测试替代动画事件的攻击时间轴。
     /// </summary>
     /// <remarks>
-    /// Frame data is the substance of an action game's feel, so it is asserted directly rather than
-    /// judged by eye. The phase-skipping behaviour matters most: a long frame must never leave an
-    /// attack stuck with its hitbox open, and it must never silently pass over the active window
-    /// without opening it at all.
+    /// 帧数据是动作手感核心，因此直接断言而非目测。跨阶段行为最关键：长帧不能让命中框卡在开启，
+    /// 也不能跳过有效窗口而从未开启。
     /// </remarks>
     [TestFixture]
     public sealed class AttackTimelineTests
@@ -105,8 +103,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             timeline.Begin(_attack);
 
-            // One frame long enough to swallow the entire attack. A hitch must not cause the active
-            // window to be skipped without ever having been announced.
+            // 一帧足以跨过整个攻击。卡顿不得让有效窗口从未通知就被跳过。
             timeline.Tick(5f);
 
             CollectionAssert.Contains(observed, AttackPhase.Active);
@@ -143,8 +140,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             Assert.IsFalse(timeline.IsRunning);
 
-            // A cancelled attack did not finish. Anything waiting on completion to hand control back
-            // must be able to tell the two apart.
+            // 取消不等于完成。等待完成以归还控制的对象必须能区分。
             Assert.AreEqual(0, completedCount);
         }
 
@@ -175,12 +171,11 @@ namespace AdaptiveBossArena.Tests.EditMode
     }
 
     /// <summary>
-    /// Tests for poise, the pool that decides whether a hit interrupts.
+    /// 测试决定命中能否打断的架势资源池。
     /// </summary>
     /// <remarks>
-    /// The rule worth protecting is that a break cannot chain into another break. Without it, a
-    /// combo landing on a staggered target removes them from the fight entirely, which is the
-    /// difference between a demanding game and an unfair one.
+    /// 需要保护的规则是破防不能连续触发。否则对硬直目标连击可让其完全失去战斗能力，
+    /// 这区分高要求游戏与不公平游戏。
     /// </remarks>
     [TestFixture]
     public sealed class PoisePoolTests
@@ -218,7 +213,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             var poise = new PoisePool(50f, regenPerSecond: 20f, breakRecoverySeconds: 1f);
             poise.ApplyPoiseDamage(50f);
 
-            // Landing a combo on a staggered target must not chain into a second break.
+            // 连击命中硬直目标不得接出第二次破防。
             Assert.IsFalse(poise.ApplyPoiseDamage(500f));
             Assert.IsTrue(poise.IsBroken);
         }
@@ -234,8 +229,7 @@ namespace AdaptiveBossArena.Tests.EditMode
                 poise.Tick(Frame);
             }
 
-            // Rebuilding from zero would leave a recovered combatant re-breakable by a single light
-            // hit, which reads as the stagger never really ending.
+            // 从零恢复会让角色刚恢复就被一次轻击再次破防，看起来硬直从未结束。
             Assert.IsFalse(poise.IsBroken);
             Assert.AreEqual(1f, poise.Normalized, Tolerance);
         }
@@ -245,8 +239,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         {
             var poise = new PoisePool(100f, regenPerSecond: 50f, breakRecoverySeconds: 0.5f);
 
-            // A light poke every half second against fifty-per-second regeneration should never
-            // accumulate toward a break.
+            // 每半秒一次轻刺，面对每秒五十点恢复，不应累积至破防。
             for (int poke = 0; poke < 10; poke++)
             {
                 Assert.IsFalse(poise.ApplyPoiseDamage(10f));

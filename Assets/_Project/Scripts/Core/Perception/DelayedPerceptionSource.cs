@@ -5,38 +5,34 @@ using UnityEngine;
 namespace AdaptiveBossArena.Core.Perception
 {
     /// <summary>
-    /// Records a rolling history of player observations and serves them back on a delay.
+    /// 记录玩家观察的滚动历史，并延迟提供这些观察。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Sampling is driven from outside, by the composition root, rather than pulled by the AI. That
-    /// inversion is deliberate: the boss cannot ask for a fresher reading than it is given, because
-    /// it never holds a reference to the player in the first place.
+    /// 采样由外部组合根驱动，而非 AI 主动拉取。这种反转是刻意的：Boss 从未持有玩家引用，
+    /// 因此无法请求比提供给它的数据更及时的观察。
     /// </para>
     /// <para>
-    /// History is kept in a fixed-capacity ring buffer, so a fight of any length costs the same
-    /// memory and the same per-frame work.
+    /// 历史保存在固定容量环形缓冲区中，因此无论战斗持续多久，内存和每帧工作量都不变。
     /// </para>
     /// </remarks>
     public sealed class DelayedPerceptionSource : IPerceptionSource
     {
-        /// <summary>Roughly four seconds of history at a sixty hertz sampling rate.</summary>
+        /// <summary>在六十赫兹采样频率下约四秒的历史。</summary>
         public const int DefaultHistoryCapacity = 256;
 
         /// <summary>
-        /// Sampling rate the capacity is guaranteed to cover, in samples per second.
+        /// 保证容量能够覆盖的采样频率，单位为每秒样本数。
         /// </summary>
         /// <remarks>
-        /// The buffer is counted in samples but queried in seconds, so a high enough frame rate can
-        /// leave it spanning less wall-clock time than the perception latency. When that happens the
-        /// boss can never see far enough back, <c>TryGetPerceived</c> fails on every call, and it
-        /// stands still for the whole fight — silently, because going blind is the safe failure here
-        /// and nothing treats it as an error. Sizing the capacity against this rate keeps the window
-        /// wide enough for any plausible frame rate; the fixed cost is a few kilobytes.
+        /// 缓冲区按样本计数，却按秒查询，因此帧率过高时，保存的真实时间跨度可能小于感知延迟。
+        /// 此时 Boss 永远看不到足够早的历史，<c>TryGetPerceived</c> 每次都失败，整个战斗都会静止。
+        /// 由于失去感知是安全失败方式，系统也不会报错。按此频率确定容量，可为合理帧率留足时间窗口，
+        /// 固定开销仅几千字节。
         /// </remarks>
         private const float GuaranteedSamplesPerSecond = 2000f;
 
-        /// <summary>Extra history beyond the latency itself, so the lookup is never at the boundary.</summary>
+        /// <summary>感知延迟之外的额外历史，避免查询刚好处于边界。</summary>
         private const float HistoryMarginSeconds = 0.5f;
 
         private readonly CircularBuffer<PlayerObservation> _history;
@@ -45,15 +41,14 @@ namespace AdaptiveBossArena.Core.Perception
         private float _latencySeconds;
         private float _currentTime;
 
-        /// <summary>Creates a perception source that watches the supplied player.</summary>
-        /// <param name="player">The observable player to sample.</param>
-        /// <param name="latencySeconds">How far behind the present perceived data should lag.</param>
+        /// <summary>创建观察所提供玩家的感知源。</summary>
+        /// <param name="player">要采样的可观察玩家。</param>
+        /// <param name="latencySeconds">感知数据应落后当前时刻的时长。</param>
         /// <param name="historyCapacity">
-        /// Number of samples retained. Leave at zero to size the buffer from the latency, which is
-        /// what production should do; pass a value only to pin the capacity, as the bounding test
-        /// does.
+        /// 保留的样本数。设为零会按延迟计算容量，正式使用应如此；只有需要固定容量时才传入值，
+        /// 例如边界测试。
         /// </param>
-        /// <exception cref="ArgumentNullException">Thrown when no player is supplied.</exception>
+        /// <exception cref="ArgumentNullException">未提供玩家时抛出。</exception>
         public DelayedPerceptionSource(
             IObservablePlayer player,
             float latencySeconds,
@@ -66,10 +61,10 @@ namespace AdaptiveBossArena.Core.Perception
         }
 
         /// <summary>
-        /// Samples needed to cover a latency at the guaranteed sampling rate.
+        /// 在保证采样频率下覆盖延迟所需的样本数。
         /// </summary>
-        /// <param name="latencySeconds">How far back the boss must be able to look.</param>
-        /// <returns>A capacity that spans the latency plus a margin.</returns>
+        /// <param name="latencySeconds">Boss 必须能够回看的时长。</param>
+        /// <returns>覆盖延迟并留有余量的容量。</returns>
         public static int CapacityFor(float latencySeconds) =>
             Mathf.CeilToInt(
                 (Mathf.Max(0f, latencySeconds) + HistoryMarginSeconds) * GuaranteedSamplesPerSecond);
@@ -77,13 +72,13 @@ namespace AdaptiveBossArena.Core.Perception
         /// <inheritdoc />
         public float LatencySeconds => _latencySeconds;
 
-        /// <summary>Number of samples currently retained.</summary>
+        /// <summary>当前保留的样本数。</summary>
         public int SampleCount => _history.Count;
 
         /// <summary>
-        /// Captures one observation. Call once per frame from the composition root.
+        /// 捕获一次观察。组合根应每帧调用一次。
         /// </summary>
-        /// <param name="timestamp">Current combat-clock time, which must increase monotonically.</param>
+        /// <param name="timestamp">当前战斗时钟时间，必须单调递增。</param>
         public void Sample(float timestamp)
         {
             _currentTime = timestamp;
@@ -106,8 +101,7 @@ namespace AdaptiveBossArena.Core.Perception
 
             float targetTime = _currentTime - _latencySeconds - Mathf.Max(0f, secondsFurtherBack);
 
-            // History does not reach back far enough yet, which happens in the opening moments of a
-            // fight. The boss simply has nothing to act on, exactly as it should.
+            // 历史尚未覆盖足够早的时间，这会发生在战斗刚开始时。Boss 没有可据以行动的数据，正符合预期。
             if (_history.Oldest.Timestamp > targetTime)
             {
                 return false;
@@ -117,11 +111,11 @@ namespace AdaptiveBossArena.Core.Perception
             return observation.IsValid;
         }
 
-        /// <summary>Adjusts perception latency, used when a later boss phase sharpens its senses.</summary>
-        /// <param name="latencySeconds">New latency. Negative values are clamped to zero.</param>
+        /// <summary>调整感知延迟，在 Boss 后续阶段感知更加敏锐时使用。</summary>
+        /// <param name="latencySeconds">新的延迟。负值限制为零。</param>
         public void SetLatency(float latencySeconds) => _latencySeconds = Mathf.Max(0f, latencySeconds);
 
-        /// <summary>Discards all recorded history, for example when a fight restarts.</summary>
+        /// <summary>丢弃全部历史，例如战斗重新开始时。</summary>
         public void Reset()
         {
             _history.Clear();
@@ -129,10 +123,10 @@ namespace AdaptiveBossArena.Core.Perception
         }
 
         /// <summary>
-        /// Binary searches the chronologically ordered history for the newest sample at or before a time.
+        /// 在按时间排序的历史中二分查找不晚于指定时刻的最新样本。
         /// </summary>
-        /// <param name="targetTime">Upper bound on the sample's timestamp.</param>
-        /// <returns>Index into the history buffer. Callers must have verified history reaches this far back.</returns>
+        /// <param name="targetTime">样本时间戳上限。</param>
+        /// <returns>历史缓冲区索引。调用者必须已确认历史覆盖该时刻。</returns>
         private int FindNewestIndexAtOrBefore(float targetTime)
         {
             int low = 0;

@@ -6,36 +6,24 @@ using UnityEngine.InputSystem;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Frames the fight.
+    /// 为战斗构图。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Rewritten after the first version felt, in the player's words, "either too fast or too slow
-    /// according to my movement". The cause was that it followed a point blended thirty percent
-    /// toward the boss, so the camera moved whenever the <em>boss</em> moved. Motion the player did
-    /// not cause reads as the camera fighting them, however smooth the easing is.
+    /// 初版被玩家形容为“随移动变得太快或太慢”，因此重写。原因是跟随点向首领混合了百分之三十，
+    /// 导致只要<em>首领</em>移动，相机也会移动。不是玩家引起的运动会让人感觉相机在与自己对抗，
+    /// 无论平滑多么柔和。
     /// </para>
     /// <para>
-    /// The rule now: in free look the camera answers the player and nobody else. The boss only
-    /// influences framing when the player has explicitly asked for it by locking on.
+    /// 现在的规则：自由视角只响应玩家，不响应其他角色。只有玩家明确请求锁定时，首领才影响构图。
     /// </para>
     /// <para>
-    /// Three further things make it feel attached rather than dragged:
+    /// 另外三点使相机感觉贴合，而非被拖着走：
     /// </para>
-    /// <list type="bullet">
-    /// <item><description>
-    /// A deadzone, so small adjustments move the character within the frame instead of hauling the
-    /// whole view around.
-    /// </description></item>
-    /// <item><description>
-    /// Lookahead in the direction of travel, so the player sees where they are going rather than
-    /// where they have been.
-    /// </description></item>
-    /// <item><description>
-    /// Separate position and rotation damping. Sharing one rate makes rotation feel sluggish
-    /// whenever position is tuned to feel weighty.
-    /// </description></item>
-    /// </list>
+    /// <list type="bullet"><item><description>死区，让小幅调整只移动画面中的角色，而非拖动整个视图。
+    /// </description></item><item><description>沿行进方向提前构图，让玩家看到要去的地方，
+    /// 而非已经经过的地方。</description></item><item><description>位置与旋转分别阻尼。
+    /// 共用速率会在位置调得有重量感时，使旋转显得迟钝。</description></item></list>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class ArenaCameraRig : MonoBehaviour
@@ -138,92 +126,91 @@ namespace AdaptiveBossArena.Game
 
         private ITimeService _time;
 
-        /// <summary>Where the camera pivots from: the player's position, followed with a short half-life.</summary>
+        /// <summary>相机旋转支点：以较短半衰期跟随的玩家位置。</summary>
         private Vector3 _anchor;
 
-        /// <summary>The boom's current length, shortened at once by an obstacle and eased back out.</summary>
+        /// <summary>相机臂当前长度，障碍出现时立即缩短，之后平滑伸出。</summary>
         private float _boom;
 
-        /// <summary>Radius of the sphere swept along the boom, so the lens never grazes a column.</summary>
+        /// <summary>沿相机臂扫掠的球体半径，避免镜头擦入立柱。</summary>
         private const float BoomProbeRadius = 0.25f;
 
-        /// <summary>The player's own sensitivity multiplier.</summary>
+        /// <summary>玩家设置的灵敏度倍率。</summary>
         private float _sensitivity = 1f;
 
-        /// <summary>Whether moving the mouse up looks down.</summary>
+        /// <summary>鼠标上移时是否向下看。</summary>
         private bool _invertLook;
 
-        /// <summary>The knight, read for whether it is on the floor. Resolved from the primary target.</summary>
+        /// <summary>用于判断是否倒地的骑士，从主目标解析。</summary>
         private Player.PlayerController _player;
 
-        /// <summary>From zero standing to one on the floor, eased so the framing never jumps.</summary>
+        /// <summary>站立为零、倒地为一，平滑变化以免构图跳变。</summary>
         private float _downBlend;
 
-        /// <summary>Pivot height while the knight is on the floor: the body, not where the shoulders were.</summary>
+        /// <summary>骑士倒地时的支点高度，指向身体而非原先肩膀位置。</summary>
         private const float DownPivotHeight = 0.7f;
 
-        /// <summary>Boom length while the knight is on the floor, pulled back so the whole body is seen.</summary>
+        /// <summary>骑士倒地时的相机臂长度，拉远以看见整个身体。</summary>
         private const float DownDistance = 3.8f;
 
         private const float DownBlendHalfLife = 0.2f;
 
-        /// <summary>The boom length the framing wants, before any column or wall shortens it.</summary>
+        /// <summary>柱墙缩短之前，构图希望采用的相机臂长度。</summary>
         private float CurrentDistance => Mathf.Lerp(_distance, DownDistance, _downBlend);
 
-        /// <summary>How much of the boom the arena wall took away this frame, in metres.</summary>
+        /// <summary>本帧竞技场墙壁削减的相机臂长度，单位为米。</summary>
         private float _boomLoss;
 
         /// <summary>
-        /// Distance kept between the camera and the wall ring. Enough that the near clip plane never
-        /// touches the parapet, so the view is never half stone.
+        /// 相机与环形墙保持的距离，足以避免近裁剪平面碰到矮墙，使画面不会一半都被石材遮住。
         /// </summary>
         private const float WallClearance = 0.6f;
 
-        /// <summary>Metres the camera rises for each metre of boom the wall takes away, to look down over the player.</summary>
+        /// <summary>墙壁每削减一米相机臂时，相机上升的米数，以俯看玩家。</summary>
         private const float RisePerLostMetre = 0.45f;
 
-        /// <summary>Extra degrees of pitch at a fully collapsed boom, so a raised camera still frames the player.</summary>
+        /// <summary>相机臂完全收缩时额外增加的俯角，使升高后的相机仍能框住玩家。</summary>
         private const float PitchAtCollapsedBoom = 32f;
         private bool _isLockedOn;
 
-        /// <summary>Seconds left of the finishing two-shot, or zero when the camera is playing the fight.</summary>
+        /// <summary>收尾双人镜头的剩余秒数；正常战斗镜头时为零。</summary>
         private float _finisherRemaining;
 
-        /// <summary>Seconds left of the boss's entrance shot, or zero.</summary>
+        /// <summary>首领入场镜头的剩余秒数，或零。</summary>
         private float _entranceRemaining;
 
         /// <summary>
-        /// The last stretch of the entrance, over which the shot blends back to the ordinary framing.
+        /// 入场最后一段时间，用来将镜头混合回普通构图。
         /// </summary>
         /// <remarks>
-        /// It ends exactly on the camera's usual position behind the knight, so releasing the fight is not a cut
-        /// or a whip - the view has already settled where the player needs it.
+        /// 结束时恰好位于相机平时在骑士背后的位置，因此交还战斗时不会切镜或猛甩视角；
+        /// 镜头已经稳定在玩家需要的位置。
         /// </remarks>
         private const float EntranceBlendSeconds = 0.9f;
 
-        /// <summary>How far in front of the boss the entrance shot sits.</summary>
+        /// <summary>入场镜头位于首领前方的距离。</summary>
         private const float EntranceDistance = 5f;
 
-        /// <summary>Height of the point the entrance shot looks at: the brute's chest.</summary>
+        /// <summary>入场镜头注视点的高度，即巨兽胸口。</summary>
         private const float EntranceHeight = 1.9f;
 
-        /// <summary>How far below the chest the lens sits, so the brute is looked up at.</summary>
+        /// <summary>镜头低于胸口的高度，以仰视巨兽。</summary>
         private const float EntranceLensDrop = 0.6f;
 
         private InputAction _look;
         private InputAction _lockOn;
         private InputAction _cycleCamera;
 
-        /// <summary>Heading the third-person camera looks along, in degrees about the vertical.</summary>
+        /// <summary>第三人称相机的朝向，绕竖直轴的角度。</summary>
         private float _yawDegrees;
 
-        /// <summary>How far the third-person camera looks down, in degrees, before the wall adds any.</summary>
+        /// <summary>墙壁额外调整前，第三人称相机的向下俯角，单位为度。</summary>
         private float _orbitPitchDegrees;
 
-        /// <summary>The vantage point currently in use.</summary>
+        /// <summary>当前使用的视角。</summary>
         public CameraMode Mode => _mode;
 
-        /// <summary>True while the camera is holding the boss in frame.</summary>
+        /// <summary>相机正将首领保持在画面内时为 true。</summary>
         public bool IsLockedOn => _isLockedOn && _secondaryTarget != null;
 
         private void Start()
@@ -244,9 +231,8 @@ namespace AdaptiveBossArena.Game
                 _anchor = _primaryTarget.position;
             }
 
-            // Locked on from the start. This is a duel against a single opponent, so the framing
-            // that keeps both fighters visible is the right default rather than something the
-            // player has to discover.
+            // 开场即锁定。这里只有一个对手的决斗，因此保持双方都可见的构图应成为合理默认值，
+            // 而非需要玩家自己发现的功能。
             _isLockedOn = _lockOnByDefault;
 
             ResolveActions();
@@ -264,7 +250,7 @@ namespace AdaptiveBossArena.Game
 
         private void Update()
         {
-            // Read every frame, so a change in the settings menu applies the moment the slider moves.
+            // 逐帧读取，使设置菜单滑块一移动，设置就立即生效。
             SetLookSettings(LookSettings.Sensitivity, LookSettings.InvertY);
 
             if (_cycleCamera != null && _cycleCamera.WasPressedThisFrame())
@@ -280,22 +266,21 @@ namespace AdaptiveBossArena.Game
             UpdateOrbit(Time.unscaledDeltaTime);
         }
 
-        /// <summary>Assigns the input actions the camera reads. Used by the scene generator.</summary>
-        /// <param name="actions">The generated input actions asset.</param>
+        /// <summary>分配相机读取的输入动作，供场景生成器使用。</summary>
+        /// <param name="actions">生成的输入动作资源。</param>
         public void SetInputActions(InputActionAsset actions) => _actions = actions;
 
         /// <summary>
-        /// Turns the orbit by the player's mouse or stick, or swings it round to the boss while locked on.
+        /// 用玩家鼠标或摇杆旋转环绕视角，锁定时则转向首领。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Nothing read the mouse before this: the free camera looked along the knight's own facing, and movement
-        /// is relative to the camera, so holding a sideways key turned the knight, which turned the camera, which
-        /// turned the direction of the key - the knight ran in circles. The orbit now belongs to the player alone.
+        /// 此前没有读取鼠标：自由相机沿骑士朝向看，而移动又相对相机进行，所以按侧向键会旋转骑士、
+        /// 再旋转相机、再改变按键方向，导致骑士绕圈。现在环绕视角完全由玩家控制。
         /// </para>
         /// <para>
-        /// The mouse turns the camera only while the cursor is captured, so moving the pointer over a menu never
-        /// swings the view. Unscaled time, so the camera stays steerable through hit-stop and slow motion.
+        /// 只有捕获光标时鼠标才旋转相机，因此在菜单上移动指针不会甩动视角。采用未缩放时间，
+        /// 使顿帧与慢动作期间仍可控制相机。
         /// </para>
         /// </remarks>
         private void UpdateOrbit(float deltaTime)
@@ -326,7 +311,7 @@ namespace AdaptiveBossArena.Game
             _yawDegrees += turn.x;
         }
 
-        /// <summary>This frame's orbit input in degrees: x turns the heading, y raises the view.</summary>
+        /// <summary>本帧环绕输入，单位为度：x 改变朝向，y 抬高视角。</summary>
         private Vector2 LookDelta(float deltaTime)
         {
             if (_look == null)
@@ -345,10 +330,10 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Applies the player's look settings.
+        /// 应用玩家的视角设置。
         /// </summary>
-        /// <param name="sensitivity">Multiplier on how far the view turns per unit of mouse or stick; one is the default.</param>
-        /// <param name="invert">Whether moving the mouse up looks down.</param>
+        /// <param name="sensitivity">单位鼠标或摇杆输入的视角转动倍率，默认为一。</param>
+        /// <param name="invert">鼠标上移时是否向下看。</param>
         public void SetLookSettings(float sensitivity, bool invert)
         {
             _sensitivity = Mathf.Clamp(sensitivity, 0.1f, 4f);
@@ -370,11 +355,11 @@ namespace AdaptiveBossArena.Game
             _lockOn = map.FindAction(Player.Controls.InputActionNames.LockOn, throwIfNotFound: false);
             _cycleCamera = map.FindAction(Player.Controls.InputActionNames.CycleCamera, throwIfNotFound: false);
 
-            // The player's reader enables the same map; enabling it here too covers a camera that starts first.
+            // 玩家读取器启用同一映射；此处也启用，以覆盖相机更早启动的情况。
             map.Enable();
         }
 
-        /// <summary>A horizontal direction's heading in degrees, zero along world forward.</summary>
+        /// <summary>水平方向的朝向角，世界前方为零。</summary>
         private static float HeadingDegrees(Vector3 direction) =>
             Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
 
@@ -385,7 +370,7 @@ namespace AdaptiveBossArena.Game
                 return;
             }
 
-            // The entrance plays while the fight is paused, so it runs on unscaled time.
+            // 入场期间战斗暂停，因此采用未缩放时间。
             if (_entranceRemaining > 0f && _secondaryTarget != null)
             {
                 _entranceRemaining -= Time.unscaledDeltaTime;
@@ -393,7 +378,7 @@ namespace AdaptiveBossArena.Game
                 return;
             }
 
-            // Unscaled: the finisher plays through its own slow motion, and the cut must not crawl with it.
+            // 采用未缩放时间：收尾镜头应在自身慢动作期间正常播放，不随之缓慢推进。
             if (_finisherRemaining > 0f)
             {
                 _finisherRemaining -= Time.unscaledDeltaTime;
@@ -411,9 +396,9 @@ namespace AdaptiveBossArena.Game
 
             if (_mode == CameraMode.FirstPerson || _mode == CameraMode.ThirdPerson)
             {
-                // Placed, not eased. In first person any lag reads as the world sliding. In third person the pivot
-                // already follows the knight on a short half-life, and the view turns exactly as far as the mouse
-                // did: easing the rotation on top made the camera trail the player's hand and swim after it.
+                // 直接放置，而非平滑。第一人称的任何延迟都会像世界在滑动。
+                // 第三人称支点已经以短半衰期跟随骑士，视角转动量应与鼠标完全一致；
+                // 再平滑旋转会使相机落后玩家手部动作并漂浮追赶。
                 transform.SetPositionAndRotation(DesiredPosition(), DesiredRotation());
                 return;
             }
@@ -426,22 +411,21 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Cuts to a two-shot of both fighters for the killing blow.
+        /// 致命一击时切到双方同时入镜的镜头。
         /// </summary>
         /// <remarks>
-        /// Framed from the side, low and close, so the execution is seen as a moment between the two of them
-        /// rather than over the knight's shoulder like every other second of the fight.
+        /// 从侧面低处近距离构图，使处决成为双方之间的瞬间，而非与战斗其他时刻一样越过骑士肩膀观察。
         /// </remarks>
-        /// <param name="seconds">How long to hold the shot.</param>
+        /// <param name="seconds">保持镜头的时长。</param>
         public void PlayFinisher(float seconds) => _finisherRemaining = Mathf.Max(_finisherRemaining, seconds);
 
         /// <summary>
-        /// Opens on the boss: a low shot from in front of it, easing back behind the knight as the fight begins.
+        /// 开场聚焦首领：从其前方低机位观察，战斗开始时平滑返回骑士身后。
         /// </summary>
-        /// <param name="seconds">How long the whole entrance lasts, blend included.</param>
+        /// <param name="seconds">完整入场时长，包含混合过渡。</param>
         public void PlayEntrance(float seconds) => _entranceRemaining = Mathf.Max(0f, seconds);
 
-        /// <summary>Stops the entrance now, leaving the camera at its ordinary framing.</summary>
+        /// <summary>立即停止入场镜头，使相机处于普通构图。</summary>
         public void EndEntrance()
         {
             if (_entranceRemaining > 0f)
@@ -451,7 +435,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Places the camera at its framing position immediately.</summary>
+        /// <summary>立即将相机放到构图位置。</summary>
         public void SnapToTarget()
         {
             if (_primaryTarget == null)
@@ -462,7 +446,7 @@ namespace AdaptiveBossArena.Game
             _anchor = _primaryTarget.position;
             _boom = _distance;
 
-            // A snap is a cut, so a locked camera cuts straight to looking at the boss rather than swinging round.
+            // 直接定位等于切镜，因此锁定相机直接切到首领方向，而非慢慢转过去。
             if (IsLockedOn)
             {
                 Vector3 toBoss = _secondaryTarget.position - _primaryTarget.position;
@@ -476,47 +460,45 @@ namespace AdaptiveBossArena.Game
             transform.SetPositionAndRotation(DesiredPosition(), DesiredRotation());
         }
 
-        /// <summary>Switches vantage point and reframes immediately.</summary>
-        /// <param name="mode">Mode to adopt.</param>
+        /// <summary>切换视角并立即重新构图。</summary>
+        /// <param name="mode">要采用的模式。</param>
         public void SetMode(CameraMode mode)
         {
             _mode = mode;
             SnapToTarget();
         }
 
-        /// <summary>Advances to the next vantage point in order.</summary>
+        /// <summary>按顺序切换到下一个视角。</summary>
         public void CycleMode() =>
             SetMode(_mode == CameraMode.FirstPerson ? CameraMode.TopDown : _mode + 1);
 
-        /// <summary>Assigns the framing targets. Used by the scene generator.</summary>
-        /// <param name="primary">The player.</param>
-        /// <param name="secondary">The boss. May be null.</param>
+        /// <summary>分配构图目标，供场景生成器使用。</summary>
+        /// <param name="primary">玩家。</param>
+        /// <param name="secondary">首领，可以为 null。</param>
         public void SetTargets(Transform primary, Transform secondary)
         {
             _primaryTarget = primary;
             _secondaryTarget = secondary;
         }
 
-        /// <summary>Assigns the configuration. Used by the scene generator.</summary>
-        /// <param name="config">Arena configuration.</param>
+        /// <summary>分配配置，供场景生成器使用。</summary>
+        /// <param name="config">竞技场配置。</param>
         public void SetConfig(ArenaConfig config) => _config = config;
 
         /// <summary>
-        /// Advances the anchor the camera actually frames, applying deadzone and lookahead.
+        /// 应用死区与提前构图，推进相机真正框取的锚点。
         /// </summary>
         /// <remarks>
-        /// The anchor trails the player rather than being the player. Inside the deadzone it does
-        /// not move at all, which is what stops small corrections from dragging the whole view and
-        /// is most of the difference between a camera that feels attached and one that feels towed.
+        /// 锚点跟随玩家，但不等于玩家位置。在死区内它完全不动，避免小幅修正拖动整个视图，
+        /// 这也是相机感觉贴合而非拖拽的主要区别。
         /// </remarks>
         /// <summary>
-        /// Follows the player with the pivot on a short half-life.
+        /// 以较短半衰期让支点跟随玩家。
         /// </summary>
         /// <remarks>
-        /// There used to be a deadzone the knight could move within before the camera followed, and a lead in
-        /// the direction the knight faced. Together they made the view drift and then catch up - it swam - and
-        /// every turn of the knight slid it sideways. The pivot now simply stays on the knight, a few hundredths
-        /// of a second behind, which reads as planted.
+        /// 以前有骑士可以自由移动的死区，以及沿骑士朝向的提前偏移。两者结合会让视角先漂移再追赶，
+        /// 呈现游动感，且骑士每次转向都令视图侧滑。现在支点只保持在骑士位置，落后几百分之一秒，
+        /// 让画面显得扎实。
         /// </remarks>
         private void UpdateAnchor(float deltaTime)
         {
@@ -525,12 +507,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Whether the knight is on the floor or in the air: knocked down, thrown, or dead.
+        /// 骑士是否倒地或腾空：被击倒、抛飞或死亡。
         /// </summary>
         /// <remarks>
-        /// The pivot sits at standing shoulder height, and a body lying on the floor - often thrown back toward
-        /// the camera - put the lens inside the knight's helmet. While down, the pivot drops to the body and the
-        /// boom pulls back. Read from what an onlooker would see, the same snapshot the brute perceives.
+        /// 支点原本位于站立肩高；身体倒地时常向相机方向抛回，会让镜头进入骑士头盔。
+        /// 倒地时支点降低到身体，相机臂拉远。读取的是观察者能看见的状态，与巨兽感知的快照相同。
         /// </remarks>
         private bool IsPlayerDown()
         {
@@ -551,7 +532,7 @@ namespace AdaptiveBossArena.Game
                    state == Core.Perception.ObservableActionState.Dead;
         }
 
-        /// <summary>Where the camera wants to be for the current vantage point.</summary>
+        /// <summary>当前视角希望采用的相机位置。</summary>
         private Vector3 DesiredPosition()
         {
             switch (_mode)
@@ -568,9 +549,8 @@ namespace AdaptiveBossArena.Game
                     Quaternion view = OrbitRotation(OrbitForward(), _orbitPitchDegrees);
                     Vector3 desired = ShoulderPosition(pivot, view, BoomLength(pivot, view), _shoulderOffset);
 
-                    // Knockback and wall shoves pin the player against the ring all the time, and the boom
-                    // then put the camera outside it, looking at the back of the wall. Kept inside, it rises
-                    // for what it lost and looks over the player instead.
+                    // 击退和墙壁推挤经常把玩家压到环形边界，此时相机臂曾让相机越过边界，看到墙背。
+                    // 现在限制在边界内，按损失的距离升高，从玩家上方观察。
                     Vector3 confined = ConfineToArena(desired, pivot, _config.Radius - WallClearance, out _boomLoss);
                     confined.y += _boomLoss * RisePerLostMetre;
 
@@ -578,7 +558,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Orientation for the current vantage point.</summary>
+        /// <summary>当前视角的方向。</summary>
         private Quaternion DesiredRotation()
         {
             switch (_mode)
@@ -596,27 +576,25 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Where the camera sits for an over-the-shoulder view: behind the pivot along the view, off to one side.
+        /// 越肩视角的相机位置：沿视线位于支点后方，并偏向一侧。
         /// </summary>
         /// <remarks>
-        /// The camera looks parallel to the line through the pivot rather than at it, so the knight stands to the
-        /// left of the frame and the space in front of them - where the brute is - fills the rest. Looking at the
-        /// knight's centre from close behind would put the knight's back over everything the player needs to see.
+        /// 相机视线与经过支点的直线平行，而非看向支点，因此骑士位于画面左侧，
+        /// 前方巨兽所在空间占据其余区域。若从近处背后看向骑士中心，骑士背部会遮住玩家需要观察的一切。
         /// </remarks>
-        /// <param name="pivot">The point the view turns about: the knight's shoulders.</param>
-        /// <param name="view">The camera's orientation.</param>
-        /// <param name="boom">How far behind the pivot, along the view.</param>
-        /// <param name="shoulder">How far to the right of the pivot.</param>
-        /// <returns>The camera's position.</returns>
+        /// <param name="pivot">视角旋转支点，即骑士肩膀。</param>
+        /// <param name="view">相机方向。</param>
+        /// <param name="boom">沿视线位于支点后方的距离。</param>
+        /// <param name="shoulder">位于支点右侧的距离。</param>
+        /// <returns>相机位置。</returns>
         public static Vector3 ShoulderPosition(Vector3 pivot, Quaternion view, float boom, float shoulder) =>
             pivot - view * Vector3.forward * boom + view * Vector3.right * shoulder;
 
         /// <summary>
-        /// How long the boom can be before a column or wall comes between the camera and the knight.
+        /// 立柱或墙壁挡在相机与骑士之间之前，相机臂允许的长度。
         /// </summary>
         /// <remarks>
-        /// Shortened at once when something is in the way - a lens inside a column shows nothing - and eased back
-        /// out afterwards, so walking past a pillar does not snap the view back and forth.
+        /// 出现遮挡时立即缩短，镜头进入立柱就看不到内容；之后平滑恢复，避免走过柱子时视角来回跳变。
         /// </remarks>
         private float BoomLength(Vector3 pivot, Quaternion view)
         {
@@ -641,18 +619,17 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Pulls a camera position that has left the arena back inside, along the line from what it frames.
+        /// 沿构图点到相机的直线，将离开竞技场的相机位置拉回边界内。
         /// </summary>
         /// <remarks>
-        /// Along the boom rather than straight toward the centre, so the camera keeps looking the way it was
-        /// and only comes closer. Height is left alone: how much to rise for the lost distance is framing, and
-        /// belongs to the caller. Horizontal only, because the wall is a vertical ring.
+        /// 沿相机臂而非直接朝圆心拉回，使相机保留原来的观察方向，只变得更近。高度不变；
+        /// 损失距离应对应升高多少属于构图，由调用者负责。只限制水平面，因为墙壁是竖直环。
         /// </remarks>
-        /// <param name="desired">Where the camera wants to be.</param>
-        /// <param name="focus">The point it frames, assumed inside the ring.</param>
-        /// <param name="radius">Horizontal radius the camera must stay within.</param>
-        /// <param name="lost">How much of the horizontal boom was taken away, in metres.</param>
-        /// <returns>The confined position.</returns>
+        /// <param name="desired">相机希望采用的位置。</param>
+        /// <param name="focus">构图目标点，假定在环内。</param>
+        /// <param name="radius">相机必须保持其内的水平半径。</param>
+        /// <param name="lost">水平相机臂被削减的长度，单位为米。</param>
+        /// <returns>限制后的位置。</returns>
         public static Vector3 ConfineToArena(Vector3 desired, Vector3 focus, float radius, out float lost)
         {
             lost = 0f;
@@ -667,7 +644,7 @@ namespace AdaptiveBossArena.Game
             var from = new Vector2(focus.x, focus.z);
             Vector2 boom = point - from;
 
-            // Where the boom leaves the circle: |from + t * boom| = radius, taking the exit root.
+            // 相机臂离开圆的位置：|from + t * boom| = radius，取出口根。
             float a = Vector2.Dot(boom, boom);
             float b = 2f * Vector2.Dot(from, boom);
             float c = Vector2.Dot(from, from) - radius * radius;
@@ -675,7 +652,7 @@ namespace AdaptiveBossArena.Game
 
             if (a <= Mathf.Epsilon || discriminant < 0f || c > 0f)
             {
-                // The framed point is itself outside the ring; the best available is the nearest point on it.
+                // 构图点本身已在环外；最佳位置是圆周上最近的点。
                 Vector2 onRing = point.normalized * radius;
                 lost = Vector2.Distance(point, onRing);
                 return new Vector3(onRing.x, desired.y, onRing.y);
@@ -689,33 +666,30 @@ namespace AdaptiveBossArena.Game
             return new Vector3(kept.x, desired.y, kept.y);
         }
 
-        /// <summary>The third-person orientation: looking along a heading, tipped down by a pitch.</summary>
+        /// <summary>第三人称方向：沿朝向观察，再按俯角向下倾斜。</summary>
         /// <remarks>
-        /// The pitch is applied in the camera's own frame, after the heading. It used to be applied first,
-        /// about the world's X axis, which is a pitch only while looking along Z: looking along X the same
-        /// rotation rolls the view, so the horizon tipped over whenever the boss was off to one side.
+        /// 先设置朝向，再在相机自身坐标系应用俯角。过去先绕世界 X 轴旋转，只有看向 Z 轴时才是俯仰；
+        /// 看向 X 轴时相同旋转变为滚转，因此首领位于一侧时地平线会倾倒。
         /// </remarks>
-        /// <param name="heading">Horizontal direction to look along.</param>
-        /// <param name="pitchDegrees">How far to look down, in degrees.</param>
-        /// <returns>The camera's rotation.</returns>
+        /// <param name="heading">要观察的水平方向。</param>
+        /// <param name="pitchDegrees">向下俯视的角度，单位为度。</param>
+        /// <returns>相机旋转。</returns>
         public static Quaternion OrbitRotation(Vector3 heading, float pitchDegrees) =>
             Quaternion.LookRotation(heading, Vector3.up) * Quaternion.Euler(pitchDegrees, 0f, 0f);
 
         /// <summary>
-        /// The direction the camera looks along.
+        /// 相机观察的方向。
         /// </summary>
         /// <remarks>
-        /// The orbit's heading: steered by the player in free look, swung round to point from the player to the
-        /// boss while locked on. Never the knight's facing, which is what made him run in circles.
+        /// 环绕朝向：自由视角由玩家控制，锁定时转为从玩家指向首领。绝不采用骑士朝向，否则会使他绕圈。
         /// </remarks>
         private Vector3 OrbitForward() => Quaternion.Euler(0f, _yawDegrees, 0f) * Vector3.forward;
 
         /// <summary>
-        /// The point being framed.
+        /// 当前构图的目标点。
         /// </summary>
         /// <remarks>
-        /// Only shifts toward the boss while locked on. In free look this is the anchor alone, which
-        /// is the fix for the camera moving in response to the boss rather than the player.
+        /// 仅锁定时向首领偏移。自由视角只使用锚点，从而修复相机响应首领而非玩家的问题。
         /// </remarks>
         private Vector3 FocusPoint()
         {
@@ -731,7 +705,7 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Looks up at the boss from in front of it, blending into the ordinary shot over the entrance's last stretch.
+        /// 从首领前方仰视，并在入场最后一段混合回普通镜头。
         /// </summary>
         private void FrameEntrance()
         {
@@ -745,7 +719,7 @@ namespace AdaptiveBossArena.Game
                 _config.Radius - WallClearance, out float _);
             Quaternion shotRotation = Quaternion.LookRotation(chest - shotPosition, Vector3.up);
 
-            // The ordinary framing, computed as a snap would, so the blend lands on it exactly.
+            // 按直接定位方式计算普通构图，使混合精确到达目标。
             _anchor = _primaryTarget.position;
             Vector3 normalPosition = DesiredPosition();
             Quaternion normalRotation = DesiredRotation();
@@ -758,7 +732,7 @@ namespace AdaptiveBossArena.Game
                 Quaternion.Slerp(normalRotation, shotRotation, eased));
         }
 
-        /// <summary>Holds both fighters in frame from the side, close and slightly low.</summary>
+        /// <summary>从侧面近距离、略低的位置保持双方入镜。</summary>
         private void FrameFinisher(float deltaTime)
         {
             Vector3 middle = (_primaryTarget.position + _secondaryTarget.position) * 0.5f + Vector3.up * FinisherHeight;
@@ -784,16 +758,16 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>How far to the side of the pair the finishing shot sits.</summary>
+        /// <summary>收尾镜头相对于双方的侧向距离。</summary>
         private const float FinisherDistance = 4.2f;
 
-        /// <summary>Height of the finishing shot above the fighters feet: chest height, not overhead.</summary>
+        /// <summary>收尾镜头距角色脚部的高度，采用胸高而非俯视。</summary>
         private const float FinisherHeight = 1.4f;
 
-        /// <summary>How quickly the finishing shot settles into place.</summary>
+        /// <summary>收尾镜头稳定到位的速度。</summary>
         private const float FinisherHalfLife = 0.12f;
 
-        /// <summary>Frame-rate independent interpolation factor for a half-life.</summary>
+        /// <summary>根据半衰期计算与帧率无关的插值系数。</summary>
         private static float DampFactor(float halfLifeSeconds, float deltaTime) =>
             1f - Mathf.Exp(-deltaTime / Mathf.Max(0.0001f, halfLifeSeconds));
     }

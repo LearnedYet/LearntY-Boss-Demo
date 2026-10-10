@@ -27,5 +27,5 @@ MonoBehaviour:
   - _parameter: 7
     _targetValue: 0.3
   _easeInSeconds: 6
-  _tellMessage: It waits for your opening now.
+  _tellMessage: 它开始等待你露出破绽。
   _tellAudioCueId: 

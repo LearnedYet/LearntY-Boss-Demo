@@ -5,13 +5,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the perception delay that keeps the boss reacting on human timescales.
+    /// 测试使首领按人类时间尺度反应的感知延迟。
     /// </summary>
     /// <remarks>
-    /// This is the runtime half of the anti-cheat design; the assembly graph is the compile-time
-    /// half. If the delay were ever to collapse to zero, the boss would begin responding to the
-    /// current frame and feints would stop working, so the guarantee is asserted directly rather
-    /// than left to play-testing to notice.
+    /// 这是防作弊设计的运行时部分，程序集依赖图是编译时部分。若延迟降至零，首领就会响应当前帧，
+    /// 佯攻也会失效，因此直接断言保障，而非等待试玩发现。
     /// </remarks>
     [TestFixture]
     public sealed class DelayedPerceptionSourceTests
@@ -20,8 +18,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         private const float SampleInterval = 0.02f;
 
         /// <summary>
-        /// Stand-in player whose position encodes the time it was sampled, so any observation can be
-        /// traced back to the instant it was captured.
+        /// 玩家替身的位置编码其采样时间，使任何观察都能追溯至捕获时刻。
         /// </summary>
         private sealed class TimestampEncodingPlayer : IObservablePlayer
         {
@@ -46,7 +43,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             source.Sample(0f);
             source.Sample(SampleInterval);
 
-            // The boss legitimately has nothing to act on in the opening moments of a fight.
+            // 战斗开头短时间内，首领合理地没有任何可据以行动的信息。
             Assert.IsFalse(source.TryGetPerceived(out _));
         }
 
@@ -69,8 +66,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             float actualLag = now - observation.Timestamp;
 
-            // The returned sample is the newest at or before the cutoff, so the lag lands between
-            // the configured latency and one sampling interval beyond it.
+            // 返回截止时刻之前或当时的最新采样，因此延迟介于配置值与配置值加一个采样间隔之间。
             Assert.GreaterOrEqual(actualLag, Latency - 0.0001f);
             Assert.LessOrEqual(actualLag, Latency + SampleInterval + 0.0001f);
         }
@@ -88,7 +84,7 @@ namespace AdaptiveBossArena.Tests.EditMode
                 time += SampleInterval;
             }
 
-            // Switch the player's visible action on the most recent frame only.
+            // 只在最新一帧切换玩家可见动作。
             player.State = ObservableActionState.HeavyAttacking;
             source.Sample(time);
 
@@ -102,8 +98,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void AKnockdownReachesTheBossOnlyAfterTheLatency()
         {
-            // The two footing states are new information on the boss's side of the firewall, so they
-            // get the same guarantee as every other action: seen late, never on the frame it happens.
+            // 两种站姿状态是首领侧感知防火墙的新信息，因此享有与其它动作相同的保障：延后看见，
+            // 绝不能在发生当帧看见。
             var player = new TimestampEncodingPlayer();
             var source = new DelayedPerceptionSource(player, Latency);
 
@@ -229,11 +225,9 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void OneActionKeepsOneStartTimeAcrossEveryFrameItIsSeenIn()
         {
-            // The identity a watcher needs to treat a swing as one event. Timestamp advances every
-            // frame, so anything keyed on it sees a single swing as sixty fresh events a second -
-            // and a per-event probability then compounds into a near-certainty. The boss's parry
-            // roll was exactly that shape, which a small baseline chance turned from dormant into
-            // "parries every heavy".
+            // 观察者将一次挥击视为单一事件所需的身份标识。Timestamp每帧递增，
+            // 因此按它区分事件会把一次挥击当成每秒六十个新事件，每事件概率便累积至近乎必然。
+            // 首领招架随机判定正是如此，少量基础概率就从近乎休眠变成“招架每次重击”。
             var early = new PlayerObservation
             {
                 IsValid = true,
@@ -274,8 +268,7 @@ namespace AdaptiveBossArena.Tests.EditMode
                 ActionState = ObservableActionState.HeavyAttacking
             };
 
-            // Two swings back to back. If these collapsed to one start time the boss would decide
-            // once and apply that decision to every swing that followed.
+            // 连续两次挥击。若被合并为同一开始时间，首领只会决策一次，并将结果用于后续每次挥击。
             Assert.AreNotEqual(first.ActionStartedAt, second.ActionStartedAt);
         }
     }

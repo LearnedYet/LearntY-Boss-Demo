@@ -3,52 +3,49 @@ using UnityEngine;
 namespace AdaptiveBossArena.Core.Services
 {
     /// <summary>
-    /// Seedable source of randomness for every gameplay decision that involves chance.
+    /// 所有涉及概率的玩法决策使用的可设种子随机源。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Nothing in the project may call <c>UnityEngine.Random</c> directly. The boss's
-    /// counter-strategy selection is deliberately probabilistic, so that identical player behaviour
-    /// does not produce an identical, learnable response. That same property would make the AI
-    /// impossible to test if the randomness were not controllable.
+    /// 项目中任何对象都不能直接调用 <c>UnityEngine.Random</c>。Boss 反制策略刻意采用概率选择，
+    /// 避免相同玩家行为产生可被记住的固定响应。若随机性不可控制，这一特点也会让 AI 无法测试。
     /// </para>
     /// <para>
-    /// Injecting this interface lets tests pin a seed and assert that a given behaviour profile
-    /// produces a given adaptation, and lets a bug report carry a seed that reproduces the fight.
+    /// 注入此接口可让测试固定种子，断言指定行为画像产生指定适应，并让错误报告携带能复现战斗的种子。
     /// </para>
     /// </remarks>
     public interface IRandomProvider
     {
-        /// <summary>Seed the sequence was started from.</summary>
+        /// <summary>序列开始时使用的种子。</summary>
         uint Seed { get; }
 
-        /// <summary>Returns a value in the half-open range zero to one.</summary>
-        /// <returns>A uniformly distributed value.</returns>
+        /// <summary>返回零到一的左闭右开区间内的值。</summary>
+        /// <returns>均匀分布的值。</returns>
         float NextFloat01();
 
-        /// <summary>Returns a value in the half-open range from <paramref name="min"/> to <paramref name="max"/>.</summary>
-        /// <param name="min">Inclusive lower bound.</param>
-        /// <param name="max">Exclusive upper bound.</param>
-        /// <returns>A uniformly distributed value.</returns>
+        /// <summary>返回 <paramref name="min"/> 到 <paramref name="max"/> 的左闭右开区间内的值。</summary>
+        /// <param name="min">包含的下界。</param>
+        /// <param name="max">不包含的上界。</param>
+        /// <returns>均匀分布的值。</returns>
         float NextFloat(float min, float max);
 
-        /// <summary>Returns an integer in the half-open range from <paramref name="minInclusive"/> to <paramref name="maxExclusive"/>.</summary>
-        /// <param name="minInclusive">Inclusive lower bound.</param>
-        /// <param name="maxExclusive">Exclusive upper bound.</param>
-        /// <returns>A uniformly distributed integer.</returns>
+        /// <summary>返回 <paramref name="minInclusive"/> 到 <paramref name="maxExclusive"/> 的左闭右开区间内的整数。</summary>
+        /// <param name="minInclusive">包含的下界。</param>
+        /// <param name="maxExclusive">不包含的上界。</param>
+        /// <returns>均匀分布的整数。</returns>
         int NextInt(int minInclusive, int maxExclusive);
 
-        /// <summary>Returns true with the supplied probability.</summary>
-        /// <param name="probability">Chance of returning true, from zero to one.</param>
-        /// <returns>The rolled outcome.</returns>
+        /// <summary>按所提供概率返回 true。</summary>
+        /// <param name="probability">返回 true 的概率，范围零到一。</param>
+        /// <returns>抽取的结果。</returns>
         bool NextBool(float probability = 0.5f);
 
-        /// <summary>Returns a uniformly distributed unit vector on the arena's horizontal plane.</summary>
-        /// <returns>A unit direction.</returns>
+        /// <summary>返回竞技场水平面上均匀分布的单位向量。</summary>
+        /// <returns>单位方向。</returns>
         Vector2 NextDirectionOnPlane();
 
-        /// <summary>Restarts the sequence from a new seed.</summary>
-        /// <param name="seed">The seed to restart from. Zero is remapped, as it is a degenerate state.</param>
+        /// <summary>用新种子重新开始序列。</summary>
+        /// <param name="seed">重新开始使用的种子。零会被映射，因为它是退化状态。</param>
         void Reseed(uint seed);
     }
 }

@@ -5,26 +5,23 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// Briefly tints a combatant's renderers when they are hit.
+    /// 战斗参与者受击时，短暂给其渲染器染色。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The cheapest legible confirmation that a hit registered. Damage numbers and health bars both
-    /// require the player to look away from the fight; a flash on the model itself is read
-    /// peripherally, which is the only kind of feedback that survives a fast exchange.
+    /// 这是确认命中已生效的最低成本、可读方式。伤害数字和生命条都要求玩家将视线移开战斗；
+    /// 模型自身的闪光能由余光读取，这也是快速交锋中唯一有效的反馈方式。
     /// </para>
     /// <para>
-    /// Uses a <see cref="MaterialPropertyBlock"/> rather than assigning to
-    /// <c>Renderer.material</c>. The latter silently instantiates a copy of the material on first
-    /// access, leaking one per combatant and breaking batching for everything sharing it.
+    /// 使用 <see cref="MaterialPropertyBlock"/>，而不是赋值给<c>Renderer.material</c>。
+    /// 后者首次访问时会悄然实例化材质副本，每个战斗参与者泄漏一份，并破坏所有共用材质对象的批处理。
     /// </para>
     /// <para>
-    /// Driven by unscaled time so the flash still plays during the hit-stop it accompanies.
+    /// 使用未缩放时间驱动，让闪光在伴随的顿帧中继续播放。
     /// </para>
     /// <para>
-    /// A multiply toward blood red, not a blend toward white. A textured body's base colour is already
-    /// white, so blending to white changed nothing on the skin and turned only the flat-coloured parts - the
-    /// shield, the blade - into pale cards. Multiplying darkens every part alike.
+    /// 乘向血红色，而不是混合到白色。有纹理身体的基础色本来就是白色，因此混合到白色不会改变皮肤，
+    /// 只会将纯色部件——盾牌、刀刃——变成苍白卡片。相乘会同样压暗所有部位。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -54,8 +51,7 @@ namespace AdaptiveBossArena.Combat.Feel
 
         private void Awake()
         {
-            // Bodies and arms only: a trail or a particle system tinted through the same property would lose its
-            // own colour and fade.
+            // 只处理身体与手臂：若通过同一属性给轨迹或粒子系统染色，会失去它们自己的颜色和淡出效果。
             var bodies = new System.Collections.Generic.List<Renderer>();
 
             foreach (Renderer candidate in GetComponentsInChildren<Renderer>())
@@ -85,16 +81,14 @@ namespace AdaptiveBossArena.Combat.Feel
 
             _remaining -= Time.unscaledDeltaTime;
 
-            // Fades from full intensity to none, so the flash reads as an impact rather than a
-            // toggle that pops off.
+            // 从完整强度逐渐减为零，让闪光呈现命中感，而不是突然关闭的开关。
             float strength = Mathf.Clamp01(_remaining / _durationSeconds) * _intensity;
             ApplyTint(strength);
         }
 
-        /// <summary>Starts a flash. Safe to call again while one is already running.</summary>
+        /// <summary>开始闪光，已经进行时也可以安全再次调用。</summary>
         /// <remarks>
-        /// Honours the reduced-flashing accessibility setting here, at the single point a flash
-        /// begins, so nothing downstream has to know about it.
+        /// 在闪光开始的唯一入口遵循减少闪烁的无障碍设置，让下游无需了解它。
         /// </remarks>
         public void Play()
         {
@@ -106,8 +100,8 @@ namespace AdaptiveBossArena.Combat.Feel
             _remaining = _durationSeconds;
         }
 
-        /// <summary>Starts a flash only for hits that actually dealt damage.</summary>
-        /// <param name="result">Outcome of the hit.</param>
+        /// <summary>仅为实际造成伤害的命中开始闪光。</summary>
+        /// <param name="result">命中结果。</param>
         public void PlayIfDamaged(in DamageResult result)
         {
             if (result.Connected)
@@ -116,7 +110,7 @@ namespace AdaptiveBossArena.Combat.Feel
             }
         }
 
-        /// <summary>Blends every renderer toward the flash colour.</summary>
+        /// <summary>将所有渲染器混合到闪光颜色。</summary>
         private void ApplyTint(float strength)
         {
             for (int i = 0; i < _renderers.Length; i++)
@@ -139,7 +133,7 @@ namespace AdaptiveBossArena.Combat.Feel
             }
         }
 
-        /// <summary>Reads a renderer's untinted colour, tolerating either pipeline's property name.</summary>
+        /// <summary>读取渲染器未染色的颜色，兼容两种管线的属性名称。</summary>
         private static Color ReadBaseColor(Renderer target)
         {
             Material material = target != null ? target.sharedMaterial : null;

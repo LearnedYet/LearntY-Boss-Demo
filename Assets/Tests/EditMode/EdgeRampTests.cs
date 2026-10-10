@@ -5,12 +5,12 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Pins the edge ramp the generated textures are masked with.
+    /// 固定生成纹理用于遮罩的边缘渐变规则。
     /// </summary>
     /// <remarks>
-    /// <c>Mathf.SmoothStep(a, b, t)</c> reads like GLSL's <c>smoothstep(edge0, edge1, x)</c> and is not: it
-    /// returns a value between <c>a</c> and <c>b</c>. Used as a mask it never reaches zero or one, which is how
-    /// the first roof cookie dimmed the sun to about a fifth across the whole arena.
+    /// <c>Mathf.SmoothStep(a, b, t)</c> 名称看起来像 GLSL 的 <c>smoothstep(edge0, edge1, x)</c> ，
+    /// 实际不同：返回值位于 <c>a</c> 和 <c>b</c>之间。用作遮罩永远不到零或一，
+    /// 首版屋顶 Cookie 因此把全场阳光压至约五分之一。
     /// </remarks>
     [TestFixture]
     public sealed class EdgeRampTests
@@ -26,7 +26,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void MathfSmoothStepIsNotTheSameThing()
         {
-            // Kept as a record of the trap: given edges for arguments, it answers between the edges.
+            // 保留以记录陷阱：把边缘作为参数，它返回边缘之间的值。
             float misused = Mathf.SmoothStep(0.6f, 0.7f, 0.5f);
 
             Assert.AreEqual(0.65f, misused, 0.0001f);

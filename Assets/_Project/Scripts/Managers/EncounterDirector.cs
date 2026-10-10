@@ -12,19 +12,17 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Owns the lifecycle of a single attempt: start, outcome, records, retry.
+    /// 管理单次尝试的生命周期：开始、结果、记录与重试。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The player and the boss each know how to reset themselves but neither decides when to. That
-    /// decision belongs here, in the one place that can see both, which is also why restarting is a
-    /// reset rather than a scene reload: reloading would discard the service registry and the
-    /// random seed, and a seed that cannot survive a retry is useless for reproducing a fight.
+    /// 玩家与首领都知道如何重置自己，但都不决定何时重置。决定属于能同时看见双方的这里，
+    /// 因此重试使用重置而非重新加载场景；加载会丢弃服务注册表和随机种子，
+    /// 而无法跨重试保留的种子不利于复现战斗。
     /// </para>
     /// <para>
-    /// It also records the attempt. The statistic worth keeping is how many counter-strategies the
-    /// boss managed to develop, since that measures how readable the player was rather than how
-    /// fast they were.
+    /// 同时记录本次尝试。值得保存的是首领形成了多少反制策略，因为这衡量玩家有多容易被读懂，
+    /// 而非行动速度有多快。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -79,19 +77,19 @@ namespace AdaptiveBossArena.Game
         [Tooltip("Raised when the boss parries, relayed into posture damage on the player.")]
         private VoidEventChannel _bossParriedChannel;
 
-        /// <summary>Speed the killing blow plays at, low enough to read as a beat rather than a stutter.</summary>
+        /// <summary>致命一击播放速度，足够慢以形成节拍，而非卡顿。</summary>
         private const float OutcomeSlowMotionScale = 0.35f;
 
-        /// <summary>How long the outcome slow-motion holds, roughly matching the end screen's delay.</summary>
+        /// <summary>结果慢动作的持续时间，大致匹配结算界面延迟。</summary>
         private const float OutcomeSlowMotionSeconds = 1.1f;
 
-        /// <summary>A deeper crawl for an execution — the boss dying with its guard broken.</summary>
+        /// <summary>处决使用更慢的速度，表现首领防御崩溃时死亡。</summary>
         private const float ExecutionSlowMotionScale = 0.14f;
 
-        /// <summary>A longer hold for the execution, so the finishing blow is savoured.</summary>
+        /// <summary>处决保持更久，让玩家感受终结一击。</summary>
         private const float ExecutionSlowMotionSeconds = 1.8f;
 
-        /// <summary>Camera trauma added on an execution, so the finisher lands with weight.</summary>
+        /// <summary>处决增加的相机震动强度，使终结更有重量。</summary>
         private const float ExecutionTrauma = 0.8f;
 
         private ITimeService _time;
@@ -102,16 +100,16 @@ namespace AdaptiveBossArena.Game
         private float _attemptStartedAt;
         private bool _isDecided;
 
-        // Tallied across the current attempt for the post-fight dossier, reset when a new one begins.
+        // 本次尝试中为战后档案累计，开始新尝试时重置。
         private int _deflectsThisAttempt;
 
-        /// <summary>Direction from the player to the boss last frame, so a pair that passed through each other is caught.</summary>
+        /// <summary>上帧从玩家指向首领的方向，用于捕捉双方穿过彼此的情况。</summary>
         private Vector3 _lastBodyDirection;
 
         private int _parriedByBossThisAttempt;
         private int _perfectDodgesThisAttempt;
 
-        /// <summary>Seconds the current attempt has been running.</summary>
+        /// <summary>当前尝试已持续的秒数。</summary>
         public float AttemptDuration =>
             _time == null ? 0f : Mathf.Max(0f, _time.CombatTime - _attemptStartedAt);
 
@@ -213,13 +211,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Relays the minimum each combatant needs to know about the other.
+        /// 转发每方最低限度需要了解的对方信息。
         /// </summary>
         /// <remarks>
-        /// The director is the only object that sees both, which is exactly why this bridging
-        /// belongs here. The player is told where the boss stands and whether its guard is broken;
-        /// the boss is told nothing at all, and continues to perceive the player solely through the
-        /// delayed observation channel.
+        /// 导演是唯一同时看到双方的对象，因此桥接应放在这里。玩家获知首领站位及防御是否崩溃；
+        /// 首领不直接获得任何信息，继续只通过延迟观察通道感知玩家。
         /// </remarks>
         private void LateUpdate()
         {
@@ -230,13 +226,13 @@ namespace AdaptiveBossArena.Game
 
             _player.SetThreat(_boss.transform);
 
-            // The offer, not the act: the punish now waits for the player to press attack.
+            // 只提供机会，不自动执行；惩罚动作现在等待玩家按下攻击。
             if (_ripostePrompt != null && _ripostePrompt.activeSelf != _player.RiposteOffered)
             {
                 _ripostePrompt.SetActive(_player.RiposteOffered);
             }
 
-            // The camera is the only thing that knows whether the player asked to lock on.
+            // 只有相机知道玩家是否请求锁定。
             if (_cameraRig == null)
             {
                 _cameraRig = FindAnyObjectByType<ArenaCameraRig>();
@@ -250,12 +246,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Pushes the two fighters apart where their bodies overlap, the lighter one further.
+        /// 双方身体重叠时将其推开，较轻的一方推得更远。
         /// </summary>
         /// <remarks>
-        /// Run here, after both fighters have moved for the frame, because the director is the only
-        /// object that sees both and the only one allowed to act on the pair. It touches positions
-        /// only through <see cref="IPushBody"/>, so neither fighter learns anything about the other.
+        /// 在双方完成本帧移动后执行，因为只有导演能同时看到并操作双方。
+        /// 位置只通过<see cref="IPushBody"/> 接口访问，因此双方都不会获取对方信息。
         /// </remarks>
         private void SeparateBodies()
         {
@@ -284,19 +279,16 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Refuses both swings when two live blades meet each other rather than their targets.
+        /// 两把有效刀刃碰到彼此而非目标时，拒绝双方挥击。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Detected here because the director is the only object that sees both fighters' swings at
-        /// once — and, usefully, because <c>LateUpdate</c> runs outside either attack executor's
-        /// phase-stepping loop. This is the one place in the parry work where stopping a swing
-        /// synchronously would in fact be safe. It still goes through the deferred recoil both
-        /// fighters already use, because two ways of stopping a swing is one too many.
+        /// 这里检测，因为只有导演能同时看到双方挥击，且 <c>LateUpdate</c> 位于任一攻击执行器的阶段推
+        /// 进循环之外。这是招架处理中唯一可以安全同步停止挥击的位置，但仍沿用双方已经使用的延迟后仰，
+        /// 避免同时存在两种停止挥击方式。
         /// </para>
         /// <para>
-        /// Self-limiting against firing twice: both swings are torn down by the recoil, so on the
-        /// following frame neither reports a live blade.
+        /// 自动避免重复触发：后仰会结束双方挥击，所以下一帧双方都不会报告有效刀刃。
         /// </para>
         /// </remarks>
         private void TryClash()
@@ -331,12 +323,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Relays a clean deflect into posture damage on the boss.
+        /// 将精准弹反转为首领受到的姿态伤害。
         /// </summary>
         /// <remarks>
-        /// Routed through the director for the same reason as the facing above: the player must not
-        /// hold a reference to the boss. The player reports that it deflected; the director decides
-        /// what that means for the other combatant.
+        /// 与上方朝向转发相同，经导演处理，因为玩家不能持有首领引用。玩家报告弹反，
+        /// 导演决定它对另一交战者的影响。
         /// </remarks>
         private void OnDeflected()
         {
@@ -351,14 +342,12 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Relays a boss parry into posture damage on the player.
+        /// 将首领招架转为玩家受到的姿态伤害。
         /// </summary>
         /// <remarks>
-        /// The exact mirror of <see cref="OnDeflected"/>, and routed through the director for the
-        /// same reason: neither combatant may hold a reference to the other. Until this existed the
-        /// player's posture pool was fed only by late blocks, so a player who never blocked could
-        /// never have their guard broken - over-committing cost nothing while over-blocking cost
-        /// everything. Now both mistakes are punished the same way.
+        /// 这是 <see cref="OnDeflected"/> 的完全对称处理，同样经过导演，因为双方不能持有彼此引用。
+        /// 此前玩家姿态池只因较晚格挡受损，从不格挡的玩家就永远不会防御崩溃；过度投入毫无代价，
+        /// 过度格挡却承担一切。现在两种错误采用相同方式惩罚。
         /// </remarks>
         private void OnParriedByBoss()
         {
@@ -372,16 +361,15 @@ namespace AdaptiveBossArena.Game
             _player.ApplyParriedPosture(_boss.ParryPostureDamage);
         }
 
-        /// <summary>Counts a perfect dodge for the post-fight report.</summary>
+        /// <summary>为战后报告统计一次完美闪避。</summary>
         private void OnPerfectDodge() => _perfectDodgesThisAttempt++;
 
         /// <summary>
-        /// Plays the ready–fight intro, then begins the attempt once it releases.
+        /// 播放准备与开战提示，提示结束后开始本次尝试。
         /// </summary>
         /// <remarks>
-        /// Time is frozen for the duration of the intro so the boss cannot open on a player who has
-        /// not yet been given the cue, and the pause menu is suppressed so its input cannot fight the
-        /// frozen clock. Without a configured intro the fight simply begins at once.
+        /// 提示期间冻结时间，避免首领在玩家尚未获得提示时抢先攻击；禁止暂停菜单，
+        /// 避免它的输入与冻结时钟冲突。未配置提示时直接开始战斗。
         /// </remarks>
         private void StartAttemptWithIntro()
         {
@@ -396,8 +384,8 @@ namespace AdaptiveBossArena.Game
             _pauseMenu?.SetSuppressed(true);
             _time?.SetPaused(true);
 
-            // The first attempt of a run opens on the boss: its name, a roar, the camera on it. Retries skip
-            // straight to the quick ready and fight - the player has met it.
+            // 一轮首次尝试先展示首领姓名、咆哮及聚焦镜头；重试则跳过，直接播放简短准备与开战提示，
+            // 因为玩家已经见过首领。
             if (!_entranceShown)
             {
                 _entranceShown = true;
@@ -408,16 +396,16 @@ namespace AdaptiveBossArena.Game
             _roundIntro.Begin(OnIntroComplete);
         }
 
-        /// <summary>The boss's name, shown as it is met.</summary>
-        private const string BossTitle = "T H E   H O L L O W   B R U T E";
+        /// <summary>首次遇见时显示的首领名称。</summary>
+        private const string BossTitle = "空洞巨兽";
 
-        /// <summary>Shake under the entrance roar.</summary>
+        /// <summary>入场咆哮伴随的震动。</summary>
         private const float EntranceRoarTrauma = 0.35f;
 
-        /// <summary>Whether this run has already opened on the boss's entrance.</summary>
+        /// <summary>本轮是否已经播放过首领入场。</summary>
         private bool _entranceShown;
 
-        /// <summary>Holds the camera on the boss under its name and a roar, then hands the fight over.</summary>
+        /// <summary>显示首领名称并咆哮时保持聚焦，随后交还战斗控制。</summary>
         private void PlayEntrance()
         {
             _roundIntro.BeginEntrance(BossTitle, OnIntroComplete);
@@ -437,7 +425,7 @@ namespace AdaptiveBossArena.Game
             _screenShake?.AddTrauma(EntranceRoarTrauma);
         }
 
-        /// <summary>Lets any key or click skip the intro, so a player who has seen it is never held.</summary>
+        /// <summary>任意键或点击可跳过入场，避免已看过的玩家被强制等待。</summary>
         private void Update()
         {
             if (_roundIntro == null || !_roundIntro.IsRunning || !SkipPressed())
@@ -449,7 +437,7 @@ namespace AdaptiveBossArena.Game
             _roundIntro.Skip();
         }
 
-        /// <summary>Whether a key or the left mouse button went down this frame.</summary>
+        /// <summary>本帧是否按下按键或鼠标左键。</summary>
         private static bool SkipPressed()
         {
             var keyboard = UnityEngine.InputSystem.Keyboard.current;
@@ -459,14 +447,14 @@ namespace AdaptiveBossArena.Game
                    (mouse != null && mouse.leftButton.wasPressedThisFrame);
         }
 
-        /// <summary>Releases the fight once the intro has finished.</summary>
+        /// <summary>入场结束后释放战斗。</summary>
         private void OnIntroComplete()
         {
             _time?.SetPaused(false);
             BeginAttempt();
         }
 
-        /// <summary>Starts a fresh attempt.</summary>
+        /// <summary>开始新的尝试。</summary>
         public void BeginAttempt()
         {
             _isDecided = false;
@@ -480,7 +468,7 @@ namespace AdaptiveBossArena.Game
             _endScreen?.Hide();
         }
 
-        /// <summary>Resets both combatants and starts another attempt.</summary>
+        /// <summary>重置双方并开始下一次尝试。</summary>
         public void RestartAttempt()
         {
             Vector3 playerSpawn = _arenaConfig != null ? _arenaConfig.PlayerSpawn : Vector3.zero;
@@ -491,7 +479,7 @@ namespace AdaptiveBossArena.Game
             _player?.ResetForNewAttempt(playerSpawn);
             _boss?.ResetForNewAttempt(bossSpawn);
 
-            // Every attempt starts in the same room: broken stone whole again, its debris gone.
+            // 每次尝试都从同一房间开始：破碎石材恢复完整，碎片清除。
             FindAnyObjectByType<DestructibleField>()?.RestoreAll();
 
             _time?.ClearTimeEffects();
@@ -501,13 +489,12 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Applies the session's challenge modifiers to the combatants and the practice overlay.
+        /// 将本轮挑战修饰项应用到双方及练习叠加层。
         /// </summary>
         /// <remarks>
-        /// The director is the composition root — the one place that sees both combatants — so it is
-        /// where a modifier chosen on the title screen turns into numbers on the player and the boss.
-        /// Nothing in <c>AI</c> or <c>Learning</c> ever learns these exist; each is a scale or a flag
-        /// on a value those systems already respect.
+        /// 导演是组合根，也是唯一同时看到双方的位置，因此标题界面选择的修饰项在这里转为玩家与首领的数
+        /// 值。<c>AI</c> 与 <c>Learning</c> 完全无需知道修饰项存在；每项只缩放既有数值，
+        /// 或设置这些系统本来就遵守的标记。
         /// </remarks>
         private void ApplyRunModifiers()
         {
@@ -527,12 +514,11 @@ namespace AdaptiveBossArena.Game
 
         private void OnBossDefeated() => Decide(won: true);
 
-        /// <summary>Ends the attempt, records it, and shows the outcome.</summary>
+        /// <summary>结束尝试、记录结果并展示结算。</summary>
         private void Decide(bool won)
         {
-            // Both combatants can die on the same frame, in a trade. Whichever event arrives first
-            // decides the attempt; without this guard the second would overwrite the outcome and
-            // record the attempt twice.
+            // 双方可能在同一帧互换致命一击。先到的事件决定结果；若无此保护，第二个事件会覆盖结果，
+            // 并重复记录本次尝试。
             if (_isDecided)
             {
                 return;
@@ -541,21 +527,19 @@ namespace AdaptiveBossArena.Game
             _isDecided = true;
             _pauseMenu?.SetSuppressed(true);
 
-            // The boss cannot see that the player has died — the firewall means it is never told
-            // anything about them directly — so it has to be called off from here. Without this it
-            // keeps swinging at a corpse behind the outcome screen.
+            // 首领不能直接看到玩家死亡，防火墙使它从不直接获知玩家内部信息，因此必须由这里叫停。
+            // 否则结算界面背后它仍会攻击尸体。
             _boss?.SetFightConcluded(true);
 
-            // An execution — the boss killed while its guard is broken — earns a distinct, deeper
-            // cinematic beat than an ordinary kill: the whole point of the finisher is that it feels
-            // earned, so the world crawls further and the camera lands the blow.
+            // 处决，即首领防御崩溃期间被击杀，应该比普通击杀获得更深的电影化节拍；
+            // 终结技的意义在于让人感觉回报实至名归，因此世界更慢，相机也强化这一击。
             bool executed = won && _boss?.Poise != null && _boss.Poise.IsBroken;
 
             if (executed)
             {
                 _time?.RequestSlowMotion(ExecutionSlowMotionScale, ExecutionSlowMotionSeconds);
 
-                // The one moment worth watching from somewhere other than behind the knight.
+                // 唯一值得从骑士身后之外观察的时刻。
                 if (_cameraRig == null)
                 {
                     _cameraRig = FindAnyObjectByType<ArenaCameraRig>();
@@ -567,8 +551,7 @@ namespace AdaptiveBossArena.Game
             }
             else
             {
-                // Drops the world into slow-motion on the decisive blow. The loser topples on unscaled
-                // time regardless, so the beat reads as the world holding its breath while they fall.
+                // 决定性一击时让世界进入慢动作。败者仍按未缩放时间倒下，呈现世界屏息注视其倒下的节拍。
                 _time?.RequestSlowMotion(OutcomeSlowMotionScale, OutcomeSlowMotionSeconds);
             }
 
@@ -577,8 +560,7 @@ namespace AdaptiveBossArena.Game
             int adaptations = adaptation?.AdoptedStrategies.Count ?? 0;
             float remainingHealth = _player?.Health?.Normalized ?? 0f;
 
-            // An unkillable Training player would otherwise set the fastest victory and the fewest
-            // adaptations allowed permanently, with no way to undo it.
+            // 不会死亡的训练玩家否则会永久创造最快胜利及最少适应记录，而且无法撤销。
             bool countsTowardRecords = RunSettings.Current?.CountsTowardRecords ?? true;
             bool isNewRecord = won && countsTowardRecords && IsImprovement(duration, adaptations);
 
@@ -593,14 +575,12 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Composes the boss's post-fight dossier: what it read in the player, how it answered, and
-        /// the tally that shows how the fight actually went.
+        /// 组合首领战后档案：识破的玩家习惯、采取的应对，以及展示战斗实际进程的统计。
         /// </summary>
         /// <remarks>
-        /// The habit lines come from the same profile the boss reasoned from, so the report can never
-        /// claim the boss knew something it did not act on. The adopted-strategy tells are repeated
-        /// here so the passivity-style habits — the ones the habit lines omit because they read as an
-        /// absence rather than a strength — are still accounted for.
+        /// 习惯描述来自首领推理所用的同一画像，报告不会宣称首领知道它未据以行动的信息。
+        /// 这里重述已采纳策略的提示，使被动类习惯也被涵盖；这些习惯在文字列表中被省略，
+        /// 因为它们代表行为缺失，而非强烈倾向。
         /// </remarks>
         private string BuildDossier(AdaptationManager adaptation, float remainingHealth)
         {
@@ -613,7 +593,7 @@ namespace AdaptiveBossArena.Game
 
                 if (habits.Count > 0)
                 {
-                    builder.AppendLine("<b>It read you as:</b>");
+                    builder.AppendLine("<b>它看穿了你的习惯：</b>");
                     foreach (string habit in habits)
                     {
                         builder.Append("• ").AppendLine(habit);
@@ -626,24 +606,23 @@ namespace AdaptiveBossArena.Game
             }
 
             int healthPercent = Mathf.RoundToInt(Mathf.Clamp01(remainingHealth) * 100f);
-            // The reciprocal number is the most useful thing a duel's report can carry: deflects
-            // alone say how well the player defended, and say nothing about how often the boss read
-            // them back.
+            // 对称统计是决斗报告最有用的信息：只统计弹反只说明玩家防御水平，
+            // 无法说明首领多少次反过来识破了玩家。
             builder.Append(
-                $"Deflects landed {_deflectsThisAttempt}   ·   Parried by it {_parriedByBossThisAttempt}" +
-                $"   ·   Perfect dodges {_perfectDodgesThisAttempt}   ·   Health left {healthPercent}%");
+                $"成功弹反 {_deflectsThisAttempt} 次   ·   被首领招架 {_parriedByBossThisAttempt} 次" +
+                $"   ·   完美闪避 {_perfectDodgesThisAttempt} 次   ·   剩余生命 {healthPercent}%");
 
             RunModifiers modifiers = RunSettings.Current;
             if (modifiers != null && modifiers.AnyActive)
             {
-                builder.AppendLine().Append("<b>Challenges:</b> ")
+                builder.AppendLine().Append("<b>挑战：</b> ")
                     .Append(string.Join(", ", modifiers.ActiveLabels()));
             }
 
             return builder.ToString();
         }
 
-        /// <summary>Appends the counters the boss developed, each with its player-facing tell.</summary>
+        /// <summary>附加首领形成的反制策略及各自面向玩家的提示。</summary>
         private static void AppendAnswers(StringBuilder builder, AdaptationManager adaptation)
         {
             if (adaptation.AdoptedStrategies.Count == 0)
@@ -651,7 +630,7 @@ namespace AdaptiveBossArena.Game
                 return;
             }
 
-            builder.AppendLine("<b>It answered with:</b>");
+            builder.AppendLine("<b>它采取的应对：</b>");
 
             foreach (CounterStrategy strategy in adaptation.AdoptedStrategies)
             {
@@ -664,7 +643,7 @@ namespace AdaptiveBossArena.Game
             builder.AppendLine();
         }
 
-        /// <summary>True when this attempt beats a stored best.</summary>
+        /// <summary>本次尝试超过已保存最佳记录时为 true。</summary>
         private bool IsImprovement(float duration, int adaptations) =>
             !_records.HasWon ||
             duration < _records.FastestVictorySeconds ||
@@ -683,16 +662,16 @@ namespace AdaptiveBossArena.Game
             return new RecordsData();
         }
 
-        /// <summary>Assigns the references. Used by the scene generator.</summary>
-        /// <param name="arenaConfig">Arena configuration supplying spawn positions.</param>
-        /// <param name="endScreen">Outcome screen.</param>
-        /// <param name="pauseMenu">Pause menu.</param>
-        /// <param name="roundIntro">The ready–fight beat, or null to begin fights immediately.</param>
-        /// <param name="playerDied">Player death channel.</param>
-        /// <param name="bossDefeated">Boss defeat channel.</param>
-        /// <param name="deflect">Clean deflect channel.</param>
-        /// <param name="perfectDodge">Perfect dodge channel, counted for the post-fight report.</param>
-        /// <param name="bossParried">Boss parry channel, relayed into posture damage on the player.</param>
+        /// <summary>分配引用，供场景生成器使用。</summary>
+        /// <param name="arenaConfig">提供出生位置的竞技场配置。</param>
+        /// <param name="endScreen">结果界面。</param>
+        /// <param name="pauseMenu">暂停菜单。</param>
+        /// <param name="roundIntro">准备与开战节拍；为 null 时立即开始战斗。</param>
+        /// <param name="playerDied">玩家死亡通道。</param>
+        /// <param name="bossDefeated">首领被击败通道。</param>
+        /// <param name="deflect">精准弹反通道。</param>
+        /// <param name="perfectDodge">完美闪避通道，供战后报告统计。</param>
+        /// <param name="bossParried">首领招架通道，转为玩家受到的姿态伤害。</param>
         public void Bind(
             ArenaConfig arenaConfig,
             EndScreen endScreen,

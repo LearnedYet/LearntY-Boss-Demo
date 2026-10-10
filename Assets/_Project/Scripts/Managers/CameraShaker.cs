@@ -5,24 +5,22 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Displaces the camera on impact, and registers itself as the game's shake sink.
+    /// 受击时偏移相机，并将自身注册为游戏的震动接收器。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Applied as a local offset on a child of the camera rig, so shake and framing never fight each
-    /// other. Shaking the rig itself would have the follow easing chase the shake and smear it into
-    /// a drift.
+    /// 把局部偏移应用到相机装置的子对象，避免震动与构图相互干扰。直接震动装置会让跟随平滑追逐震动，
+    /// 将其拖成漂移。
     /// </para>
     /// <para>
-    /// Runs on unscaled time deliberately, unlike the follow. A hit-stop freezes the world precisely
-    /// so the impact registers; a shake that froze along with it would remove the very motion that
-    /// sells the impact.
+    /// 与跟随不同，刻意使用未缩放时间。顿帧冻结世界是为了强化命中感；若震动一起冻结，
+    /// 就会移除表现冲击力最重要的运动。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class CameraShaker : MonoBehaviour, IScreenShake
     {
-        /// <summary>Largest field-of-view kick, so a flurry of dashes cannot balloon the view.</summary>
+        /// <summary>视野角冲击上限，避免连续闪避使视野过度膨胀。</summary>
         private const float MaxFovKick = 10f;
 
         [Header("Intensity")]
@@ -81,8 +79,8 @@ namespace AdaptiveBossArena.Game
             _shake = new TraumaShake(_decayPerSecond, _frequency);
             _restLocalPosition = transform.localPosition;
 
-            // The perspective camera the FOV kick animates. Resolved forgivingly: the shaker usually
-            // carries the camera, but a rig that puts it elsewhere still works.
+            // 用于视野角冲击动画的透视相机。解析方式宽容：震动器通常直接挂在相机上，
+            // 但相机位于装置其他位置时也能工作。
             _camera = GetComponent<Camera>() ?? GetComponentInChildren<Camera>() ?? Camera.main;
             if (_camera != null)
             {
@@ -99,8 +97,8 @@ namespace AdaptiveBossArena.Game
             _shake.Tick(deltaTime);
             _punch = Mathf.Max(0f, _punch - _punchDecayPerSecond * deltaTime);
 
-            // The field-of-view kick springs back toward zero from either side — faster when large,
-            // with a floor so it settles exactly at rest rather than asymptotically hovering off it.
+            // 视野角冲击从正负两侧弹回零；幅度越大恢复越快，并设置最小恢复量，确保最终精确静止，
+            // 而非渐近停在零附近。
             _fovKick = Mathf.MoveTowards(
                 _fovKick, 0f, _fovDecayPerSecond * (Mathf.Abs(_fovKick) + 1f) * deltaTime);
 
@@ -111,8 +109,7 @@ namespace AdaptiveBossArena.Game
 
             if (!_shake.IsShaking && _punch <= 0f)
             {
-                // Snapping back rather than easing avoids leaving a permanent sub-pixel offset that
-                // accumulates across a long fight.
+                // 直接归零而非继续平滑，避免永久残留亚像素偏移，并在长时间战斗中累计。
                 transform.localPosition = _restLocalPosition;
                 transform.localRotation = Quaternion.identity;
                 return;
@@ -130,9 +127,8 @@ namespace AdaptiveBossArena.Game
                     out rollDegrees);
             }
 
-            // The punch pushes along local forward (+Z), toward whatever the camera is framing, and
-            // springs back on its own. It rides on the same intensity scale as shake so one
-            // accessibility slider quiets both.
+            // 冲击沿局部前方（+Z）推向相机构图目标，然后自行弹回。它与震动共用强度缩放，
+            // 因此一个无障碍滑块即可同时减弱两者。
             float punch = _punch * _userIntensity;
 
             transform.localPosition = _restLocalPosition + new Vector3(translation.x, translation.y, punch);
@@ -169,8 +165,7 @@ namespace AdaptiveBossArena.Game
                 return;
             }
 
-            // Clamped so a rapid string of dashes cannot balloon the view; the largest single kick
-            // is what lands, not their sum.
+            // 限制幅度，避免快速连续闪避使视野膨胀；采用最大一次冲击，而非它们的总和。
             _fovKick = Mathf.Clamp(_fovKick + degrees, -MaxFovKick, MaxFovKick);
         }
 
@@ -187,8 +182,8 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Sets the player-facing intensity scale, from the settings menu.</summary>
-        /// <param name="intensity">Scale from zero, meaning off, to one.</param>
+        /// <summary>从设置菜单设定面向玩家的强度缩放。</summary>
+        /// <param name="intensity">零至一的缩放值，零表示关闭。</param>
         public void SetUserIntensity(float intensity) => _userIntensity = Mathf.Clamp01(intensity);
     }
 }

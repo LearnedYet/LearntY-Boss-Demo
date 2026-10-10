@@ -6,19 +6,16 @@ using UnityEngine.SceneManagement;
 namespace AdaptiveBossArena.UI
 {
     /// <summary>
-    /// The title screen: the game's front door.
+    /// 标题界面，游戏的入口。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Deliberately its own scene rather than a panel over the arena. The fight scene spins up
-    /// services, combatants and a learning loop the moment it loads; a menu has no business paying
-    /// that cost, and keeping them separate means the fight always begins from a clean, freshly
-    /// loaded state.
+    /// 独立于竞技场场景。战斗场景加载就创建服务、双方角色和学习循环，菜单无需承担这些成本；
+    /// 分离后每场战斗都从干净的新状态开始。
     /// </para>
     /// <para>
-    /// Starting the game is a scene load rather than an additive reveal for the same reason a retry
-    /// within a fight is <em>not</em> a scene load: the fight wants one clean construction up front,
-    /// and then to reset itself in place so a seed survives repeated attempts.
+    /// 开始游戏通过加载场景，战斗内重试则<em>不</em>加载场景：先完整构建一次，再原地重置，
+    /// 让种子在重复尝试间保留。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -32,15 +29,14 @@ namespace AdaptiveBossArena.UI
         [Tooltip("The quit button, hidden on platforms where quitting does nothing.")]
         private GameObject _quitButton;
 
-        /// <summary>Loads the fight. Bound to the start button.</summary>
+        /// <summary>加载战斗，绑定开始按钮。</summary>
         public void StartGame() => SceneManager.LoadScene(_arenaSceneName);
 
         /// <summary>
-        /// Quits the application, or leaves play mode in the editor. Bound to the quit button.
+        /// 退出应用或编辑器运行模式，绑定退出按钮。
         /// </summary>
         /// <remarks>
-        /// Does nothing in a browser, where a page cannot close its own tab. The button is hidden
-        /// there instead of sitting on the front door doing nothing — see <see cref="Start"/>.
+        /// 浏览器无法自行关闭标签页，因此隐藏无效按钮，见<see cref="Start"/>。
         /// </remarks>
         public void Quit()
         {
@@ -53,9 +49,8 @@ namespace AdaptiveBossArena.UI
 
         private void Start()
         {
-            // A run launched to measure performance goes straight into the fight. The probe that
-            // measures lives in the arena, so a capture left waiting here measured a menu and never
-            // wrote its result. An ordinary launch requests nothing and is unaffected.
+            // 性能测量启动直接进入战斗，因为探针位于竞技场；停留标题会只测菜单且不输出结果，
+            // 普通启动不受影响。
             if (PerfCaptureRequest.Read(Environment.GetCommandLineArgs(), Application.absoluteURL).IsRequested)
             {
                 StartGame();
@@ -68,9 +63,9 @@ namespace AdaptiveBossArena.UI
             }
         }
 
-        /// <summary>Assigns the scene to load. Used by the scene generator.</summary>
-        /// <param name="arenaSceneName">Name of the arena scene.</param>
-        /// <param name="quitButton">Quit button, hidden where quitting is meaningless.</param>
+        /// <summary>指定要加载的场景，供场景生成器使用。</summary>
+        /// <param name="arenaSceneName">竞技场场景名称。</param>
+        /// <param name="quitButton">退出按钮，退出无效时隐藏。</param>
         public void Bind(string arenaSceneName, GameObject quitButton = null)
         {
             _arenaSceneName = arenaSceneName;

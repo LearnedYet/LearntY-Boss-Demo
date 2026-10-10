@@ -6,19 +6,16 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Builds the heads-up display hierarchy from code.
+    /// 从代码构建 HUD 层级。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Interface hierarchies are the worst thing to hand-author into a scene: dozens of nested
-    /// transforms with anchor values that mean nothing in a diff, and every reference a GUID that
-    /// breaks silently. Generating it means the layout is readable, reviewable and reproducible.
+    /// 界面层级很不适合手工写进场景：数十个嵌套 Transform 的锚点值在差异中难以理解，
+    /// 每个 GUID 引用又可能悄然断裂。生成它可让布局可读、可审查、可复现。
     /// </para>
     /// <para>
-    /// Text uses the built-in legacy font rather than TextMeshPro. TMP needs its essential resources
-    /// imported through a dialog before any text renders at all, which a generated scene cannot
-    /// rely on having happened. The legacy font is always present. Swapping to TMP is a sensible
-    /// polish-phase job once the setup is a one-time manual step rather than part of the chain.
+    /// 文字使用 UiBuilder 随附的动态 Noto Sans SC 字体，中文无需额外导入 TextMeshPro 资源，
+    /// 也不依赖玩家设备安装字体。
     /// </para>
     /// </remarks>
     internal static class HudBuilder
@@ -27,12 +24,12 @@ namespace AdaptiveBossArena.Editor
         private const int ReferenceHeight = 1080;
 
         /// <summary>
-        /// Vertical centres of the end screen's four bands, top to bottom.
+        /// 结束界面从上到下四个区域的竖直中心。
         /// </summary>
         /// <remarks>
-        /// Kept together so the gaps between them can be checked at a glance. With the sizes assigned
-        /// in <c>BuildEndScreen</c> the occupied ranges are headline [330, 430], summary [80, 310],
-        /// dossier [-255, 45] and the buttons [-328, -272] — every band clear of its neighbour.
+        /// 集中定义，便于一眼检查间距。使用以下方法赋予的尺寸时：
+        /// <c>BuildEndScreen</c> 标题占 [330, 430]，摘要占 [80, 310]，档案占 [-255, 45]，
+        /// 按钮占 [-328, -272]，相邻区域互不重叠。
         /// </remarks>
         private const float HeadlineCentreY = 380f;
 
@@ -43,17 +40,16 @@ namespace AdaptiveBossArena.Editor
         private const float OutcomeButtonY = -300f;
 
         /// <summary>
-        /// Title scene the pause menu returns to.
+        /// 暂停菜单返回的标题场景。
         /// </summary>
         /// <remarks>
-        /// Derived from the generated scene path rather than typed again, so renaming the scene in
-        /// one place cannot leave the Main Menu button pointing at a scene that no longer exists.
+        /// 从生成场景路径推导而非再次手写，避免仅一处改名后 Main Menu 按钮指向不存在的场景。
         /// </remarks>
         private static readonly string MainMenuSceneName =
             System.IO.Path.GetFileNameWithoutExtension(EditorMenus.MainMenuScenePath);
 
-        // Dark, desaturated and set in iron: saturated green, yellow and pink bars on bare quads were a large
-        // part of why the game read as a toy. Each gauge still keeps a distinct hue, so they stay legible.
+        // 暗色、低饱和、铁质边框：原先裸四边形上的高饱和绿、黄、粉色条让游戏像玩具。
+        // 各资源条仍保留不同色调以便辨识。
         private static readonly Color PlayerHealthColor = new Color(0.62f, 0.1f, 0.08f);
         private static readonly Color StaminaColor = new Color(0.66f, 0.6f, 0.42f);
         private static readonly Color BossHealthColor = new Color(0.52f, 0.05f, 0.05f);
@@ -61,30 +57,29 @@ namespace AdaptiveBossArena.Editor
         private static readonly Color FocusColor = new Color(0.85f, 0.5f, 0.16f);
         private static readonly Color TrailColor = new Color(0.95f, 0.78f, 0.55f, 0.4f);
 
-        /// <summary>The iron rim around every gauge.</summary>
+        /// <summary>每个资源条的铁质边框。</summary>
         private static readonly Color FrameColor = new Color(0.16f, 0.13f, 0.11f, 0.95f);
 
-        /// <summary>The empty part of a gauge, nearly black so the fill's loss is unmistakable.</summary>
+        /// <summary>接近黑色的空槽，使填充损失清晰可见。</summary>
         private static readonly Color WellColor = new Color(0.03f, 0.02f, 0.02f, 0.9f);
 
-        /// <summary>Bone-coloured lettering.</summary>
+        /// <summary>骨白色文字。</summary>
         private static readonly Color LetteringColor = new Color(0.78f, 0.72f, 0.62f);
 
-        /// <summary>The boss's name, spaced out above its gauge.</summary>
-        private const string BossTitle = "T H E   H O L L O W   B R U T E";
+        /// <summary>资源条上方带字距的首领名称。</summary>
+        private const string BossTitle = "空洞巨兽";
 
-        /// <summary>Thickness of a gauge's iron rim, in reference pixels.</summary>
+        /// <summary>资源条铁边厚度，以参考像素计。</summary>
         private const float FrameThickness = 2f;
         private static readonly Color PanelColor = new Color(0.012f, 0.006f, 0.006f, 0.86f);
 
-        /// <summary>Builds the whole interface and returns the objects the director needs.</summary>
-        /// <param name="actionsAsset">Input actions asset, for the pause control.</param>
+        /// <summary>构建完整界面，并返回控制器所需对象。</summary>
+        /// <param name="actionsAsset">用于暂停控制的输入动作资产。</param>
         /// <param name="channels">
-        /// Channels resolved before the scene was replaced. They are passed in rather than looked up
-        /// here because creating a new scene unloads assets, after which a lookup by path returns
-        /// null even though the file is present and correct.
+        /// 在替换场景前解析的通道。通过参数传入而非此处查找，因为新建场景会卸载资产，
+        /// 之后即使文件存在且正确，按路径加载也可能返回 null。
         /// </param>
-        /// <returns>References to the generated components.</returns>
+        /// <returns>生成组件的引用。</returns>
         public static HudReferences Build(
             UnityEngine.InputSystem.InputActionAsset actionsAsset,
             HudChannels channels)
@@ -100,28 +95,27 @@ namespace AdaptiveBossArena.Editor
             BuildAdaptationTell(root, references, channels);
             BuildRipostePrompt(root, references);
 
-            // Built before the pause menu so the pause menu can wire a button to open it.
+            // 在暂停菜单之前构建，便于暂停菜单绑定打开设置的按钮。
             references.SettingsMenu = SettingsMenuBuilder.Build(root, actionsAsset);
 
             BuildPauseMenu(root, references, actionsAsset, channels);
             BuildEndScreen(root, references);
             BuildRoundIntro(root, references);
 
-            // Raised last so the settings panel draws over the pause menu it is opened from, rather
-            // than under it — later siblings win in Unity's UI.
+            // 最后提到顶层，让设置面板绘制在打开它的暂停菜单之上；
+            // Unity UI 中后面的同级对象覆盖前面的。
             references.SettingsMenu.RaiseToTop();
 
             return references;
         }
 
         /// <summary>
-        /// Resolves every channel the interface needs.
+        /// 解析界面需要的所有通道。
         /// </summary>
         /// <remarks>
-        /// Must be called before the scene is replaced. Resolving once up front and injecting the
-        /// result is also simply better than scattering lookups through the build.
+        /// 必须在替换场景前调用。提前统一解析并注入结果，也优于在构建过程中散布查找。
         /// </remarks>
-        /// <returns>The resolved channels.</returns>
+        /// <returns>解析后的通道。</returns>
         public static HudChannels ResolveChannels() => new HudChannels
         {
             PlayerHealth = GeneratedAssets.EventChannel<FloatEventChannel>("OnPlayerHealthChanged"),
@@ -143,7 +137,7 @@ namespace AdaptiveBossArena.Editor
             BossParried = GeneratedAssets.EventChannel<VoidEventChannel>("OnBossParried")
         };
 
-        /// <summary>Creates the scaling canvas and its event system.</summary>
+        /// <summary>创建缩放画布及事件系统。</summary>
         private static GameObject CreateCanvas()
         {
             var canvasObject = new GameObject("--- HUD ---", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -155,8 +149,7 @@ namespace AdaptiveBossArena.Editor
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(ReferenceWidth, ReferenceHeight);
 
-            // Matching height keeps the bars a constant fraction of the screen on ultrawide
-            // monitors, where matching width would shrink them to nothing.
+            // 按高度匹配，让资源条在超宽屏上保持固定屏幕占比；按宽度匹配会使它们过小。
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 1f;
 
@@ -171,7 +164,7 @@ namespace AdaptiveBossArena.Editor
             return canvasObject;
         }
 
-        /// <summary>Creates the player's health and stamina bars, bottom left.</summary>
+        /// <summary>在左下创建玩家生命与耐力条。</summary>
         private static void BuildPlayerBars(Transform root, HudReferences references, HudChannels channels)
         {
             GameObject group = CreatePanel(root, "PlayerVitals", new Vector2(0f, 0f), new Vector2(0f, 0f),
@@ -187,22 +180,21 @@ namespace AdaptiveBossArena.Editor
                 StaminaColor,
                 channels.PlayerStamina);
 
-            // A slim bar tucked between health and stamina. It fills as the player deflects and dodges
-            // perfectly, and a full bar is the cue that the next special will land empowered.
+            // 在生命与耐力之间放置细条。玩家弹反和完美闪避会使它填满；
+            // 满条提示下一次特殊攻击将获得强化。
             references.PlayerFocus = CreateBar(
                 group.transform, "Focus", new Vector2(0f, 38f), new Vector2(420f, 7f),
                 FocusColor,
                 channels.PlayerFocus);
 
-            // Posture sits closest to the character's feet, because it is the bar the player watches
-            // while under pressure and deciding whether they can afford another block.
+            // 姿态条最靠近角色脚部，因为玩家承压时要观察它，判断还能否承受下一次格挡。
             references.PlayerPosture = CreateBar(
                 group.transform, "Posture", new Vector2(0f, 2f), new Vector2(420f, 10f),
                 PostureColor,
                 channels.PlayerPosture);
         }
 
-        /// <summary>Creates the boss bar and phase pips, top centre.</summary>
+        /// <summary>在顶部中心创建首领资源条和阶段指示点。</summary>
         private static void BuildBossBar(Transform root, HudReferences references, HudChannels channels)
         {
             GameObject group = CreatePanel(root, "BossVitals", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
@@ -219,8 +211,7 @@ namespace AdaptiveBossArena.Editor
                 BossHealthColor,
                 channels.BossHealth);
 
-            // Directly beneath the health bar so the two read as one gauge. Watching this empty is
-            // how the player knows a riposte is coming, which is the payoff of every deflect.
+            // 放在生命条正下方，让两者读作同一组资源。姿态清空意味着可以处决，是每次弹反的回报。
             references.BossPosture = CreateBar(
                 group.transform, "Posture", new Vector2(0f, -32f), new Vector2(900f, 10f),
                 PostureColor,
@@ -250,15 +241,15 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Creates the prompt offering the punish while the boss kneels.
+        /// 创建首领跪地时提示可惩罚的文字。
         /// </summary>
         /// <remarks>
-        /// The riposte used to fire itself the moment the guard broke. Now the player has to walk in and press
-        /// attack, so the offer has to be visible - otherwise the best moment in the fight is a secret.
+        /// 以前破防立即自动反击。现在玩家必须走近并按攻击，必须明确提示机会，
+        /// 否则战斗最佳时刻会变成秘密。
         /// </remarks>
         private static void BuildRipostePrompt(Transform root, HudReferences references)
         {
-            Text prompt = CreateText(root, "RipostePrompt", "RIPOSTE", 30, TextAnchor.MiddleCenter);
+            Text prompt = CreateText(root, "RipostePrompt", "处决", 30, TextAnchor.MiddleCenter);
             prompt.rectTransform.anchoredPosition = new Vector2(0f, -210f);
             prompt.rectTransform.sizeDelta = new Vector2(600f, 44f);
             prompt.color = new Color(0.93f, 0.84f, 0.6f);
@@ -269,7 +260,7 @@ namespace AdaptiveBossArena.Editor
             references.RipostePrompt = prompt.gameObject;
         }
 
-        /// <summary>Creates the adaptation tell banner, upper third.</summary>
+        /// <summary>在屏幕上三分之一处创建策略适应提示横幅。</summary>
         private static void BuildAdaptationTell(Transform root, HudReferences references, HudChannels channels)
         {
             GameObject panel = CreatePanel(root, "AdaptationTell",
@@ -279,7 +270,7 @@ namespace AdaptiveBossArena.Editor
             var group = panel.AddComponent<CanvasGroup>();
             Text label = CreateText(panel.transform, "Label", string.Empty, 34, TextAnchor.MiddleCenter);
             label.color = new Color(0.86f, 0.74f, 0.56f);
-            label.fontStyle = FontStyle.Italic;
+            label.fontStyle = FontStyle.Normal;
             label.gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.9f);
 
             var display = panel.AddComponent<AdaptationTellDisplay>();
@@ -288,7 +279,7 @@ namespace AdaptiveBossArena.Editor
             references.AdaptationTell = display;
         }
 
-        /// <summary>Creates the pause panel.</summary>
+        /// <summary>创建暂停面板。</summary>
         private static void BuildPauseMenu(
             Transform root,
             HudReferences references,
@@ -297,28 +288,26 @@ namespace AdaptiveBossArena.Editor
         {
             GameObject panel = CreateFullScreenPanel(root, "PausePanel");
 
-            CreateText(panel.transform, "Title", "PAUSED", 64, TextAnchor.MiddleCenter)
+            CreateText(panel.transform, "Title", "已暂停", 64, TextAnchor.MiddleCenter)
                 .rectTransform.anchoredPosition = new Vector2(0f, 140f);
 
             var menu = root.gameObject.AddComponent<PauseMenu>();
 
-            CreateButton(panel.transform, "Resume", "Resume", new Vector2(0f, 90f), menu.Resume);
-            CreateButton(panel.transform, "Restart", "Restart Fight", new Vector2(0f, 20f), menu.Restart);
+            CreateButton(panel.transform, "Resume", "继续游戏", new Vector2(0f, 90f), menu.Resume);
+            CreateButton(panel.transform, "Restart", "重新挑战", new Vector2(0f, 20f), menu.Restart);
 
             if (references.SettingsMenu != null)
             {
-                CreateButton(panel.transform, "Settings", "Settings", new Vector2(0f, -50f),
+                CreateButton(panel.transform, "Settings", "设置", new Vector2(0f, -50f),
                     references.SettingsMenu.Open);
             }
 
-            // Without this the title screen — and so the challenge modifiers — is unreachable for the
-            // rest of the session once the first fight starts.
-            CreateButton(panel.transform, "MainMenu", "Main Menu", new Vector2(0f, -120f),
+            // 没有此按钮，首次战斗开始后整个会话都无法回到标题场景，也无法访问挑战选项。
+            CreateButton(panel.transform, "MainMenu", "返回主菜单", new Vector2(0f, -120f),
                 menu.ReturnToMenu);
 
-            // Built unconditionally and hidden at runtime where quitting is meaningless: this
-            // generator has no idea which platform the build will target.
-            Button quit = CreateButton(panel.transform, "Quit", "Quit", new Vector2(0f, -190f), menu.Quit);
+            // 无条件构建，运行时在退出无意义的平台隐藏；生成器不知道最终构建目标平台。
+            Button quit = CreateButton(panel.transform, "Quit", "退出游戏", new Vector2(0f, -190f), menu.Quit);
 
             menu.Bind(
                 actionsAsset,
@@ -332,49 +321,44 @@ namespace AdaptiveBossArena.Editor
             references.PauseMenu = menu;
         }
 
-        /// <summary>Creates the outcome panel.</summary>
+        /// <summary>创建结果面板。</summary>
         private static void BuildEndScreen(Transform root, HudReferences references)
         {
             GameObject panel = CreateFullScreenPanel(root, "EndPanel");
             var group = panel.AddComponent<CanvasGroup>();
 
-            // Laid out as explicit non-overlapping bands, because every text created by UiBuilder has
-            // a centre pivot: a rect at y spans [y - height/2, y + height/2], and a top-anchored
-            // block therefore starts drawing at its rect's TOP edge, not at y. Missing that put the
-            // summary's first line exactly on the headline's centre line and drew them over
-            // each other. Each band below leaves a visible gap to the next.
+            // 明确划分不重叠区域，因为 UiBuilder 文本使用中心pivot：
+            // y 处矩形范围为 [y - height/ 2, y + height/2]，顶部对齐块从矩形顶边而非y 开始绘制。
+            // 遗漏这点曾让摘要首行正好叠在标题中心线上。下方每个区域都与下一块留有可见间隙。
             Text headline = CreateText(panel.transform, "Headline", string.Empty, 72, TextAnchor.MiddleCenter);
             headline.rectTransform.anchoredPosition = new Vector2(0f, HeadlineCentreY);
 
-            // Tall enough to contain 72pt glyphs. The default 80 was shorter than the line itself, so
-            // it only rendered at all because overflow is permitted.
+            // 高度足以容纳 72pt 字形。默认 80 比文字自身高度更小，原先仅因允许溢出才勉强渲染。
             headline.rectTransform.sizeDelta = new Vector2(1600f, 100f);
             headline.gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.9f);
 
-            // Sized for the longest summary the end screen can produce — seven lines on a run that
-            // sets a personal best — so it cannot spill into the dossier below it.
+            // 按结束界面最长摘要，即刷新个人纪录时的七行，预留空间，避免溢入下方档案。
             Text summary = CreateText(panel.transform, "Summary", string.Empty, 28, TextAnchor.UpperCenter);
             summary.rectTransform.anchoredPosition = new Vector2(0f, SummaryCentreY);
             summary.rectTransform.sizeDelta = new Vector2(900f, 230f);
             summary.color = new Color(0.84f, 0.79f, 0.7f);
 
-            // The dossier: the boss's read on the player. Left-aligned and roomy because it is a list
-            // of sentences, and it is the payoff of the whole "it studied you" mechanic.
+            // 档案展示首领对玩家的分析。左对齐并留足空间，因为是一组句子，
+            // 也是整个“它研究了你”机制的回报。
             Text dossier = CreateText(panel.transform, "Dossier", string.Empty, 24, TextAnchor.UpperLeft);
             dossier.rectTransform.anchoredPosition = new Vector2(0f, DossierCentreY);
             dossier.rectTransform.sizeDelta = new Vector2(760f, 300f);
             dossier.color = LetteringColor;
-            dossier.fontStyle = FontStyle.Italic;
+            dossier.fontStyle = FontStyle.Normal;
 
             var screen = root.gameObject.AddComponent<EndScreen>();
             CreateButton(
-                panel.transform, "Retry", "Try Again", new Vector2(-170f, OutcomeButtonY), screen.Restart);
+                panel.transform, "Retry", "再次挑战", new Vector2(-170f, OutcomeButtonY), screen.Restart);
 
-            // The fight is over, so this is the natural moment to change the challenge modifiers —
-            // which live on the title screen and were previously unreachable from here.
+            // 战斗结束是调整挑战选项的自然时刻；选项位于标题场景，此前从这里无法到达。
             if (references.PauseMenu != null)
             {
-                CreateButton(panel.transform, "EndMainMenu", "Main Menu", new Vector2(170f, OutcomeButtonY),
+                CreateButton(panel.transform, "EndMainMenu", "返回主菜单", new Vector2(170f, OutcomeButtonY),
                     references.PauseMenu.ReturnToMenu);
             }
 
@@ -384,10 +368,10 @@ namespace AdaptiveBossArena.Editor
             references.EndScreen = screen;
         }
 
-        /// <summary>Creates the small current-weapon label above the player's vitals.</summary>
+        /// <summary>在玩家资源条上方创建当前武器小标签。</summary>
         private static void BuildWeaponDisplay(Transform root, HudChannels channels)
         {
-            Text label = CreateText(root, "WeaponName", "Blade", 24, TextAnchor.LowerLeft);
+            Text label = CreateText(root, "WeaponName", "长剑", 24, TextAnchor.LowerLeft);
 
             var rect = label.rectTransform;
             rect.anchorMin = new Vector2(0f, 0f);
@@ -402,11 +386,10 @@ namespace AdaptiveBossArena.Editor
             display.Bind(channels.WeaponDrawn, label);
         }
 
-        /// <summary>Creates the ready–fight banner shown at the start of each attempt.</summary>
+        /// <summary>创建每次尝试开始时的准备和开战横幅。</summary>
         /// <remarks>
-        /// Unlike the end screen this has no dark backing: it is a banner over the frozen fight, not a
-        /// panel that hides it. It carries no Image and its group blocks no raycasts, so it can never
-        /// swallow a click meant for the buttons beneath it.
+        /// 与结束界面不同，它没有深色背景：只是覆盖在冻结战斗上的横幅，而非遮住战斗的面板。不带 Image，
+        /// CanvasGroup 不阻挡射线，因此不会吞掉下方按钮点击。
         /// </remarks>
         private static void BuildRoundIntro(Transform root, HudReferences references)
         {
@@ -429,7 +412,7 @@ namespace AdaptiveBossArena.Editor
             references.RoundIntro = intro;
         }
 
-        /// <summary>Creates a bar with a trailing fill behind its main fill.</summary>
+        /// <summary>创建主填充后带延迟追赶填充的资源条。</summary>
         private static ResourceBar CreateBar(
             Transform parent,
             string name,
@@ -438,8 +421,7 @@ namespace AdaptiveBossArena.Editor
             Color color,
             FloatEventChannel channel)
         {
-            // The root's own image is the iron rim; the well inside it is the gauge proper, so the fills that
-            // resize to a fraction of their parent stay inside the rim.
+            // 根对象图片是铁边，内部槽才是资源条本体，使按父级比例调整的填充始终留在边框内。
             GameObject barRoot = CreatePanel(parent, name, new Vector2(0f, 0f), new Vector2(0f, 0f),
                 anchoredPosition, size, FrameColor);
 
@@ -462,7 +444,7 @@ namespace AdaptiveBossArena.Editor
             return bar;
         }
 
-        /// <summary>Creates a horizontally filled image stretched to its parent.</summary>
+        /// <summary>创建横向填充并拉伸覆盖父对象的图片。</summary>
         private static Image CreateFillImage(Transform parent, string name, Color color)
         {
             var imageObject = new GameObject(name, typeof(Image));
@@ -471,8 +453,8 @@ namespace AdaptiveBossArena.Editor
             var rect = imageObject.GetComponent<RectTransform>();
             Stretch(rect);
 
-            // Sized by stretching this rect, not by Image.fillAmount: the fill's shading sprite is stretched
-            // with it, and the trail has no sprite, for which fillAmount does nothing.
+            // 通过拉伸矩形调整尺寸，而非 Image.fillAmount：主填充着色精灵随之拉伸；尾条没有精灵，
+            // fillAmount 对它无效。
             var image = imageObject.GetComponent<Image>();
             image.color = color;
             image.type = Image.Type.Simple;
@@ -480,7 +462,7 @@ namespace AdaptiveBossArena.Editor
             return image;
         }
 
-        /// <summary>Creates a positioned panel with an optional background.</summary>
+        /// <summary>创建指定位置、可带背景的面板。</summary>
         private static GameObject CreatePanel(
             Transform parent,
             string name,
@@ -508,7 +490,7 @@ namespace AdaptiveBossArena.Editor
             return panel;
         }
 
-        /// <summary>Creates a panel covering the whole screen.</summary>
+        /// <summary>创建覆盖全屏的面板。</summary>
         private static GameObject CreateFullScreenPanel(Transform parent, string name)
         {
             var panel = new GameObject(name, typeof(RectTransform), typeof(Image));
@@ -520,7 +502,7 @@ namespace AdaptiveBossArena.Editor
             return panel;
         }
 
-        /// <summary>Creates a text element using the always-present built-in font.</summary>
+        /// <summary>使用共用随附中文字体创建文字元素。</summary>
         private static Text CreateText(
             Transform parent,
             string name,
@@ -529,8 +511,8 @@ namespace AdaptiveBossArena.Editor
             TextAnchor alignment) =>
             UiBuilder.CreateText(parent, name, content, fontSize, alignment);
 
-        /// <summary>Creates a labelled button wired to a callback.</summary>
-        /// <returns>The created button, for callers that need to reference it afterwards.</returns>
+        /// <summary>创建带标签并绑定回调的按钮。</summary>
+        /// <returns>创建的按钮，供需要后续引用的调用者使用。</returns>
         private static Button CreateButton(
             Transform parent,
             string name,
@@ -539,7 +521,7 @@ namespace AdaptiveBossArena.Editor
             UnityEngine.Events.UnityAction onClick) =>
             UiBuilder.CreateButton(parent, name, label, anchoredPosition, onClick);
 
-        /// <summary>Stretches a rect to fill its parent.</summary>
+        /// <summary>拉伸矩形以填满父对象。</summary>
         private static void Stretch(RectTransform rect)
         {
             rect.anchorMin = Vector2.zero;
@@ -550,105 +532,104 @@ namespace AdaptiveBossArena.Editor
     }
 
     /// <summary>
-    /// The event channels the interface binds to, resolved before the scene is replaced.
+    /// 界面绑定的事件通道，在替换场景前解析。
     /// </summary>
     /// <remarks>
-    /// This type exists because of a specific and unobvious failure. Replacing the open scene
-    /// unloads assets, and afterwards <c>AssetDatabase.LoadAssetAtPath</c> returns null for assets
-    /// that are present and perfectly valid on disk. Resolving everything beforehand and carrying it
-    /// across sidesteps the problem, and reads better than lookups sprinkled through the build.
+    /// 此类型源于一个不明显的实际故障：替换打开场景会卸载资产，
+    /// 之后 <c>AssetDatabase.LoadAssetAtPath</c> 对磁盘上存在且完全有效的资产也返回 null。
+    /// 提前统一解析并带到新场景可绕过问题，也比散布查找更清晰。
     /// </remarks>
     internal sealed class HudChannels
     {
-        /// <summary>Normalised player health.</summary>
+        /// <summary>归一化玩家生命。</summary>
         public FloatEventChannel PlayerHealth { get; set; }
 
-        /// <summary>Normalised player stamina.</summary>
+        /// <summary>归一化玩家耐力。</summary>
         public FloatEventChannel PlayerStamina { get; set; }
 
-        /// <summary>Normalised player focus.</summary>
+        /// <summary>归一化玩家专注。</summary>
         public FloatEventChannel PlayerFocus { get; set; }
 
-        /// <summary>Normalised boss health.</summary>
+        /// <summary>归一化首领生命。</summary>
         public FloatEventChannel BossHealth { get; set; }
 
-        /// <summary>Normalised player posture.</summary>
+        /// <summary>归一化玩家姿态。</summary>
         public FloatEventChannel PlayerPosture { get; set; }
 
-        /// <summary>Normalised boss posture.</summary>
+        /// <summary>归一化首领姿态。</summary>
         public FloatEventChannel BossPosture { get; set; }
 
-        /// <summary>Zero-based boss phase index.</summary>
+        /// <summary>从零开始的首领阶段索引。</summary>
         public IntEventChannel BossPhase { get; set; }
 
-        /// <summary>Tell message for a newly adopted counter-strategy.</summary>
+        /// <summary>新采用应对策略的提示信息。</summary>
         public StringEventChannel AdaptationAdopted { get; set; }
 
-        /// <summary>Name of a newly drawn weapon.</summary>
+        /// <summary>新拔出武器的名称。</summary>
         public StringEventChannel WeaponDrawn { get; set; }
 
-        /// <summary>Carries the drawn weapon's swing cue, so weapons sound distinct.</summary>
+        /// <summary>携带已装备武器的挥击音效标识，使武器声音不同。</summary>
         public StringEventChannel WeaponSwingCue { get; set; }
 
-        /// <summary>Whether the game is paused.</summary>
+        /// <summary>游戏是否暂停。</summary>
         public BoolEventChannel PauseState { get; set; }
 
-        /// <summary>Raised when the player is defeated.</summary>
+        /// <summary>玩家被击败时触发。</summary>
         public VoidEventChannel PlayerDied { get; set; }
 
-        /// <summary>Raised when the boss is defeated.</summary>
+        /// <summary>首领被击败时触发。</summary>
         public VoidEventChannel BossDefeated { get; set; }
 
-        /// <summary>Raised on a clean deflect.</summary>
+        /// <summary>成功弹反时触发。</summary>
         public VoidEventChannel Deflect { get; set; }
 
-        /// <summary>Raised on a perfect dodge.</summary>
+        /// <summary>完美闪避时触发。</summary>
         public VoidEventChannel PerfectDodge { get; set; }
 
-        /// <summary>Raised when the boss overbalances on a committed whiff.</summary>
+        /// <summary>首领投入攻击却挥空并失衡时触发。</summary>
         public VoidEventChannel Overbalance { get; set; }
 
-        /// <summary>Raised when the boss parries a swing.</summary>
+        /// <summary>首领招架挥击时触发。</summary>
         public VoidEventChannel BossParried { get; set; }
     }
 
-    /// <summary>The generated interface components the scene builder needs to wire up.</summary>
+    /// <summary>场景构建器需要连接的生成界面组件。</summary>
     internal sealed class HudReferences
     {
-        /// <summary>Player health bar.</summary>
+        /// <summary>玩家生命条。</summary>
         public ResourceBar PlayerHealth { get; set; }
 
-        /// <summary>Player stamina bar.</summary>
+        /// <summary>玩家耐力条。</summary>
         public ResourceBar PlayerStamina { get; set; }
 
-        /// <summary>Player focus bar.</summary>
+        /// <summary>玩家专注条。</summary>
         public ResourceBar PlayerFocus { get; set; }
 
-        /// <summary>Boss health bar.</summary>
+        /// <summary>首领生命条。</summary>
         public ResourceBar BossHealth { get; set; }
 
-        /// <summary>Player posture bar.</summary>
+        /// <summary>玩家姿态条。</summary>
         public ResourceBar PlayerPosture { get; set; }
 
-        /// <summary>Boss posture bar.</summary>
+        /// <summary>首领姿态条。</summary>
         public ResourceBar BossPosture { get; set; }
 
-        /// <summary>Adaptation tell banner.</summary>
+        /// <summary>策略适应提示横幅。</summary>
         public AdaptationTellDisplay AdaptationTell { get; set; }
 
-        /// <summary>Pause menu.</summary>
+        /// <summary>暂停菜单。</summary>
         public PauseMenu PauseMenu { get; set; }
 
-        /// <summary>Outcome screen.</summary>
+        /// <summary>结果界面。</summary>
         public EndScreen EndScreen { get; set; }
 
-        /// <summary>Ready–fight intro banner.</summary>
+        /// <summary>准备与开战开场横幅。</summary>
         public RoundIntro RoundIntro { get; set; }
 
-        /// <summary>Settings panel and its live-applying menu.</summary>
+        /// <summary>设置面板及其即时应用菜单。</summary>
         public SettingsMenu SettingsMenu { get; set; }
 
-        /// <summary>The prompt shown while a kneeling boss can be punished.</summary>
+        /// <summary>首领跪地且可被惩罚时显示的提示。</summary>
         public GameObject RipostePrompt { get; set; }
     }
 }

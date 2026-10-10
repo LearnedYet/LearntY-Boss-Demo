@@ -7,11 +7,10 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests when the knight may break out of an action.
+    /// 测试骑士何时能退出某个动作。
     /// </summary>
     /// <remarks>
-    /// The player felt they had "no proper control over the character": a guard could not be left for a roll,
-    /// a roll only for an attack, an attack never for the guard, and a heal not at all.
+    /// 玩家觉得无法正常控制角色：格挡不能接翻滚，翻滚只能接攻击，攻击不能接格挡，治疗完全不能退出。
     /// </remarks>
     [TestFixture]
     public sealed class CancelRulesTests

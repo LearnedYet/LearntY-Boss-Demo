@@ -7,27 +7,23 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Creates the game's long-lived services and drives the clock.
+    /// 创建游戏长期服务并驱动时钟。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The composition root. It is the only place that decides which concrete implementation stands
-    /// behind each service interface, which is what allows every other system to depend on
-    /// abstractions without anybody having to construct them.
+    /// 组合根。只有这里决定每个服务接口对应的具体实现，使其他系统都可以依赖抽象，无需自行创建服务。
     /// </para>
     /// <para>
-    /// Its execution order is pinned far ahead of everything else for two reasons: services must
-    /// exist before any consumer's <c>Start</c> runs, and the time service must advance before any
-    /// system reads <see cref="ITimeService.DeltaTime"/> in the same frame. A consumer reading the
-    /// clock before it ticks would run a frame behind, which is subtle enough to survive review and
-    /// obvious enough to ruin combat timing.
+    /// 执行顺序固定在所有系统之前，原因有二：服务必须在使用者的 <c>Start</c> 运行前存在，
+    /// 时间服务必须先推进，其他系统才能在同一帧读取 <see cref="ITimeService.DeltaTime"/>。
+    /// 使用者若在时钟推进前读取，就会落后一帧；这类问题很容易逃过审查，却足以破坏战斗时序。
     /// </para>
     /// </remarks>
     [DefaultExecutionOrder(ExecutionOrder)]
     [DisallowMultipleComponent]
     public sealed class GameBootstrapper : MonoBehaviour
     {
-        /// <summary>Runs well ahead of gameplay so services exist and the clock has advanced.</summary>
+        /// <summary>远早于玩法执行，确保服务存在且时钟已推进。</summary>
         public const int ExecutionOrder = -10000;
 
         [Header("Determinism")]
@@ -45,7 +41,7 @@ namespace AdaptiveBossArena.Game
         private CombatEventBus _combatEvents;
         private ServiceRegistry _registry;
 
-        /// <summary>The seed all gameplay randomness was started from.</summary>
+        /// <summary>所有玩法随机性启动时采用的种子。</summary>
         public uint ActiveSeed { get; private set; }
 
         private void Awake()
@@ -58,9 +54,8 @@ namespace AdaptiveBossArena.Game
             ActiveSeed = ResolveSeed();
             _registry.Register<IRandomProvider>(new XorShiftRandomProvider(ActiveSeed));
 
-            // Registered here rather than owned by either combatant, because it is the channel
-            // through which the boss learns what the player did without either one holding a
-            // reference to the other.
+            // 在此注册，而非由任一交战者拥有，因为首领通过该通道了解玩家已发生的行为，
+            // 同时双方都无需持有对方引用。
             _combatEvents = new CombatEventBus();
             _registry.Register<ICombatEventBus>(_combatEvents);
 
@@ -78,23 +73,21 @@ namespace AdaptiveBossArena.Game
 
         private void OnDestroy()
         {
-            // Time scale is global engine state, so it must be released rather than abandoned; left
-            // at a hit-stop value it would carry a frozen game into the next scene or back into the
-            // editor. The service owns that state and restores it, because nothing outside it is
-            // permitted to write the engine's time scale directly.
+            // 时间缩放是引擎全局状态，必须主动释放，不能遗留；若停在顿帧数值，
+            // 冻结状态会带入下一场景或返回编辑器。服务拥有并恢复该状态，
+            // 因为只有它有权直接修改引擎时间缩放。
             if (_timeService != null)
             {
                 _timeService.SetPaused(false);
                 _timeService.ClearTimeEffects();
             }
 
-            // Subscribers are scene objects being torn down alongside this one. Dropping them stops
-            // a stale delegate firing against a destroyed target during teardown.
+            // 订阅者是与此对象一起销毁的场景对象。清除订阅可防止销毁过程中旧委托调用已经销毁的目标。
             _combatEvents?.Clear();
             _registry?.Clear();
         }
 
-        /// <summary>Chooses the seed, drawing from the clock when none was specified.</summary>
+        /// <summary>选择种子，未指定时从系统时钟取得。</summary>
         private uint ResolveSeed() =>
             _randomSeed != 0
                 ? unchecked((uint)_randomSeed)

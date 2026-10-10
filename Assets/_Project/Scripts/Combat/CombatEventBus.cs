@@ -4,19 +4,18 @@ using AdaptiveBossArena.Core.Combat;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// Default <see cref="ICombatEventBus"/> implementation.
+    /// <see cref="ICombatEventBus"/> 的默认实现。
     /// </summary>
     /// <remarks>
-    /// A direct multicast delegate rather than a ScriptableObject channel. Combat events fire far
-    /// more often than the interface signals channels are meant for, and unlike those signals they
-    /// have exactly one consumer that matters: the boss's combat memory.
+    /// 采用直接多播委托，而非 ScriptableObject 通道。战斗事件的触发频率远高于通道所服务的界面信号，
+    /// 而且与这些信号不同，它们唯一关键消费者是首领的战斗记忆。
     /// </remarks>
     public sealed class CombatEventBus : ICombatEventBus
     {
         /// <inheritdoc />
         public event Action<CombatEvent> EventRecorded;
 
-        /// <summary>Number of occurrences published since construction.</summary>
+        /// <summary>构造以来发布的事件数量。</summary>
         public int PublishedCount { get; private set; }
 
         /// <inheritdoc />

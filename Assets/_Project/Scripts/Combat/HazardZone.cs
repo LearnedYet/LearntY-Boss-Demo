@@ -6,67 +6,63 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// A lingering patch of dangerous ground: it warns, then chips at anything standing in it, then
-    /// fades.
+    /// 持续存在的危险地面：先预警，再逐步伤害站在其中的角色，最后消退。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Hazards damage the <em>player only</em> — they carry the boss's team and query the player
-    /// hurtbox layer — which is the genre convention that a boss is unharmed by its own fire, and,
-    /// more importantly here, keeps the arena's new spatial pressure entirely on the player's side of
-    /// the firewall. The AI never learns hazards exist.
+    /// 危险区域只伤害<em>玩家</em>：归属首领阵营并查询玩家受击盒层。首领不受自己火焰伤害符合类型惯例，
+    /// 更重要的是，竞技场新增的空间压力完全位于防火墙的玩家一侧。AI 完全不知道危险区域存在。
     /// </para>
     /// <para>
-    /// The damage sets <see cref="DamageInfo.IgnoresInvulnerability"/>, so a dash cannot roll through
-    /// a hazard: the answer to a scarred floor is to <em>leave</em> it, not to time an i-frame. It
-    /// deals no poise damage and never staggers, so standing in one for a moment costs health and
-    /// position, not control — pressure, not a stun-lock. Ticks on <see cref="ITimeService.DeltaTime"/>
-    /// so a hazard freezes with the world during hit-stop.
+    /// 伤害设置 <see cref="DamageInfo.IgnoresInvulnerability"/>，因此闪避不能穿过危险区域；
+    /// 应对灼烧地面要<em>离开</em>，而非把握无敌帧。它不造成姿态伤害，也不引发硬直，
+    /// 短暂停留损失生命与站位，而非控制权：产生压力，不形成无限硬直。
+    /// 按 <see cref="ITimeService.DeltaTime"/>更新，使危险区域随世界在顿帧中冻结。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class HazardZone : MonoBehaviour
     {
-        /// <summary>Telegraph before the zone bites, long enough to read and step out of.</summary>
+        /// <summary>区域造成伤害前的预警时间，足够看清并离开。</summary>
         private const float WarningSeconds = 0.55f;
 
-        /// <summary>Harmless dissipation after the active window.</summary>
+        /// <summary>生效窗口后的无害消散时间。</summary>
         private const float FadeSeconds = 0.5f;
 
-        /// <summary>Seconds between damage ticks. Paced, so a hazard chips rather than shreds.</summary>
+        /// <summary>伤害跳数之间的秒数，使区域逐步削血而非瞬间撕碎玩家。</summary>
         private const float DamageIntervalSeconds = 0.45f;
 
-        /// <summary>Gentle outward shove on a tick, nudging the player toward the edge of the zone.</summary>
+        /// <summary>每跳轻微向外推力，引导玩家离开区域边缘。</summary>
         private const float HazardKnockback = 2.5f;
 
-        /// <summary>Height the disc floats above the floor, to avoid z-fighting with it.</summary>
+        /// <summary>圆盘高于地面的高度，避免深度冲突。</summary>
         private const float DiscLift = 0.02f;
 
 
-        /// <summary>Peak opacity of the disc while active.</summary>
+        /// <summary>生效期间圆盘的最高不透明度。</summary>
         private const float MaxAlpha = 0.95f;
 
-        /// <summary>Above one, so the embers in the scar's cracks bloom; the texture carries the colours.</summary>
+        /// <summary>大于一，使痕迹裂缝中的余烬产生泛光；颜色由纹理提供。</summary>
         private static readonly Color HazardColor = new Color(1.25f, 1.1f, 1.05f);
 
-        /// <summary>The scar's width against the damaging diameter.</summary>
+        /// <summary>痕迹宽度相对于伤害直径的比例。</summary>
         private const float ScarReach = 2.3f;
 
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
-        /// <summary>Cue played when a hazard erupts. A string, since Combat sits below the audio service.</summary>
+        /// <summary>区域爆发音效标识；采用字符串，因为 Combat 位于音频服务下层。</summary>
         private const string HazardCueId = "hazard.erupt";
 
-        /// <summary>Cue played at the knight on every tick that burns them. Matches the audio service's hazard burn.</summary>
+        /// <summary>每次烧伤骑士时播放的音效，与音频服务的灼烧提示一致。</summary>
         private const string BurnCueId = "hazard.burn";
 
-        /// <summary>How long the scar flares after a tick that burned someone.</summary>
+        /// <summary>伤害跳烧到目标后痕迹闪亮的时长。</summary>
         private const float FlareSeconds = 0.22f;
 
-        /// <summary>How much brighter the scar burns at the peak of a flare.</summary>
+        /// <summary>闪亮峰值时痕迹增加的亮度。</summary>
         private const float FlareBoost = 1.6f;
 
-        /// <summary>Seconds of flare left, counting down on combat time.</summary>
+        /// <summary>闪亮剩余秒数，按战斗时间倒计时。</summary>
         private float _flare;
 
         private readonly Collider[] _overlap = new Collider[8];
@@ -82,18 +78,18 @@ namespace AdaptiveBossArena.Combat
         private float _radius;
         private float _damagePerTick;
 
-        /// <summary>Builds the disc visual once, sharing a material with the rest of the field.</summary>
-        /// <param name="material">The transparent material every zone tints and reuses.</param>
+        /// <summary>一次构建圆盘视觉，与区域内其他对象共享材质。</summary>
+        /// <param name="material">所有区域染色并复用的透明材质。</param>
         public void Construct(Material material)
         {
-            // A flat quad carrying the scorch texture, lying on the floor. It was a thin cylinder in a flat colour,
-            // which read as a marker placed on the ground rather than ground a slam had broken.
+            // 携带焦痕纹理、平铺在地面的四边形。过去是纯色薄圆柱，看起来像摆在地面的标记，
+            // 而非被砸击破坏的地面。
             GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Quad);
             disc.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             disc.name = "Disc";
 
-            // The primitive's capsule collider would intercept attacks and movement; a hazard is a
-            // trigger of its own making, resolved by overlap query, so the visual carries no collider.
+            // 原始体的胶囊碰撞体会拦截攻击和移动；危险区域通过重叠查询自行处理触发，
+            // 所以视觉对象不携带碰撞体。
             Destroy(disc.GetComponent<Collider>());
 
             disc.transform.SetParent(transform, worldPositionStays: false);
@@ -103,8 +99,7 @@ namespace AdaptiveBossArena.Combat
             _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             _renderer.receiveShadows = false;
 
-            // Per-zone colour without a material instance per zone, so several hazards can fade
-            // independently while sharing one transparent material.
+            // 逐区域设置颜色而不创建逐区域材质实例，使多个危险区域共享透明材质，同时独立消退。
             _properties = new MaterialPropertyBlock();
 
             _disc = disc.transform;
@@ -112,11 +107,11 @@ namespace AdaptiveBossArena.Combat
             gameObject.SetActive(false);
         }
 
-        /// <summary>Lights the zone up at a position and starts its life.</summary>
-        /// <param name="center">World-space centre at floor height.</param>
-        /// <param name="radius">Radius of the danger area.</param>
-        /// <param name="damagePerTick">Damage dealt to anything inside on each tick.</param>
-        /// <param name="durationSeconds">How long the zone stays dangerous.</param>
+        /// <summary>在指定位置点亮区域并开始生命周期。</summary>
+        /// <param name="center">位于地面高度的世界空间中心。</param>
+        /// <param name="radius">危险区域半径。</param>
+        /// <param name="damagePerTick">每跳对区域内目标造成的伤害。</param>
+        /// <param name="durationSeconds">区域保持危险的时长。</param>
         public void Activate(Vector3 center, float radius, float damagePerTick, float durationSeconds)
         {
             _center = center;
@@ -126,18 +121,18 @@ namespace AdaptiveBossArena.Combat
 
             transform.position = new Vector3(center.x, GameplayConstants.GroundPlaneHeight + DiscLift, center.z);
 
-            // A Unity cylinder is one unit in diameter and two tall, so the horizontal scale is the
-            // full diameter and the vertical scale is half the thickness.
+            // Unity 圆柱直径为一个单位、高为两个单位，因此水平缩放使用完整直径，
+            // 竖直缩放使用厚度的一半。
             if (_disc != null)
             {
-                // The scar reaches a little past the damaging radius, so its cracks and faded rim sit outside the danger.
+                // 痕迹略超出伤害半径，使裂纹和淡化边缘位于危险区域之外。
                 _disc.localScale = new Vector3(_radius * ScarReach, _radius * ScarReach, 1f);
             }
 
             gameObject.SetActive(true);
             ApplyVisual(0f);
 
-            // A low rumble the moment it erupts, so a hazard forming behind you is heard, not only seen.
+            // 爆发瞬间播放低沉轰鸣，让身后形成的危险区域既可见也可闻。
             _audio ??= ServiceRegistry.Current != null &&
                        ServiceRegistry.Current.TryGet(out IAudioService audio)
                 ? audio
@@ -159,8 +154,8 @@ namespace AdaptiveBossArena.Combat
 
             float deltaTime = _time?.DeltaTime ?? Time.deltaTime;
 
-            // Each tick that burns someone flares the scar and hisses where they stand. A floor that quietly took
-            // health away read as damage from nowhere; now every tick is seen and heard as the ground's doing.
+            // 每次烧伤目标都会让痕迹闪亮，并在目标位置嘶响。过去地面悄悄扣除生命，像凭空受伤；
+            // 现在每跳都能看见、听见是地面造成的伤害。
             if (_ticker.Advance(deltaTime) && DamageOccupants(out Vector3 burned))
             {
                 _flare = FlareSeconds;
@@ -177,9 +172,9 @@ namespace AdaptiveBossArena.Combat
             }
         }
 
-        /// <summary>Applies one tick of damage to every player hurtbox inside the zone.</summary>
-        /// <param name="burned">Where the last one burned stood.</param>
-        /// <returns>True when anyone was burned.</returns>
+        /// <summary>对区域内每个玩家受击盒应用一跳伤害。</summary>
+        /// <param name="burned">最后被烧伤者站立的位置。</param>
+        /// <returns>有人被烧伤时为 true。</returns>
         private bool DamageOccupants(out Vector3 burned)
         {
             burned = _center;
@@ -205,9 +200,8 @@ namespace AdaptiveBossArena.Combat
                 {
                     Amount = _damagePerTick,
 
-                    // Ground fire is not a light swing. Typing it honestly keeps anything that later
-                    // branches on the incoming type — audio, hit reactions, the learning system —
-                    // from mistaking a hazard tick for an attack the boss threw.
+                    // 地面火焰不是轻击。正确标注类型，避免后续根据来袭类型分支的音频、
+                    // 受击反应和学习系统，把危险区域伤害跳误当成首领发动的攻击。
                     Type = DamageType.Hazard,
                     SourceTeam = CombatantTeam.Boss,
                     SourceInstanceId = GetInstanceID(),
@@ -227,7 +221,7 @@ namespace AdaptiveBossArena.Combat
             return any;
         }
 
-        /// <summary>Fades the disc's opacity to match the hazard's presence.</summary>
+        /// <summary>让圆盘不透明度随区域存在程度淡变。</summary>
         private void ApplyVisual(float presence)
         {
             if (_renderer == null)

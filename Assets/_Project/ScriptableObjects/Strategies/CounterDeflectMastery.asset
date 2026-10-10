@@ -27,5 +27,5 @@ MonoBehaviour:
   - _parameter: 9
     _targetValue: 0.6
   _easeInSeconds: 6
-  _tellMessage: It will not give you a clean beat.
+  _tellMessage: 它不再让你轻易把握弹反的时机。
   _tellAudioCueId: 

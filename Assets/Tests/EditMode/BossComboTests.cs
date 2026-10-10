@@ -6,21 +6,19 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for how the boss decides the length of an attack combo.
+    /// 测试首领如何决定连击长度。
     /// </summary>
     /// <remarks>
-    /// The combo length is drawn from the seeded random provider, and the whole encounter's promise
-    /// of being reproducible from a seed rests on decisions like this being deterministic. It is also
-    /// a fairness contract: the opening phase must never chain, and no phase may chain more hits than
-    /// its index, or the escalation the design describes would not hold.
+    /// 连击长度来自带种子的随机源，依靠此类决定具有确定性，才能兑现种子复现战斗。同时保证公平：
+    /// 开场不能连击，任何阶段连击不能超过阶段索引，否则不符合设计的递进。
     /// </remarks>
     [TestFixture]
     public sealed class BossComboTests
     {
-        /// <summary>The untrained continue chance, so the bounds tests state the baseline by name.</summary>
+        /// <summary>未学习时的继续概率，让边界测试以名称表达基线。</summary>
         private const float Baseline = BossAttackState.BaseComboContinueChance;
 
-        /// <summary>A stub whose coin-flips are fixed, for testing the bounds independent of a seed.</summary>
+        /// <summary>固定硬币结果的桩对象，使边界测试不依赖种子。</summary>
         private sealed class FixedBoolRandom : IRandomProvider
         {
             private readonly bool _value;
@@ -45,7 +43,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void OpeningPhaseNeverChains()
         {
-            // Even with a source that always says "continue", phase zero throws a single strike.
+            // 即使随机源总要求继续，阶段零也只打一击。
             Assert.AreEqual(0, BossAttackState.ComboLength(0, new FixedBoolRandom(true), Baseline));
         }
 
@@ -88,8 +86,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheLastStandPhaseStaysWithinItsBounds()
         {
-            // The desperation phase (index 3) is the most dangerous, but the same fairness contract
-            // holds: it may chain hard, never beyond its index, and never negatively.
+            // 绝望阶段索引 3 最危险，但公平契约仍有效：可猛烈连击，却不超过索引且不会为负。
             for (uint seed = 1; seed <= 200; seed++)
             {
                 int length = BossAttackState.ComboLength(3, new XorShiftRandomProvider(seed), Baseline);
@@ -102,9 +99,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ABossThatHasLearnedToPress_ChainsMoreOften()
         {
-            // The behaviour ComboExtensionChance exists to produce. It was set by three strategies and
-            // read by nothing, so "it strings its blows together now" was an empty claim; this pins
-            // that a raised chance genuinely lengthens chains.
+            // ComboExtensionChance 应产生的行为。此前三策略设置却无人读取，使“开始串联攻击”只是空话；
+            // 这里固定概率提高确实会延长连击。
             int baselineTotal = 0;
             int pressingTotal = 0;
 
@@ -125,8 +121,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheContinueChanceIsClamped()
         {
-            // Tuning is eased toward targets and summed with the baseline, so it can overshoot one.
-            // An out-of-range chance must not change the fairness contract on chain length.
+            // 调参平滑靠近目标并叠加基线，可能超过一。越界概率不得改变连击长度公平契约。
             Assert.AreEqual(2, BossAttackState.ComboLength(2, new XorShiftRandomProvider(7u), 5f));
             Assert.AreEqual(0, BossAttackState.ComboLength(2, new XorShiftRandomProvider(7u), -3f));
         }
@@ -134,9 +129,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ALearnedDelay_MakesTheBossWaitLonger()
         {
-            // The behaviour behind "It waits for your opening now." AttackDelay was written by the
-            // most commonly adopted strategy and read by nothing, so the tell announced a patience
-            // the boss did not have.
+            // “它现在等待你露出破绽。”背后的行为。最常采用的策略写入 AttackDelay，
+            // 却没有任何逻辑读取它，因此提示宣称首领在耐心等待，而实际并没有。
             float untrained = BossAttackState.AttackCooldownFor(1f, 0f, isFeint: false);
             float patient = BossAttackState.AttackCooldownFor(1f, 0.35f, isFeint: false);
 
@@ -153,8 +147,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             Assert.Less(feint, committed, "A feint must recover faster than a committed swing.");
 
-            // The learned patience applies to feints too, so a delaying boss does not give itself a
-            // loophole by feinting.
+            // 学习出的耐心同样适用于佯攻，避免延迟首领通过佯攻绕过限制。
             Assert.Greater(
                 BossAttackState.AttackCooldownFor(1f, 0.4f, isFeint: true), feint);
         }
@@ -162,8 +155,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ANegativeDelay_CannotSpeedTheBossUp()
         {
-            // Adaptation may only ever add patience here. A negative value would let a decayed target
-            // shorten the phase's own rhythm, which is not a capability the boss is meant to gain.
+            // 适应在这里只能增加耐心。负值会让衰减目标缩短阶段自身节奏，这是首领不应获得的能力。
             Assert.AreEqual(
                 1f, BossAttackState.AttackCooldownFor(1f, -2f, isFeint: false), 0.0001f);
         }

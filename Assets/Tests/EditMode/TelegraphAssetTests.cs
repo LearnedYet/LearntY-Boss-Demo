@@ -5,13 +5,11 @@ using UnityEditor;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Pins which attacks still draw a warning on the ground.
+    /// 固定哪些攻击仍在地面绘制预警。
     /// </summary>
     /// <remarks>
-    /// With animated bodies, ordinary swings are read from the boss itself, and a wedge under every one
-    /// of them would teach the player to watch the floor instead. Only attacks that strike the ground or
-    /// refuse a guard keep a ground warning, because those are the ones whose area or rule the body alone
-    /// cannot show.
+    /// 已有身体动画时，普通挥击可从首领自身动作读出，每次攻击下方都放扇形会教玩家只看地面。
+    /// 只有打击地面或无法防御的攻击保留地面预警，因为其区域或规则无法仅由身体动作表达。
     /// </remarks>
     [TestFixture]
     public sealed class TelegraphAssetTests

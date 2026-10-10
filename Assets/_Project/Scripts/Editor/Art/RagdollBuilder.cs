@@ -6,29 +6,27 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Builds a ragdoll onto a humanoid rig from a table, so no body is ever set up by hand.
+    /// 按表格在 Humanoid 骨架上构建布娃娃，不手动配置任何身体。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Eleven bodies: hips, chest, head, both upper and lower arms, both upper and lower legs. Enough
-    /// for a body to fold at the waist, knees and elbows, few enough to stay well inside the WebGL physics
-    /// budget for two corpses. Bones are found by humanoid role, so the same table fits the knight and
-    /// the scaled brute, and every size is measured from the rig itself rather than typed in.
+    /// 共十一个刚体：髋、胸、头、两侧上臂和前臂、两侧大腿和小腿。足以让身体在腰、膝、肘处弯折，也足够少，
+    /// 使两具尸体轻松控制在 WebGL 物理预算内。按 Humanoid 角色查找骨骼，
+    /// 因此同一表格适用于骑士和缩放后的巨兽；尺寸均从骨架测量，不手工输入。
     /// </para>
     /// <para>
-    /// Everything is built dormant - kinematic bodies with their colliders switched off - and handed to
-    /// a <see cref="RagdollActivator"/>, which wakes it on death.
+    /// 全部以休眠状态构建：刚体设为运动学，碰撞体关闭；交给以下组件：<see cref="RagdollActivator"/>，
+    /// 由它在死亡时唤醒。
     /// </para>
     /// </remarks>
     public static class RagdollBuilder
     {
-        /// <summary>Total mass of a body at a rig scale of one, in kilograms.</summary>
+        /// <summary>骨架缩放为一时的身体总质量，单位为千克。</summary>
         private const float BaseMass = 70f;
 
         /// <summary>
-        /// The bones, hips and chest first - the activator gives those two the whole blow. Joint limits are
-        /// in degrees and deliberately tight: a loose ragdoll folds into poses no body could take, which
-        /// reads as a rag rather than as someone falling.
+        /// 骨骼列表中髋和胸位于最前，激活器把完整冲击施加到这两处。关节限制以度计，刻意设得较紧：
+        /// 松散的布娃娃会折成真实身体做不到的姿势，看起来像布团而非人倒下。
         /// </summary>
         private static readonly Part[] Parts =
         {
@@ -52,14 +50,14 @@ namespace AdaptiveBossArena.Editor.Art
             Sphere
         }
 
-        /// <summary>The number of physical bones a complete ragdoll has.</summary>
+        /// <summary>完整布娃娃包含的物理骨骼数量。</summary>
         public static int BodyCount => Parts.Length;
 
-        /// <summary>Builds the ragdoll onto a rig and attaches the activator to the visual root.</summary>
-        /// <param name="animator">The rig's humanoid Animator.</param>
-        /// <param name="visualRoot">The object the character's presentation components live on.</param>
-        /// <param name="rigScale">The rig's uniform scale, which scales the mass.</param>
-        /// <returns>True when every bone was found and built.</returns>
+        /// <summary>在骨架上构建布娃娃，并把激活器挂到视觉根对象。</summary>
+        /// <param name="animator">骨架的 Humanoid Animator。</param>
+        /// <param name="visualRoot">承载角色表现组件的对象。</param>
+        /// <param name="rigScale">骨架的统一缩放，用于缩放质量。</param>
+        /// <returns>所有骨骼均成功找到并构建时返回 true。</returns>
         public static bool Build(Animator animator, GameObject visualRoot, float rigScale)
         {
             if (animator == null || !animator.isHuman)
@@ -75,7 +73,7 @@ namespace AdaptiveBossArena.Editor.Art
             {
                 Transform bone = animator.GetBoneTransform(part.Bone);
 
-                // Some rigs have no separate chest; the upper spine stands in.
+                // 部分骨架没有独立胸骨，使用上段脊柱替代。
                 if (bone == null && part.Bone == HumanBodyBones.Chest)
                 {
                     bone = animator.GetBoneTransform(HumanBodyBones.Spine);
@@ -122,7 +120,7 @@ namespace AdaptiveBossArena.Editor.Art
         {
             Transform towards = part.Towards != HumanBodyBones.LastBone ? animator.GetBoneTransform(part.Towards) : null;
 
-            // Local-space vector to the next bone, which is where this bone's length and direction come from.
+            // 指向下一骨骼的局部向量，用于确定本骨骼的长度和方向。
             Vector3 span = towards != null
                 ? bone.InverseTransformPoint(towards.position)
                 : Vector3.up * (0.12f / Mathf.Max(0.01f, bone.lossyScale.y));
@@ -181,7 +179,7 @@ namespace AdaptiveBossArena.Editor.Art
             return magnitude.x >= magnitude.y && magnitude.x >= magnitude.z ? 0 : magnitude.y >= magnitude.z ? 1 : 2;
         }
 
-        /// <summary>One physical bone: what it is, what it hangs from, and how far it may bend.</summary>
+        /// <summary>一根物理骨骼：类型、连接对象，以及允许的弯曲范围。</summary>
         private readonly struct Part
         {
             public Part(HumanBodyBones bone, HumanBodyBones towards, HumanBodyBones parent, Shape shape,

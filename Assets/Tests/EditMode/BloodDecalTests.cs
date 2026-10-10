@@ -4,10 +4,10 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests how long blood stays on the floor.
+    /// 测试血迹在地面保留多久。
     /// </summary>
     /// <remarks>
-    /// A blow sprayed blood and the floor stayed clean, so a long fight left no trace of itself.
+    /// 打击喷血但地面仍干净，长战斗也不留痕迹。
     /// </remarks>
     [TestFixture]
     public sealed class BloodDecalTests

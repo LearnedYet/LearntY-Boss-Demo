@@ -1,70 +1,67 @@
 namespace AdaptiveBossArena.Core.Combat
 {
     /// <summary>
-    /// Anything that can receive a hit.
+    /// 能够接收攻击的对象。
     /// </summary>
     /// <remarks>
-    /// The entire hit pipeline speaks only this interface, so the player, the boss and any future
-    /// destructible arena prop are interchangeable to an attacker. Implementations decide for
-    /// themselves whether a hit lands, which is where invincibility frames and perfect dodges are
-    /// resolved.
+    /// 整个伤害链路仅使用此接口，因此对攻击者而言，玩家、Boss 和未来的可破坏场景物体可以互换。
+    /// 实现自行决定是否命中，无敌帧和完美闪避也在此裁决。
     /// </remarks>
     public interface IDamageable
     {
-        /// <summary>Side this target fights for. Attacks from the same team are rejected.</summary>
+        /// <summary>目标所属阵营。同阵营攻击会被拒绝。</summary>
         CombatantTeam Team { get; }
 
-        /// <summary>False once the target has been defeated.</summary>
+        /// <summary>目标被击败后为 false。</summary>
         bool IsAlive { get; }
 
         /// <summary>
-        /// Offers a hit to this target and reports what became of it.
+        /// 向此目标提交攻击，并报告处理结果。
         /// </summary>
-        /// <param name="damage">The incoming hit. Passed by reference to avoid copying.</param>
+        /// <param name="damage">传入的攻击。通过引用传递以避免复制。</param>
         /// <returns>
-        /// The outcome. Callers must not assume damage was dealt; the target may have been
-        /// invulnerable, may have perfect-dodged, or may already be dead.
+        /// 处理结果。调用者不能假定伤害已造成：目标可能无敌、完成完美闪避，或已经死亡。
         /// </returns>
         DamageResult TakeDamage(in DamageInfo damage);
     }
 
-    /// <summary>Describes a change to a depletable pool such as health or stamina.</summary>
+    /// <summary>描述生命值或体力等可消耗资源池的变化。</summary>
     public readonly struct ResourceChangedArgs
     {
-        /// <summary>Value before the change.</summary>
+        /// <summary>变化前的值。</summary>
         public float Previous { get; init; }
 
-        /// <summary>Value after the change.</summary>
+        /// <summary>变化后的值。</summary>
         public float Current { get; init; }
 
-        /// <summary>Maximum the pool can hold.</summary>
+        /// <summary>资源池可容纳的最大值。</summary>
         public float Maximum { get; init; }
 
-        /// <summary>Current value as a fraction of the maximum, clamped to zero through one.</summary>
+        /// <summary>当前值占最大值的比例，限制在零到一之间。</summary>
         public float Normalized => Maximum <= 0f ? 0f : UnityEngine.Mathf.Clamp01(Current / Maximum);
 
-        /// <summary>Signed size of the change. Negative when the pool was drained.</summary>
+        /// <summary>带符号的变化量。资源减少时为负。</summary>
         public float Delta => Current - Previous;
 
-        /// <summary>Creates a change description.</summary>
-        /// <param name="previous">Value before the change.</param>
-        /// <param name="current">Value after the change.</param>
-        /// <param name="maximum">Pool capacity.</param>
-        /// <returns>A populated description.</returns>
+        /// <summary>创建变化描述。</summary>
+        /// <param name="previous">变化前的值。</param>
+        /// <param name="current">变化后的值。</param>
+        /// <param name="maximum">资源池容量。</param>
+        /// <returns>已填充的描述。</returns>
         public static ResourceChangedArgs Create(float previous, float current, float maximum) =>
             new ResourceChangedArgs { Previous = previous, Current = current, Maximum = maximum };
     }
 
-    /// <summary>Describes the defeat of a combatant.</summary>
+    /// <summary>描述战斗参与者被击败的事件。</summary>
     public readonly struct DeathArgs
     {
-        /// <summary>Team the defeated combatant belonged to.</summary>
+        /// <summary>被击败者所属的阵营。</summary>
         public CombatantTeam Team { get; init; }
 
-        /// <summary>Instance identifier of the killing blow's source.</summary>
+        /// <summary>致命攻击来源的实例标识。</summary>
         public int KillerInstanceId { get; init; }
 
-        /// <summary>The hit that proved lethal.</summary>
+        /// <summary>造成死亡的攻击。</summary>
         public DamageInfo FinalBlow { get; init; }
     }
 }

@@ -6,31 +6,26 @@ using UnityEngine;
 namespace AdaptiveBossArena.Player.Movement
 {
     /// <summary>
-    /// Turns movement intent into character motion.
+    /// 将移动意图转为角色运动。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A plain class driven by whichever state currently owns the character, rather than a component
-    /// that decides for itself. Movement during a dash and movement under player control differ only
-    /// in who sets the velocity, so both share one integration and collision path and cannot drift
-    /// apart.
+    /// 由当前拥有角色控制权的状态驱动的普通类，而非自行决策的组件。
+    /// 闪避和玩家控制的移动只区别在由谁设置速度，因此共享积分和碰撞路径，避免两套处理不一致。
     /// </para>
     /// <para>
-    /// Acceleration uses <see cref="Vector3.MoveTowards"/> against a rate derived from the
-    /// configured time-to-top-speed. That makes the configuration value literal — setting
-    /// acceleration to 0.06 seconds really does mean the character reaches full speed in 60
-    /// milliseconds — where an eased approach would only ever approximate it and would leave a
-    /// designer tuning a number that does not mean what it says.
+    /// 加速采用 <see cref="Vector3.MoveTowards"/>，速率由配置的到达最高速所需时长计算。
+    /// 因此配置值有准确含义：0.06 秒加速确实意味着 60 毫秒达到全速；平滑趋近只能近似做到，
+    /// 令设计者调整的数值不符合字面意义。
     /// </para>
     /// <para>
-    /// The arena is enclosed by real colliders, so containment is handled by the character
-    /// controller's own collision response. There is no positional clamping here, and deliberately
-    /// no dependency on the arena's configuration.
+    /// 竞技场由真实碰撞体围合，因此边界由角色控制器自身碰撞响应处理。这里不限制位置，
+    /// 也刻意不依赖竞技场配置。
     /// </para>
     /// </remarks>
     public sealed class PlayerMotor
     {
-        /// <summary>Below this speed the character is treated as stationary.</summary>
+        /// <summary>低于此速度时视为静止。</summary>
         private const float StationarySpeedThreshold = 0.05f;
 
         private readonly CharacterController _controller;
@@ -41,20 +36,18 @@ namespace AdaptiveBossArena.Player.Movement
         private Vector3 _planarVelocity;
 
         /// <summary>
-        /// Carries what is imposed on the character — knockback, gravity — separately from what it is
-        /// doing, so steering can never overwrite a shove.
+        /// 将击退和重力等施加给角色的运动与自主运动分开保存，因此转向输入无法覆盖推动。
         /// </summary>
         private readonly MotionIntegrator _motion =
             new MotionIntegrator(GameplayConstants.Gravity, GameplayConstants.GroundedSpeed);
 
-        /// <summary>Creates a motor bound to a character controller.</summary>
-        /// <param name="controller">The controller that performs movement and collision.</param>
-        /// <param name="config">Movement tuning values.</param>
+        /// <summary>创建绑定 CharacterController 的 Motor。</summary>
+        /// <param name="controller">执行移动和碰撞的控制器。</param>
+        /// <param name="config">移动调参值。</param>
         /// <param name="cameraTransform">
-        /// Camera used to interpret movement input. May be null, in which case input is treated as
-        /// world-relative.
+        /// 用于解释移动输入的相机。可为 null，此时输入按世界坐标解释。
         /// </param>
-        /// <exception cref="ArgumentNullException">Thrown when the controller or config is missing.</exception>
+        /// <exception cref="ArgumentNullException">控制器或配置缺失时抛出。</exception>
         public PlayerMotor(CharacterController controller, PlayerConfig config, Transform cameraTransform)
         {
             _controller = controller != null
@@ -66,39 +59,38 @@ namespace AdaptiveBossArena.Player.Movement
             _cameraTransform = cameraTransform;
         }
 
-        /// <summary>Current horizontal velocity in world units per second.</summary>
+        /// <summary>当前水平速度，单位世界单位每秒。</summary>
         public Vector3 PlanarVelocity => _planarVelocity;
 
-        /// <summary>The imposed shove, such as knockback, still playing out on top of the character's own movement.</summary>
+        /// <summary>击退等外力推动，叠加在角色自主移动之上并持续生效。</summary>
         public Vector3 ImpulseVelocity => _motion.Impulse;
 
-        /// <summary>Current horizontal speed in world units per second.</summary>
+        /// <summary>当前水平速率，单位世界单位每秒。</summary>
         public float Speed => _planarVelocity.magnitude;
 
-        /// <summary>Current speed as a fraction of the configured top speed.</summary>
+        /// <summary>当前速率占配置最高速度的比例。</summary>
         public float NormalizedSpeed =>
             _config.MoveSpeed <= 0f ? 0f : Mathf.Clamp01(Speed / _config.MoveSpeed);
 
-        /// <summary>True while the character is effectively stationary.</summary>
+        /// <summary>角色实际静止时为 true。</summary>
         public bool IsStationary => Speed < StationarySpeedThreshold;
 
-        /// <summary>World position of the character.</summary>
+        /// <summary>角色世界坐标。</summary>
         public Vector3 Position => _transform.position;
 
-        /// <summary>Unit vector the character is facing.</summary>
+        /// <summary>角色面向的单位向量。</summary>
         public Vector3 Facing => _transform.forward;
 
         /// <summary>
-        /// Accelerates toward the speed requested by movement input.
+        /// 向移动输入请求的速度加速。
         /// </summary>
-        /// <param name="moveInput">Movement axis, at most unit length.</param>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <param name="moveInput">移动轴，长度最多为一。</param>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void ApplyMoveInput(Vector2 moveInput, float deltaTime)
         {
             Vector3 desiredDirection = ToWorldDirection(moveInput);
 
-            // Turning while carrying speed sheds some of it first, so a reversal at a sprint slows
-            // through the turn instead of swinging velocity round for free.
+            // 带速度转向时先损失一部分速度，因此奔跑反向会在转身中减速，而非免费旋转整个速度向量。
             float momentumFactor = MomentumRules.TargetSpeedFactor(
                 _planarVelocity, desiredDirection, _config.MoveSpeed, _config.TurnSpeedFloor);
 
@@ -113,32 +105,32 @@ namespace AdaptiveBossArena.Player.Movement
                 _planarVelocity, targetVelocity, RateFor(durationSeconds) * deltaTime);
         }
 
-        /// <summary>Brings the character to rest at the configured deceleration rate.</summary>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <summary>按配置减速度使角色停下。</summary>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void Decelerate(float deltaTime) => ApplyMoveInput(Vector2.zero, deltaTime);
 
         /// <summary>
-        /// Overrides horizontal velocity outright, bypassing acceleration.
+        /// 直接覆盖水平速度，绕过加速。
         /// </summary>
-        /// <remarks>Used by the dash and by knockback, both of which are imposed rather than steered.</remarks>
-        /// <param name="velocity">Horizontal velocity to adopt. The vertical component is discarded.</param>
+        /// <remarks>供闪避和击退使用，两者均为外加运动，而非自主转向。</remarks>
+        /// <param name="velocity">要采用的水平速度，丢弃垂直分量。</param>
         public void SetPlanarVelocity(Vector3 velocity) =>
             _planarVelocity = new Vector3(velocity.x, 0f, velocity.z);
 
-        /// <summary>Stops the character's own movement immediately. Imposed shoves still play out.</summary>
+        /// <summary>立即停止角色自主移动，外加推动仍会继续。</summary>
         public void Halt() => _planarVelocity = Vector3.zero;
 
         /// <summary>
-        /// Imposes a shove, such as knockback, that plays out on its own half-life.
+        /// 施加击退等推动，按自身半衰期持续衰减。
         /// </summary>
         /// <remarks>
-        /// Unlike <see cref="SetPlanarVelocity"/>, nothing the character does afterwards overwrites it.
+        /// 与 <see cref="SetPlanarVelocity"/> 不同，角色之后的动作不会覆盖它。
         /// </remarks>
-        /// <param name="velocity">Horizontal velocity to add.</param>
+        /// <param name="velocity">要增加的水平速度。</param>
         public void AddImpulse(Vector3 velocity) => _motion.AddImpulse(velocity);
 
-        /// <summary>Integrates the current velocity and resolves collisions.</summary>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <summary>积分当前速度并解析碰撞。</summary>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void Tick(float deltaTime)
         {
             if (deltaTime <= 0f)
@@ -154,8 +146,7 @@ namespace AdaptiveBossArena.Player.Movement
 
             CollisionFlags flags = _controller.Move(velocity * deltaTime);
 
-            // Speed into a wall is read before the wall takes it away, so an impact can be judged by
-            // how hard it was rather than by the zero speed left afterwards.
+            // 撞墙速度在墙壁消除它之前读取，使碰撞按原始强度判断，而非停止后的零速度。
             WallImpactSpeed = (flags & CollisionFlags.Sides) != 0 ? horizontal.magnitude : 0f;
 
             if (WallImpactSpeed > 0f)
@@ -165,26 +156,25 @@ namespace AdaptiveBossArena.Player.Movement
         }
 
         /// <summary>
-        /// Horizontal speed of the imposed shove when the last step ran into a wall, or zero.
+        /// 上次移动撞墙时外加推动的水平速度，否则为零。
         /// </summary>
         /// <remarks>
-        /// Reported rather than acted on. What a hard wall impact means - a stagger, lost poise - is a
-        /// combat decision, and the motor only moves bodies.
+        /// 仅报告，不执行反应。猛烈撞墙导致硬直或架势损失属于战斗决策，Motor 只负责移动身体。
         /// </remarks>
         public float WallImpactSpeed { get; private set; }
 
-        /// <summary>Whether the body was standing on something after its last step.</summary>
+        /// <summary>上次移动后身体是否站在某个表面上。</summary>
         public bool IsGrounded => _controller.isGrounded;
 
-        /// <summary>Upward or downward speed, in metres per second.</summary>
+        /// <summary>向上或向下速度，单位米每秒。</summary>
         public float VerticalVelocity => _motion.VerticalVelocity;
 
-        /// <summary>Throws the body upward. Horizontal shoves still apply on their own.</summary>
-        /// <param name="upwardSpeed">Initial upward speed, in metres per second.</param>
+        /// <summary>向上抛起身体。水平推动仍独立生效。</summary>
+        /// <param name="upwardSpeed">初始向上速度，单位米每秒。</param>
         public void Launch(float upwardSpeed) => _motion.Launch(upwardSpeed);
 
-        /// <summary>Rotates toward the direction of travel.</summary>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <summary>转向运动方向。</summary>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void FaceTravelDirection(float deltaTime)
         {
             if (IsStationary)
@@ -195,9 +185,9 @@ namespace AdaptiveBossArena.Player.Movement
             FaceDirection(_planarVelocity, deltaTime);
         }
 
-        /// <summary>Rotates toward a world-space direction at the configured turn rate.</summary>
-        /// <param name="direction">Direction to face. The vertical component is ignored.</param>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <summary>按配置转向速率转向世界空间方向。</summary>
+        /// <param name="direction">要面向的方向，忽略垂直分量。</param>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void FaceDirection(Vector3 direction, float deltaTime)
         {
             direction.y = 0f;
@@ -212,8 +202,8 @@ namespace AdaptiveBossArena.Player.Movement
                 _transform.rotation, target, _config.TurnSpeedDegreesPerSecond * deltaTime);
         }
 
-        /// <summary>Faces a direction immediately, used when committing to a dash.</summary>
-        /// <param name="direction">Direction to face.</param>
+        /// <summary>立即面向指定方向，用于确定闪避方向。</summary>
+        /// <param name="direction">要面向的方向。</param>
         public void SnapToDirection(Vector3 direction)
         {
             direction.y = 0f;
@@ -227,13 +217,12 @@ namespace AdaptiveBossArena.Player.Movement
         }
 
         /// <summary>
-        /// Moves the body by an offset imposed from outside, such as being pushed by another body.
+        /// 根据外部施加的偏移移动身体，例如被另一身体推动。
         /// </summary>
         /// <remarks>
-        /// Goes through the controller rather than setting the position, so a body shoved toward a
-        /// wall stops at the wall instead of being pushed through it.
+        /// 经过控制器而非直接设置位置，使推向墙的身体停在墙前，而非穿过墙壁。
         /// </remarks>
-        /// <param name="offset">Displacement to apply. The vertical component is ignored.</param>
+        /// <param name="offset">要应用的位移，忽略垂直分量。</param>
         public void Displace(Vector3 offset)
         {
             offset.y = 0f;
@@ -244,12 +233,11 @@ namespace AdaptiveBossArena.Player.Movement
             }
         }
 
-        /// <summary>Teleports the character, disabling collision resolution for the move.</summary>
-        /// <param name="position">Destination.</param>
+        /// <summary>传送角色，移动期间禁用碰撞解析。</summary>
+        /// <param name="position">目标位置。</param>
         public void Teleport(Vector3 position)
         {
-            // The controller caches its position internally, so it has to be disabled across the
-            // move or it will snap straight back on the next step.
+            // 控制器内部缓存位置，因此移动期间必须禁用，否则下一步会立即跳回原位置。
             _controller.enabled = false;
             _transform.position = position;
             _controller.enabled = true;
@@ -259,15 +247,14 @@ namespace AdaptiveBossArena.Player.Movement
         }
 
         /// <summary>
-        /// Converts a movement axis into a world direction on the camera's horizontal plane.
+        /// 将移动轴转为相机水平面上的世界方向。
         /// </summary>
         /// <remarks>
-        /// The generated camera has no yaw, so this currently resolves to an identity mapping. It is
-        /// written camera-relatively anyway because the alternative fails silently and confusingly
-        /// the first time the camera is rotated for framing.
+        /// 生成的相机没有偏航，因此目前相当于恒等映射。仍按相机相对坐标编写，因为若不这样，
+        /// 首次为构图旋转相机时会出现难以理解的静默错误。
         /// </remarks>
-        /// <param name="moveInput">Movement axis, at most unit length.</param>
-        /// <returns>The corresponding world-space direction on the horizontal plane.</returns>
+        /// <param name="moveInput">移动轴，长度最多为一。</param>
+        /// <returns>对应的水平面世界空间方向。</returns>
         public Vector3 ToWorldDirection(Vector2 moveInput)
         {
             if (moveInput.sqrMagnitude < Mathf.Epsilon)
@@ -282,13 +269,12 @@ namespace AdaptiveBossArena.Player.Movement
                 return input;
             }
 
-            // Only the camera's yaw is meaningful; its pitch would otherwise tilt movement into the
-            // floor.
+            // 只使用相机偏航，否则俯仰会使移动方向倾入地面。
             float cameraYaw = _cameraTransform.eulerAngles.y;
             return Quaternion.Euler(0f, cameraYaw, 0f) * input;
         }
 
-        /// <summary>Converts a time-to-top-speed into a velocity change rate.</summary>
+        /// <summary>将到达最高速度的时长转为速度变化速率。</summary>
         private float RateFor(float durationSeconds) =>
             durationSeconds <= 0f ? float.MaxValue : _config.MoveSpeed / durationSeconds;
     }

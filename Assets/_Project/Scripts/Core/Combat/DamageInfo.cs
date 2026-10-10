@@ -3,98 +3,94 @@ using UnityEngine;
 namespace AdaptiveBossArena.Core.Combat
 {
     /// <summary>
-    /// Immutable description of a single hit, produced by an attacker and consumed by a target.
+    /// 单次攻击的不可变描述，由攻击者生成并由目标消费。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Declared as a <c>readonly struct</c> and passed by <c>in</c> everywhere, so hit resolution
-    /// stays allocation-free even during a dense flurry. Being readonly also means <c>in</c>
-    /// parameters do not trigger defensive copies when properties are read.
+    /// 声明为 <c>readonly struct</c>，各处均通过<c>in</c> 传递，使密集连击的命中处理也不产生分配。
+    /// 只读声明还可避免读取属性时，<c>in</c> 参数产生防御性复制。
     /// </para>
     /// <para>
-    /// Every field a receiver might need travels inside this one value. Nothing in the hit pipeline
-    /// reaches back to the attacker's components, which is what allows the player and the boss to
-    /// damage each other while living in assemblies that do not reference one another.
+    /// 接收者可能需要的全部字段都包含在此值中。伤害链路不会回头访问攻击者组件，
+    /// 因此玩家和 Boss即使位于互不引用的程序集，也能互相造成伤害。
     /// </para>
     /// </remarks>
     public readonly struct DamageInfo
     {
-        /// <summary>Raw health to remove before any target-side modifiers.</summary>
+        /// <summary>应用目标侧修正前要扣除的原始生命值。</summary>
         public float Amount { get; init; }
 
-        /// <summary>Category of the hit, used for both resistances and behaviour analysis.</summary>
+        /// <summary>攻击类别，用于抗性处理和行为分析。</summary>
         public DamageType Type { get; init; }
 
-        /// <summary>Team the attack originated from. Hits against the same team are discarded.</summary>
+        /// <summary>攻击来源阵营。对同阵营的攻击会被丢弃。</summary>
         public CombatantTeam SourceTeam { get; init; }
 
         /// <summary>
-        /// Instance identifier of the attacking object, for attribution and self-hit rejection.
+        /// 攻击对象的实例标识，用于归因和排除自身命中。
         /// </summary>
         /// <remarks>
-        /// Deliberately an <c>int</c> rather than a component reference: an identifier carries no
-        /// assembly dependency and cannot be used to reach into the attacker and read its state.
+        /// 刻意使用 <c>int</c> 而非组件引用：标识不会引入程序集依赖，
+        /// 也无法用于访问攻击者并读取其状态。
         /// </remarks>
         public int SourceInstanceId { get; init; }
 
-        /// <summary>World position where the hit registered, used to place impact effects.</summary>
+        /// <summary>命中发生的世界坐标，用于放置命中特效。</summary>
         public Vector3 HitPoint { get; init; }
 
         /// <summary>
-        /// Normalised direction the hit travelled, from attacker toward target.
+        /// 攻击从攻击者指向目标的归一化方向。
         /// </summary>
         public Vector3 HitDirection { get; init; }
 
-        /// <summary>Impulse applied to the target on landing, in world units per second.</summary>
+        /// <summary>命中时施加给目标的冲量，单位为世界单位每秒。</summary>
         public float KnockbackSpeed { get; init; }
 
-        /// <summary>Poise damage dealt. Accumulating enough of it staggers the target.</summary>
+        /// <summary>造成的架势伤害。累积足够伤害后使目标陷入硬直。</summary>
         public float PoiseDamage { get; init; }
 
-        /// <summary>How hard this hit should interrupt the target's current action.</summary>
+        /// <summary>此次攻击中断目标当前动作的强度。</summary>
         public StaggerStrength Stagger { get; init; }
 
-        /// <summary>Where the victim's body is sent: shoved, floored or thrown.</summary>
-        /// <remarks>A request the victim's reaction gate may downgrade; see <see cref="ImpactReaction"/>.</remarks>
+        /// <summary>受击者身体的去向：击退、倒地或击飞。</summary>
+        /// <remarks>受击者反应门控可以降级的请求，参见 <see cref="ImpactReaction"/>。</remarks>
         public ImpactReaction Reaction { get; init; }
 
         /// <summary>
-        /// Seconds of hit-stop to freeze both parties for on a successful hit.
+        /// 成功命中时冻结双方的命中停顿秒数。
         /// </summary>
         /// <remarks>
-        /// The single highest-leverage game-feel parameter in the project. Carried per-hit rather
-        /// than globally so a heavy attack can land noticeably heavier than a light one.
+        /// 本项目影响打击手感最显著的单一参数。随每次攻击传递，而非使用全局值，
+        /// 使重击明显比轻击更有分量。
         /// </remarks>
         public float HitStopSeconds { get; init; }
 
-        /// <summary>When true, the hit lands even through dash invincibility frames.</summary>
-        /// <remarks>Reserved for unavoidable arena hazards; boss attacks must never set this.</remarks>
+        /// <summary>为 true 时，攻击即使遇到闪避无敌帧也会命中。</summary>
+        /// <remarks>仅供无法回避的竞技场危险区域使用；Boss 攻击绝不能设置此项。</remarks>
         public bool IgnoresInvulnerability { get; init; }
 
-        /// <summary>When true, a raised guard does not stop the hit — it must be dodged instead.</summary>
+        /// <summary>为 true 时，举起的防御不能挡住攻击，必须通过闪避避开。</summary>
         /// <remarks>
-        /// The "perilous" attack of the genre. It ignores the block and the deflect window alike, so a
-        /// guarding player takes it in full; a dash still avoids it, because <see cref="IgnoresInvulnerability"/>
-        /// stays false. That asymmetry is the whole read: this is the attack you must not answer with
-        /// your guard.
+        /// 此类游戏中的“危险攻击”。它同时忽略格挡和弹反窗口，因此防御中的玩家会受到完整伤害；
+        /// 闪避仍能避开，因为 <see cref="IgnoresInvulnerability"/>保持 false。这种不对称正是判断重点：
+        /// 不能用防御应对这种攻击。
         /// </remarks>
         public bool Unblockable { get; init; }
 
-        /// <summary>When true, a timed deflect does not refuse the hit.</summary>
+        /// <summary>为 true 时，精准弹反也不能拒绝此次攻击。</summary>
         /// <remarks>
-        /// The opposite pressure to <see cref="Unblockable"/>. That one takes an answer away from the
-        /// defender; this one protects a punish the attacker has already earned - a riposte into a
-        /// broken guard - from being waved away by the guard that broke. A defender who can block
-        /// still blocks it, at the block's usual cost, so it is not a free hit either.
+        /// 与 <see cref="Unblockable"/> 施加的压力相反。前者移除防御者的应对手段；
+        /// 此项保护攻击者已赢得的惩罚机会——向被击破的防线反击——使其不会被刚刚崩溃的防御轻易化解。
+        /// 能够格挡的目标仍可按正常代价格挡，因此它也不是无条件命中。
         /// </remarks>
         public bool Unparryable { get; init; }
 
-        /// <summary>Creates a hit description with sensible defaults for the fields not supplied.</summary>
-        /// <param name="amount">Raw damage.</param>
-        /// <param name="type">Hit category.</param>
-        /// <param name="sourceTeam">Attacking team.</param>
-        /// <param name="sourceInstanceId">Attacker instance identifier.</param>
-        /// <returns>A populated hit description.</returns>
+        /// <summary>创建攻击描述，未提供的字段使用合理默认值。</summary>
+        /// <param name="amount">原始伤害。</param>
+        /// <param name="type">攻击类别。</param>
+        /// <param name="sourceTeam">攻击者阵营。</param>
+        /// <param name="sourceInstanceId">攻击者实例标识。</param>
+        /// <returns>已填充的攻击描述。</returns>
         public static DamageInfo Create(
             float amount,
             DamageType type,
@@ -109,26 +105,25 @@ namespace AdaptiveBossArena.Core.Combat
                 Stagger = StaggerStrength.Flinch
             };
 
-        /// <summary>Returns a copy of this hit positioned at a specific contact point.</summary>
-        /// <param name="hitPoint">World-space contact position.</param>
-        /// <param name="hitDirection">Direction of travel, from attacker toward target.</param>
-        /// <returns>A copy carrying the supplied contact data.</returns>
+        /// <summary>返回此攻击位于指定接触点的副本。</summary>
+        /// <param name="hitPoint">世界空间接触位置。</param>
+        /// <param name="hitDirection">从攻击者指向目标的运动方向。</param>
+        /// <returns>携带所提供接触数据的副本。</returns>
         public DamageInfo AtPoint(Vector3 hitPoint, Vector3 hitDirection) =>
             Rebuild(this, Amount, hitPoint, hitDirection);
 
-        /// <summary>Returns a copy of this hit with a different damage amount.</summary>
-        /// <remarks>Used by hurtboxes that scale damage, such as a boss weak point.</remarks>
-        /// <param name="amount">The replacement damage amount.</param>
-        /// <returns>A copy carrying the supplied amount.</returns>
+        /// <summary>返回此攻击使用不同伤害量的副本。</summary>
+        /// <remarks>用于会缩放伤害的受击区域，例如 Boss 弱点。</remarks>
+        /// <param name="amount">替换后的伤害量。</param>
+        /// <returns>携带所提供伤害量的副本。</returns>
         public DamageInfo WithAmount(float amount) => Rebuild(this, amount, HitPoint, HitDirection);
 
         /// <summary>
-        /// Copies every field, substituting the three that callers are allowed to vary.
+        /// 复制所有字段，仅替换调用者允许修改的三个字段。
         /// </summary>
         /// <remarks>
-        /// Init-only properties cannot be reassigned after construction and C# 9 offers no
-        /// <c>with</c> expression for structs, so copies must be written out in full. Routing them
-        /// through one method means a field added later cannot be forgotten by half the copies.
+        /// 仅初始化属性构造后不能重新赋值，且 C# 9 不支持结构体的 <c>with</c> 表达式，
+        /// 因此必须完整写出副本。让复制统一经过一个方法，可避免新增字段被部分复制路径遗漏。
         /// </remarks>
         private static DamageInfo Rebuild(
             in DamageInfo source,
@@ -153,25 +148,25 @@ namespace AdaptiveBossArena.Core.Combat
             };
     }
 
-    /// <summary>Outcome of offering a <see cref="DamageInfo"/> to a target.</summary>
+    /// <summary>向目标提交 <see cref="DamageInfo"/> 后的结果。</summary>
     public readonly struct DamageResult
     {
-        /// <summary>What the target did with the hit.</summary>
+        /// <summary>目标对攻击的处理结果。</summary>
         public DamageOutcome Outcome { get; init; }
 
-        /// <summary>Health actually removed, after resistances and clamping.</summary>
+        /// <summary>经过抗性和范围限制后实际扣除的生命值。</summary>
         public float AmountApplied { get; init; }
 
-        /// <summary>True when this hit reduced the target to zero health.</summary>
+        /// <summary>此次攻击使目标生命值降为零时为 true。</summary>
         public bool WasLethal { get; init; }
 
-        /// <summary>True when the target lost health, as opposed to avoiding or absorbing the hit.</summary>
+        /// <summary>目标确实损失生命值时为 true，区别于避开或吸收攻击。</summary>
         public bool Connected => Outcome == DamageOutcome.Applied;
 
-        /// <summary>Result for a hit that removed health.</summary>
-        /// <param name="amountApplied">Health removed.</param>
-        /// <param name="wasLethal">Whether the target died.</param>
-        /// <returns>A populated result.</returns>
+        /// <summary>扣除了生命值的攻击结果。</summary>
+        /// <param name="amountApplied">扣除的生命值。</param>
+        /// <param name="wasLethal">目标是否死亡。</param>
+        /// <returns>已填充的结果。</returns>
         public static DamageResult Applied(float amountApplied, bool wasLethal) => new DamageResult
         {
             Outcome = DamageOutcome.Applied,
@@ -179,9 +174,9 @@ namespace AdaptiveBossArena.Core.Combat
             WasLethal = wasLethal
         };
 
-        /// <summary>Result for a hit that was avoided or refused without removing health.</summary>
-        /// <param name="outcome">The non-damaging outcome.</param>
-        /// <returns>A populated result.</returns>
+        /// <summary>攻击被避开或拒绝且未扣除生命值时的结果。</summary>
+        /// <param name="outcome">未造成伤害的结果类型。</param>
+        /// <returns>已填充的结果。</returns>
         public static DamageResult NoDamage(DamageOutcome outcome) => new DamageResult
         {
             Outcome = outcome

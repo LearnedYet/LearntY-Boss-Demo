@@ -4,13 +4,11 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the rules that make the three weapons defend differently.
+    /// 测试使三种武器防御不同的规则。
     /// </summary>
     /// <remarks>
-    /// These are fairness contracts as much as feel ones: hyper-armour must protect the committed
-    /// part of a swing but never the recovery, or the greatsword would be strictly safer rather than
-    /// a genuine trade; and only the sustained guard should bleed posture slower, or the distinction
-    /// between the weapons collapses.
+    /// 这些既是手感也是公平契约：霸体应保护投入阶段而不保护后摇，否则巨剑只会更安全而非真正取舍；
+    /// 只有持续格挡应更慢损失姿态，否则武器差异会瓦解。
     /// </remarks>
     [TestFixture]
     public sealed class DefenceResolverTests
@@ -44,7 +42,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             Assert.AreEqual(1f, DefenceResolver.BlockPostureMultiplier(DefenceStyle.HyperArmour));
         }
 
-        /// <summary>A guard held for a moment, of the kind the player raises.</summary>
+        /// <summary>短暂举起的防御，类似玩家持盾。</summary>
         private static DefenceQuery Guard(float heldFor) => new DefenceQuery
         {
             IsDefending = true,
@@ -98,16 +96,14 @@ namespace AdaptiveBossArena.Tests.EditMode
                 Unblockable = true
             };
 
-            // The point of marking an attack unblockable: it must turn defending from the safe
-            // default into the wrong answer, or the player never has to read block-versus-dodge.
+            // 标记不可格挡的意义：将安全默认防御变为错误选择，否则玩家无需辨识格挡与闪避。
             Assert.AreEqual(DefenceOutcome.None, DefenceResolver.ResolveDefence(perilous));
         }
 
         [Test]
         public void AWeaponThatCannotParryStillBlocks()
         {
-            // The greatsword. Inside the window it has no deflect to reach, so a hit it is guarding
-            // against must fall through to an honest block rather than being refused for free.
+            // 巨剑没有弹反能力，因此窗口内格挡也应落到普通格挡，而非免费拒绝命中。
             var greatsword = new DefenceQuery
             {
                 IsDefending = true,
@@ -123,8 +119,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ADefenceThatCannotBlockRefusesOnlyWhatItTimes()
         {
-            // The boss's stance. Inside its window a hit is refused; a moment later it lands in
-            // full, which is the punishable tail that makes baiting the stance out worth doing.
+            // 首领姿态窗口内拒绝命中，稍后承受完整伤害；可惩罚尾段让诱出姿态有价值。
             var stance = new DefenceQuery
             {
                 IsDefending = true,

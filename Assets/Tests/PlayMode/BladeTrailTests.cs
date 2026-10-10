@@ -7,11 +7,10 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests the smear a swinging blade leaves.
+    /// 测试挥动刀刃留下的拖影。
     /// </summary>
     /// <remarks>
-    /// It was a ribbon behind one fixed point beside the body, which traced a circle around the fighter and
-    /// was left hanging in the air as a flat card when a swing ended.
+    /// 原先它是身体旁固定点后方的一条带状图形，绕战斗者画圆，挥击结束后像平面卡片一样悬在空中。
     /// </remarks>
     [TestFixture]
     public sealed class BladeTrailTests
@@ -27,7 +26,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             {
                 trail.Begin();
 
-                // Sweep the blade through a quarter turn over a fifth of a second.
+                // 在五分之一秒内让刀刃扫过四分之一圈。
                 for (float t = 0f; t < 0.2f; t += Time.deltaTime)
                 {
                     pivot.transform.rotation = Quaternion.Euler(0f, t / 0.2f * 90f, 0f);

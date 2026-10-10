@@ -6,7 +6,7 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the rules that decide which stone a blow breaks and where the pieces go.
+    /// 测试打击会破坏哪块石材、碎片去哪里。
     /// </summary>
     [TestFixture]
     public sealed class DestructionRulesTests
@@ -14,7 +14,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ReachIsMeasuredAcrossTheFloorNotUpToTheStone()
         {
-            // A stone crown a metre and a half up, 2.9 m away across the floor: inside a 3 m slam.
+            // 高一米半、水平距离 2.9 米的石冠，处于三米砸地范围内。
             Assert.IsTrue(DestructionRules.Reaches(Vector3.zero, 3f, new Vector3(2.9f, 1.5f, 0f)));
             Assert.IsFalse(DestructionRules.Reaches(Vector3.zero, 3f, new Vector3(3.1f, 0f, 0f)));
         }

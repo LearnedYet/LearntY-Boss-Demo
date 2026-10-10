@@ -5,12 +5,11 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the ring buffer backing the boss's combat memory.
+    /// 测试支撑首领战斗记忆的环形缓冲区。
     /// </summary>
     /// <remarks>
-    /// Wraparound indexing is the failure most worth guarding: if index zero stops meaning "oldest"
-    /// once the buffer fills, every derived behaviour feature silently reads the wrong window of
-    /// history, and the boss adapts to events in the wrong order without anything appearing broken.
+    /// 回绕索引最值得保护：满后若索引零不再代表最旧数据，所有行为特征会悄然读取错误历史窗口，
+    /// 首领按错误顺序适应却没有明显故障。
     /// </remarks>
     [TestFixture]
     public sealed class CircularBufferTests
@@ -69,8 +68,7 @@ namespace AdaptiveBossArena.Tests.EditMode
                 buffer.Add(i);
             }
 
-            // After many laps the newest value is writes-1 and the window is the preceding capacity
-            // values, in order. This is the invariant the perception history depends on.
+            // 多次回绕后，最新值为 writes-1，窗口为之前 capacity个有序值。这是感知历史依赖的不变量。
             for (int i = 0; i < capacity; i++)
             {
                 Assert.AreEqual(writes - capacity + i, buffer[i]);

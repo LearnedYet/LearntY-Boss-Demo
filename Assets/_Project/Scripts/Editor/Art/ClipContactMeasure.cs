@@ -9,25 +9,25 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Measures when each attack clip strikes, by sampling its fighter's right hand through the clip.
+    /// 通过采样角色右手在片段中的运动，测量每段攻击动画的打击时刻。
     /// </summary>
     /// <remarks>
-    /// Runs headless: posing a model with a clip needs no GPU. The measurement itself is the pure rule in
-    /// <see cref="ClipContact"/>; this only gathers the hand speeds it reads.
+    /// 可无图形界面运行：用片段摆姿无需 GPU。测量本身使用以下纯逻辑规则：<see cref="ClipContact"/>；
+    /// 这里仅收集它要读取的手部速度。
     /// </remarks>
     public static class ClipContactMeasure
     {
         private const int Samples = 48;
 
         /// <summary>
-        /// The bone whose motion marks the moment an attack's striking parts land.
+        /// 其运动用于标记攻击部位接触时刻的骨骼。
         /// </summary>
         /// <remarks>
-        /// A kick lands when the foot is fastest, not the hand; a leap lands when the body comes down. Timing every
-        /// clip off the right hand put the kick's blow where the arms happened to swing and the leap's in mid-air.
+        /// 踢击在脚最快时命中而非手最快时；跃击在身体落下时命中。全部按右手计时，
+        /// 曾让踢击命中跟随手臂偶然摆动，而跃击在半空就判定打击。
         /// </remarks>
-        /// <param name="parts">The parts the attack strikes with.</param>
-        /// <returns>The bone to measure.</returns>
+        /// <param name="parts">此次攻击使用的部位。</param>
+        /// <returns>要测量的骨骼。</returns>
         public static HumanBodyBones BoneFor(StrikerParts parts)
         {
             if ((parts & StrikerParts.RightFoot) != 0)
@@ -48,11 +48,11 @@ namespace AdaptiveBossArena.Editor.Art
             return HumanBodyBones.RightHand;
         }
 
-        /// <summary>Contact fraction for the clip a table plays in a state.</summary>
-        /// <param name="table">The fighter's clip table.</param>
-        /// <param name="state">The attack state.</param>
-        /// <param name="bone">The bone whose fastest moment is the blow; the weapon hand unless told otherwise.</param>
-        /// <returns>The measured fraction, or zero when the clip or rig is absent.</returns>
+        /// <summary>表格在某状态播放的片段的接触时间比例。</summary>
+        /// <param name="table">战斗角色片段表。</param>
+        /// <param name="state">攻击状态。</param>
+        /// <param name="bone">其速度峰值对应打击时刻的骨骼；未另行指定时使用持武器的手。</param>
+        /// <returns>测得的比例；缺少片段或骨架时为零。</returns>
         public static float ContactFor(CharacterClipTable table, string state, HumanBodyBones bone = HumanBodyBones.RightHand)
         {
             if (!table.States.TryGetValue(state, out string clipName))
@@ -89,8 +89,8 @@ namespace AdaptiveBossArena.Editor.Art
                 {
                     clip.SampleAnimation(body, i * step);
 
-                    // Relative to the hips, so a leap or lunge carrying the whole body is not read as the hand swinging.
-                    // The hips themselves are measured where they are, which is the body rising and landing.
+                    // 相对于髋部测量，避免把跃起或突进带动的全身位移误认为手部挥动。
+                    // 髋部自身按其实际位置测量，对应身体升起和落地。
                     Vector3 local = bone == HumanBodyBones.Hips ? hips.position : hand.position - hips.position;
                     speeds[i] = i == 0 ? 0f : (local - previous).magnitude / Mathf.Max(0.0001f, step);
                     previous = local;

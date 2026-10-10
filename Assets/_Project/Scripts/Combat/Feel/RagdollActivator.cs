@@ -3,28 +3,26 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// Hands a rigged character's body to physics when it dies, and takes it back for a retry.
+    /// 角色死亡时将骨架身体交给物理系统，重试时取回。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The bodies are built into the prefab by the editor, kinematic and with their colliders off, so
-    /// while the character lives the Animator poses the bones and physics ignores them. Death flips that:
-    /// the Animator and both presentation drivers stop, the bodies go dynamic, and the killing blow's
-    /// direction is given to the hips and chest so the fall reads as caused by the hit.
+    /// 编辑器在预制体内构建身体，设为运动学并关闭碰撞体，因此角色存活时由 Animator 设置骨骼姿势，
+    /// 物理系统忽略它们。死亡时反转：Animator 和两个表现驱动器停止，身体变为动态，
+    /// 并将致命打击的方向施加到髋部与胸部，让倒下看起来由命中引起。
     /// </para>
     /// <para>
-    /// Presentation only. The character's root, its controller and its hurtbox stay where they were;
-    /// the ragdoll's layer collides with the world and debris and nothing else, so a corpse can neither
-    /// block the living nor take a hit.
+    /// 仅用于表现。角色根、控制器和受击盒保留原位置；布娃娃所在层只与世界和碎片碰撞，
+    /// 因此尸体既不会阻挡活人，也不会受击。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class RagdollActivator : MonoBehaviour
     {
-        /// <summary>Speed added upward on death, so a blow from level ground still lifts the body off its feet.</summary>
+        /// <summary>死亡时附加的向上速度，让来自水平地面的打击仍能将身体抬离地面。</summary>
         private const float LiftSpeed = 1.5f;
 
-        /// <summary>Ceiling on the thrown speed. A huge knockback must not fire a corpse across the arena.</summary>
+        /// <summary>抛出速度上限，巨大的击退不能让尸体飞越整个竞技场。</summary>
         private const float MaximumThrowSpeed = 9f;
 
         [SerializeField]
@@ -41,10 +39,10 @@ namespace AdaptiveBossArena.Combat.Feel
         private Vector3[] _angular = new Vector3[0];
         private bool _hasPreviousPose;
 
-        /// <summary>Whether the body currently belongs to physics.</summary>
+        /// <summary>身体当前是否交由物理系统控制。</summary>
         public bool IsActive { get; private set; }
 
-        /// <summary>The physical bones, hips first.</summary>
+        /// <summary>物理骨骼，髋部在前。</summary>
         public Rigidbody[] Bodies => _bodies;
 
         private void Awake()
@@ -56,12 +54,11 @@ namespace AdaptiveBossArena.Combat.Feel
         }
 
         /// <summary>
-        /// Tracks how each bone is moving while the Animator still poses it.
+        /// Animator 仍设置姿势时，追踪各骨骼运动。
         /// </summary>
         /// <remarks>
-        /// After animation, so it measures the pose that was drawn. A frame with no time in it - a hit-stop,
-        /// which is exactly what a killing blow brings - keeps the last real velocities rather than reading
-        /// the frozen body as still.
+        /// 在动画之后采样，因此测量的是实际绘制的姿势。没有时间推进的帧——顿帧，
+        /// 正是致命打击会带来的效果——保留最后一次实际速度，而不是将冻结的身体视为静止。
         /// </remarks>
         private void LateUpdate()
         {
@@ -103,22 +100,22 @@ namespace AdaptiveBossArena.Combat.Feel
             _hasPreviousPose = false;
         }
 
-        /// <summary>Assigns the bones. Used by the prefab builder.</summary>
-        /// <param name="bodies">The physical bones, hips and chest first.</param>
+        /// <summary>指定骨骼，由预制体构建器使用。</summary>
+        /// <param name="bodies">物理骨骼，髋部和胸部在前。</param>
         public void Bind(Rigidbody[] bodies)
         {
             _bodies = bodies ?? new Rigidbody[0];
             AllocatePoseHistory();
         }
 
-        /// <summary>The velocity a body will inherit from the animation if the character dies now.</summary>
-        /// <param name="index">Index into <see cref="Bodies"/>.</param>
-        /// <returns>The inherited linear velocity.</returns>
+        /// <summary>若角色现在死亡，身体将从动画继承的速度。</summary>
+        /// <param name="index"><see cref="Bodies"/> 中的索引。</param>
+        /// <returns>继承的线速度。</returns>
         public Vector3 AnimatedVelocity(int index) =>
             index >= 0 && index < _linear.Length ? _linear[index] : Vector3.zero;
 
-        /// <summary>Lets the body fall, thrown along the blow that killed it.</summary>
-        /// <param name="throwVelocity">Velocity to give the torso, typically the killing blow's knockback.</param>
+        /// <summary>让身体沿致命打击方向被抛出并倒下。</summary>
+        /// <param name="throwVelocity">施加给躯干的速度，通常为致命打击的击退。</param>
         public void Activate(Vector3 throwVelocity)
         {
             if (IsActive || _bodies.Length == 0)
@@ -128,8 +125,8 @@ namespace AdaptiveBossArena.Combat.Feel
 
             IsActive = true;
 
-            // Everything that writes the bones' transforms stops first, or it would fight the solver
-            // every frame and the corpse would jitter standing up.
+            // 先停止所有写入骨骼 Transform 的对象，否则每帧都会与求解器争夺控制，
+            // 导致尸体抖动着站起来。
             if (_procedural != null)
             {
                 _procedural.enabled = false;
@@ -159,14 +156,14 @@ namespace AdaptiveBossArena.Combat.Feel
                 SetCollidersEnabled(body, true);
                 body.isKinematic = false;
 
-                // The motion the animation had, and on top of it the blow: the torso takes the whole blow and
-                // the limbs a share of it, so the body folds around the hit rather than sliding away rigid.
+                // 在动画原有运动之上加上打击：躯干承受完整打击，四肢承受一部分，
+                // 让身体围绕命中位置折曲，而不是僵硬地滑走。
                 body.linearVelocity = _linear[i] + (i < 2 ? thrown : thrown * 0.5f);
                 body.angularVelocity = _angular[i];
             }
         }
 
-        /// <summary>Returns the body to the Animator, standing, for a new attempt.</summary>
+        /// <summary>将身体交还 Animator，以站立姿态开始新尝试。</summary>
         public void Restore()
         {
             if (!IsActive)
@@ -184,7 +181,7 @@ namespace AdaptiveBossArena.Combat.Feel
                     continue;
                 }
 
-                // Velocities are cleared while still dynamic; setting them on a kinematic body is an error.
+                // 仍为动态时清除速度；给运动学身体设置速度会报错。
                 body.linearVelocity = Vector3.zero;
                 body.angularVelocity = Vector3.zero;
                 body.isKinematic = true;
@@ -195,8 +192,8 @@ namespace AdaptiveBossArena.Combat.Feel
             {
                 _animator.enabled = true;
 
-                // Snaps every bone back to the pose the Animator was bound with, before the first frame
-                // of locomotion plays. Without it the retry would open on the corpse's last pose.
+                // 播放移动动画首帧前，将每根骨骼恢复到 Animator绑定时的姿势。
+                // 否则重试会以尸体最后的姿势开始。
                 _animator.Rebind();
                 _animator.Update(0f);
             }
@@ -214,7 +211,7 @@ namespace AdaptiveBossArena.Combat.Feel
 
         private static void SetCollidersEnabled(Rigidbody body, bool enabled)
         {
-            // Only the bone's own collider: children are other bones with their own bodies.
+            // 只处理骨骼自己的碰撞体：子对象是具有自身身体的其他骨骼。
             if (body.TryGetComponent(out Collider collider))
             {
                 collider.enabled = enabled;

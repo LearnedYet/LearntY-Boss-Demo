@@ -3,14 +3,12 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.Core.Events
 {
-    /// <summary>Event channel carrying no payload.</summary>
+    /// <summary>不携带载荷的事件通道。</summary>
     /// <remarks>
-    /// In its own file, and named for its class, because Unity only creates a <c>MonoScript</c> for
-    /// the type whose name matches the file. A concrete <see cref="ScriptableObject"/> declared
-    /// beside another class cannot be saved as a working asset: the asset is written with
-    /// <c>m_Script: {fileID: 0}</c>, loads as null, and every reference to it silently becomes null
-    /// — with no error anywhere. That is exactly what happened to every channel in this project, and
-    /// it took the whole signalling layer down with it while the console stayed clean.
+    /// 放在与类同名的独立文件中，因为 Unity 仅为名称匹配文件的类型创建 <c>MonoScript</c>。
+    /// 与其他类并列声明的具体 <see cref="ScriptableObject"/>无法保存成正常资源：
+    /// 资源写入 <c>m_Script : {fileID: 0}</c>，加载为 null，所有引用也悄悄变为 null，且完全不报错。
+    /// 本项目全部通道曾因此损坏，整个信号层失效，控制台却没有异常。
     /// </remarks>
     [CreateAssetMenu(
         fileName = "VoidEventChannel",
@@ -18,13 +16,13 @@ namespace AdaptiveBossArena.Core.Events
         order = 0)]
     public sealed class VoidEventChannel : EventChannelBase
     {
-        /// <summary>Raised when the channel fires.</summary>
+        /// <summary>通道触发时调用。</summary>
         public event Action Raised;
 
-        /// <summary>Number of currently attached listeners.</summary>
+        /// <summary>当前连接的监听者数量。</summary>
         public int ListenerCount => Raised?.GetInvocationList().Length ?? 0;
 
-        /// <summary>Fires the channel.</summary>
+        /// <summary>触发通道。</summary>
         public void Raise()
         {
             if (LogRaises)
@@ -36,12 +34,11 @@ namespace AdaptiveBossArena.Core.Events
         }
 
         /// <summary>
-        /// Drops all listeners when the asset unloads.
+        /// 资源卸载时移除全部监听者。
         /// </summary>
         /// <remarks>
-        /// ScriptableObject assets outlive play mode in the editor. Without this, delegates captured
-        /// from destroyed scene objects survive into the next play session and fire against dead
-        /// references, producing errors that do not reproduce in a build.
+        /// 编辑器中 ScriptableObject 资源的生命周期长于运行模式。若不清理，
+        /// 来自已销毁场景对象的委托会留到下一次运行，调用失效引用，产生构建版本中无法复现的错误。
         /// </remarks>
         private void OnDisable() => Raised = null;
     }

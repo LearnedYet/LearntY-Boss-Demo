@@ -5,19 +5,18 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Vitals
 {
     /// <summary>
-    /// A meter that fills as the player defends well and is spent to empower a special.
+    /// 玩家防守得当时积累、用于强化特殊技能的数值槽。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// It rewards the game's central act — turning the boss's attacks aside — rather than dealing
-    /// damage: a clean deflect and a perfect dodge both build focus, so the payoff for reading the
-    /// boss is a stronger answer of your own. It empties entirely when the player is staggered, so
-    /// focus is composure held under pressure, not a bar that only ever goes up.
+    /// 它奖励游戏的核心动作——化解首领攻击——而不是造成伤害：成功弹反和完美闪避都会积累专注，
+    /// 因此识破首领的回报是自己更强的应对。玩家进入硬直时它会完全清空，因此专注代表压力下保持的镇定，
+    /// 而不是只增不减的条。
     /// </para>
     /// <para>
-    /// Pure like the other vitals (<see cref="StaminaPool"/>, <see cref="PoisePool"/>) so its filling,
-    /// spending and loss can be pinned by an edit-mode test, and it starts <em>empty</em> because it
-    /// is earned within a fight rather than granted at its start.
+    /// 和其他状态数值（<see cref="StaminaPool"/>、<see cref="PoisePool"/>）一样采用纯逻辑，让积累、
+    /// 消耗和损失都能由编辑模式测试固定验证；它从<em>空值</em>开始，因为专注要在战斗中获得，
+    /// 而不是开战时赠予。
     /// </para>
     /// </remarks>
     public sealed class FocusMeter
@@ -28,11 +27,11 @@ namespace AdaptiveBossArena.Combat.Vitals
 
         private float _current;
 
-        /// <summary>Creates an empty meter.</summary>
-        /// <param name="maximum">Focus needed to empower a special. Must be positive.</param>
-        /// <param name="gainPerDeflect">Focus gained from a clean deflect.</param>
-        /// <param name="gainPerPerfectDodge">Focus gained from a perfect dodge.</param>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when the maximum is not positive.</exception>
+        /// <summary>创建空资源槽。</summary>
+        /// <param name="maximum">强化特殊技能所需的专注，必须为正数。</param>
+        /// <param name="gainPerDeflect">成功弹反获得的专注。</param>
+        /// <param name="gainPerPerfectDodge">完美闪避获得的专注。</param>
+        /// <exception cref="ArgumentOutOfRangeException">最大值不是正数时抛出。</exception>
         public FocusMeter(float maximum, float gainPerDeflect, float gainPerPerfectDodge)
         {
             if (maximum <= 0f)
@@ -47,31 +46,31 @@ namespace AdaptiveBossArena.Combat.Vitals
             _current = 0f;
         }
 
-        /// <summary>Current focus.</summary>
+        /// <summary>当前专注。</summary>
         public float Current => _current;
 
-        /// <summary>Focus needed to empower a special.</summary>
+        /// <summary>强化特殊技能所需的专注。</summary>
         public float Maximum => _maximum;
 
-        /// <summary>Current focus as a fraction of the maximum.</summary>
+        /// <summary>当前专注占最大值的比例。</summary>
         public float Normalized => _maximum <= 0f ? 0f : Mathf.Clamp01(_current / _maximum);
 
-        /// <summary>True when a special can be empowered.</summary>
+        /// <summary>可以强化特殊技能时为 true。</summary>
         public bool IsFull => _current >= _maximum;
 
-        /// <summary>Raised whenever the focus value changes, for the heads-up display.</summary>
+        /// <summary>专注变化时触发，供状态界面使用。</summary>
         public event Action<ResourceChangedArgs> Changed;
 
-        /// <summary>Adds the deflect reward.</summary>
+        /// <summary>添加弹反奖励。</summary>
         public void AddFromDeflect() => Add(_gainPerDeflect);
 
-        /// <summary>Adds the perfect-dodge reward.</summary>
+        /// <summary>添加完美闪避奖励。</summary>
         public void AddFromPerfectDodge() => Add(_gainPerPerfectDodge);
 
         /// <summary>
-        /// Spends a full meter, reporting whether there was one to spend.
+        /// 消耗完整专注槽，并报告是否存在可消耗的满槽。
         /// </summary>
-        /// <returns>True when the meter was full and has now been emptied.</returns>
+        /// <returns>原先满槽且现在已经清空时为 true。</returns>
         public bool TryConsumeFull()
         {
             if (_current < _maximum)
@@ -83,10 +82,10 @@ namespace AdaptiveBossArena.Combat.Vitals
             return true;
         }
 
-        /// <summary>Empties the meter, for a stagger or a fresh attempt.</summary>
+        /// <summary>清空数值槽，用于硬直或重新尝试。</summary>
         public void Reset() => Set(0f);
 
-        /// <summary>Adds focus, clamped to the maximum, raising the change.</summary>
+        /// <summary>添加专注并限制到最大值，触发变化通知。</summary>
         private void Add(float amount)
         {
             if (amount <= 0f || _current >= _maximum)
@@ -97,7 +96,7 @@ namespace AdaptiveBossArena.Combat.Vitals
             Set(Mathf.Min(_maximum, _current + amount));
         }
 
-        /// <summary>Sets the value and reports the change when it actually moved.</summary>
+        /// <summary>设置数值，仅在实际改变时报告变化。</summary>
         private void Set(float value)
         {
             if (Mathf.Approximately(value, _current))

@@ -1,66 +1,61 @@
 namespace AdaptiveBossArena.Core.StateMachine
 {
     /// <summary>
-    /// One discrete behaviour a machine can occupy.
+    /// 状态机可处于的一种独立行为。
     /// </summary>
     /// <remarks>
-    /// States are plain C# objects rather than components, so a machine can be built and stepped
-    /// entirely in an edit-mode test. The context is supplied on every call instead of being captured
-    /// at construction, which keeps states free of per-instance mutable wiring and makes them safe to
-    /// share.
+    /// 状态是普通 C# 对象而非组件，因此可完全在编辑模式测试中构建和推进状态机。上下文每次调用时传入，
+    /// 而非构造时捕获，使状态不持有实例级可变连接信息，并可安全共享。
     /// </remarks>
-    /// <typeparam name="TContext">Data and services the state operates on.</typeparam>
+    /// <typeparam name="TContext">状态操作的数据和服务。</typeparam>
     public interface IState<in TContext>
     {
-        /// <summary>Human-readable name, surfaced in the debug overlay.</summary>
+        /// <summary>调试面板显示的可读名称。</summary>
         string Name { get; }
 
-        /// <summary>Called once when the machine enters this state.</summary>
-        /// <param name="context">The machine's context.</param>
+        /// <summary>状态机进入此状态时调用一次。</summary>
+        /// <param name="context">状态机上下文。</param>
         void Enter(TContext context);
 
-        /// <summary>Called once per frame while this state is active.</summary>
-        /// <param name="context">The machine's context.</param>
-        /// <param name="deltaTime">Elapsed time, already scaled by the time service.</param>
+        /// <summary>此状态激活期间每帧调用一次。</summary>
+        /// <param name="context">状态机上下文。</param>
+        /// <param name="deltaTime">已经由时间服务缩放的经过时间。</param>
         void Tick(TContext context, float deltaTime);
 
-        /// <summary>Called on the physics step while this state is active.</summary>
-        /// <param name="context">The machine's context.</param>
-        /// <param name="fixedDeltaTime">Physics step duration.</param>
+        /// <summary>此状态激活期间，在物理步调用。</summary>
+        /// <param name="context">状态机上下文。</param>
+        /// <param name="fixedDeltaTime">物理步时长。</param>
         void FixedTick(TContext context, float fixedDeltaTime);
 
-        /// <summary>Called once when the machine leaves this state.</summary>
-        /// <param name="context">The machine's context.</param>
+        /// <summary>状态机离开此状态时调用一次。</summary>
+        /// <param name="context">状态机上下文。</param>
         void Exit(TContext context);
     }
 
     /// <summary>
-    /// A condition that moves the machine from its current state to a target state.
+    /// 使状态机从当前状态进入目标状态的条件。
     /// </summary>
     /// <remarks>
-    /// Transitions are first-class objects rather than branches inside the states themselves. That
-    /// is what keeps the boss's behaviour graph modular: adding a counter-attack response to a new
-    /// situation means registering a transition, not editing every state that might need to yield
-    /// to it.
+    /// 转移是一等对象，而非状态内部的分支。这使 Boss 行为图保持模块化：
+    /// 为新场景新增反击响应只需注册转移，而非修改每个可能需要让出的状态。
     /// </remarks>
-    /// <typeparam name="TContext">Data and services the condition inspects.</typeparam>
+    /// <typeparam name="TContext">条件检查的数据和服务。</typeparam>
     public interface ITransition<TContext>
     {
-        /// <summary>The state to move into when this transition fires.</summary>
+        /// <summary>转移触发后进入的状态。</summary>
         IState<TContext> Target { get; }
 
         /// <summary>
-        /// Evaluation order. Higher values are tested first.
+        /// 评估顺序，较大值先检查。
         /// </summary>
         /// <remarks>
-        /// Priority is how a death or stagger transition reliably beats a routine attack transition
-        /// that happens to be satisfied on the same frame.
+        /// 通过优先级，让死亡或硬直转移可靠地胜过同帧满足条件的普通攻击转移。
         /// </remarks>
         int Priority { get; }
 
-        /// <summary>Tests whether this transition should fire.</summary>
-        /// <param name="context">The machine's context.</param>
-        /// <returns>True to move to <see cref="Target"/>.</returns>
+        /// <summary>检查是否应触发此转移。</summary>
+        /// <param name="context">状态机上下文。</param>
+        /// <returns>应进入 <see cref="Target"/> 时返回 true。</returns>
         bool IsSatisfied(TContext context);
     }
 }

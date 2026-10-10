@@ -3,13 +3,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Utilities.Timing
 {
     /// <summary>
-    /// Explicitly ticked countdown timer with no dependency on engine time.
+    /// 由调用者显式推进、无需引擎时间的倒计时器。
     /// </summary>
     /// <remarks>
-    /// Callers supply their own delta, which is what lets attack windows, cooldowns and adaptation
-    /// intervals honour hit-stop and slow-motion (they are ticked with scaled time) while UI and
-    /// pause logic ignore it (ticked with unscaled time). It also makes every timing-dependent
-    /// system deterministically testable outside play mode.
+    /// 调用者提供delta，让攻击窗口、冷却和适应间隔使用缩放时间，响应打击停顿与慢动作；
+    /// UI和暂停使用未缩放时间。依赖时序的系统也能在运行模式外确定性测试。
     /// </remarks>
     public sealed class CountdownTimer
     {
@@ -17,32 +15,32 @@ namespace AdaptiveBossArena.Utilities.Timing
         private float _remaining;
         private bool _isRunning;
 
-        /// <summary>Creates a stopped timer.</summary>
+        /// <summary>创建停止状态计时器。</summary>
         public CountdownTimer()
         {
         }
 
-        /// <summary>Creates a timer and immediately starts it.</summary>
-        /// <param name="duration">Countdown length in seconds.</param>
+        /// <summary>创建计时器并立即启动。</summary>
+        /// <param name="duration">倒计时时长，单位为秒。</param>
         public CountdownTimer(float duration) => Start(duration);
 
-        /// <summary>True while the timer is counting down and has not yet elapsed.</summary>
+        /// <summary>正在倒计时且尚未结束时为true。</summary>
         public bool IsRunning => _isRunning;
 
-        /// <summary>Seconds left before the timer elapses.</summary>
+        /// <summary>结束前剩余秒数。</summary>
         public float Remaining => _remaining;
 
-        /// <summary>Total length the timer was started with.</summary>
+        /// <summary>启动时设置的总时长。</summary>
         public float Duration => _duration;
 
-        /// <summary>Fraction of the countdown already consumed, from zero at start to one at completion.</summary>
+        /// <summary>已消耗比例，开始为零，结束为一。</summary>
         public float Progress01 => _duration <= 0f ? 1f : Mathf.Clamp01(1f - _remaining / _duration);
 
-        /// <summary>Raised once at the moment the countdown reaches zero.</summary>
+        /// <summary>倒计时到零时触发一次。</summary>
         public event System.Action Completed;
 
-        /// <summary>Starts or restarts the countdown.</summary>
-        /// <param name="duration">Countdown length in seconds. Non-positive durations complete on the next tick.</param>
+        /// <summary>启动或重新启动倒计时。</summary>
+        /// <param name="duration">倒计时时长，单位为秒；非正时长在下次推进时完成。</param>
         public void Start(float duration)
         {
             _duration = Mathf.Max(0f, duration);
@@ -55,9 +53,9 @@ namespace AdaptiveBossArena.Utilities.Timing
             }
         }
 
-        /// <summary>Advances the countdown.</summary>
-        /// <param name="deltaTimeSeconds">Elapsed time. Non-positive values are ignored.</param>
-        /// <returns>True on the single tick where the countdown completes.</returns>
+        /// <summary>推进倒计时。</summary>
+        /// <param name="deltaTimeSeconds">经过时间，忽略非正值。</param>
+        /// <returns>仅在倒计时完成的那一步返回true。</returns>
         public bool Tick(float deltaTimeSeconds)
         {
             if (!_isRunning || deltaTimeSeconds <= 0f)
@@ -75,7 +73,7 @@ namespace AdaptiveBossArena.Utilities.Timing
             return true;
         }
 
-        /// <summary>Stops the countdown without raising <see cref="Completed"/>.</summary>
+        /// <summary>停止倒计时，不触发<see cref="Completed"/>。</summary>
         public void Cancel()
         {
             _isRunning = false;

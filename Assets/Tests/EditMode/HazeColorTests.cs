@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests that the cathedral's haze can never turn distance black, the failure that removed fog before.
+    /// 测试教堂雾霭永远不能使远处变黑，这是此前移除雾效的原因。
     /// </summary>
     [TestFixture]
     public sealed class HazeColorTests
@@ -40,7 +40,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void EveryPhaseOfTheShippedAtmosphereClearsTheFloor()
         {
-            // The equator and sun colours of phase 0 and phase 3, the coolest and the reddest.
+            // 第 0 与第 3 阶段的水平环境色和太阳颜色，分别为最冷与最红的配色。
             Assert.GreaterOrEqual(
                 HazeColor.Luminance(HazeColor.Derive(new Color(0.14f, 0.14f, 0.17f), new Color(1f, 0.96f, 0.9f), 1.15f)),
                 HazeColor.MinimumLuminance);

@@ -4,24 +4,19 @@ using AdaptiveBossArena.Core.Services;
 namespace AdaptiveBossArena.Learning
 {
     /// <summary>
-    /// Chooses which answer the boss develops to the habits it has observed.
+    /// 选择首领针对已观察习惯形成的应对。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Selection is weighted-random over the eligible strategies rather than "strongest habit wins".
-    /// A deterministic mapping from habit to counter would be a lookup table, and a player who
-    /// learned it would be able to steer the boss deliberately. Weighting means a strong habit is
-    /// very likely to be answered, without which answer being certain.
+    /// 对合格策略进行加权随机选择，而非“最强习惯优先”。若习惯与反制之间是确定映射，就会变成查找表，
+    /// 玩家掌握后可以刻意引导首领。加权让强烈习惯很可能得到应对，但不会确定采用哪一种。
     /// </para>
     /// <para>
-    /// Each candidate's weight is its authored weight multiplied by the confidence behind the habit
-    /// that triggered it. That is the mechanism that keeps the boss from countering a coincidence:
-    /// a strategy triggered by two observations competes at a fraction of the weight of one
-    /// triggered by thirty.
+    /// 每个候选的权重是设计权重乘以触发习惯的可信度。这可以防止首领针对偶然行为反制：
+    /// 只观察两次便触发的策略，与观察三十次才触发的策略相比，参与竞争的权重仅为后者的一部分。
     /// </para>
     /// <para>
-    /// Randomness comes from an injected provider, so a seed reproduces the boss's decisions
-    /// exactly and the whole system stays testable despite being probabilistic.
+    /// 随机性来自注入的提供者，因此种子可以精确复现首领的决策；即使系统具有概率性，也依然可测试。
     /// </para>
     /// </remarks>
     public sealed class CounterSelector
@@ -30,21 +25,21 @@ namespace AdaptiveBossArena.Learning
         private readonly List<CounterStrategy> _candidates = new List<CounterStrategy>();
         private readonly List<float> _weights = new List<float>();
 
-        /// <summary>Creates a selector.</summary>
-        /// <param name="random">Seedable randomness, so selection is reproducible.</param>
+        /// <summary>创建选择器。</summary>
+        /// <param name="random">可设置种子的随机源，使选择结果可复现。</param>
         public CounterSelector(IRandomProvider random) => _random = random;
 
-        /// <summary>Strategies eligible at the most recent selection. Exposed for the debug overlay.</summary>
+        /// <summary>最近一次选择时符合条件的策略，公开给调试叠加层。</summary>
         public IReadOnlyList<CounterStrategy> LastCandidates => _candidates;
 
         /// <summary>
-        /// Picks a strategy to adopt, or returns null when nothing is worth adopting.
+        /// 选择要采纳的策略；没有值得采纳的策略时返回 null。
         /// </summary>
-        /// <param name="catalogue">Every strategy the boss could develop.</param>
-        /// <param name="profile">The boss's current picture of the player.</param>
-        /// <param name="currentPhase">One-based phase currently in effect.</param>
-        /// <param name="alreadyAdopted">Strategies already in effect, skipped unless repeatable.</param>
-        /// <returns>The chosen strategy, or null.</returns>
+        /// <param name="catalogue">首领能够形成的全部策略。</param>
+        /// <param name="profile">首领当前的玩家画像。</param>
+        /// <param name="currentPhase">当前阶段，从一开始编号。</param>
+        /// <param name="alreadyAdopted">已经生效的策略，除非允许重复，否则跳过。</param>
+        /// <returns>选中的策略，或 null。</returns>
         public CounterStrategy Select(
             IReadOnlyList<CounterStrategy> catalogue,
             BehaviorProfile profile,
@@ -61,7 +56,7 @@ namespace AdaptiveBossArena.Learning
             return PickWeighted();
         }
 
-        /// <summary>Collects every strategy whose trigger is currently satisfied.</summary>
+        /// <summary>收集当前满足触发条件的全部策略。</summary>
         private void GatherCandidates(
             IReadOnlyList<CounterStrategy> catalogue,
             BehaviorProfile profile,
@@ -99,13 +94,13 @@ namespace AdaptiveBossArena.Learning
 
                 _candidates.Add(strategy);
 
-                // Confidence scales the weight rather than merely gating it, so among several
-                // eligible answers the boss leans toward the one it has the best evidence for.
+                // 可信度不只作为门槛，还会缩放权重，因此多个应对都合格时，
+                // 首领更倾向于证据最充分的一个。
                 _weights.Add(strategy.SelectionWeight * reading.Confidence);
             }
         }
 
-        /// <summary>Draws one candidate in proportion to its weight.</summary>
+        /// <summary>按权重比例抽取一个候选。</summary>
         private CounterStrategy PickWeighted()
         {
             float total = 0f;
@@ -132,7 +127,7 @@ namespace AdaptiveBossArena.Learning
                 }
             }
 
-            // Floating-point accumulation can leave the roll marginally past the total.
+            // 浮点累加误差可能使抽样值略微超过总权重。
             return _candidates[_candidates.Count - 1];
         }
     }

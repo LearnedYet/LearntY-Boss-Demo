@@ -3,49 +3,41 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Builds the two combatants' bodies out of primitives.
+    /// 用基础模型构建双方身体。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A capsule is a shape, not a character. These assemble a readable silhouette instead — a
-    /// helmed knight and a hulking horned brute — from the same primitives, because the project
-    /// generates its assets from code and a jointed figure is only a handful more parts than a
-    /// single capsule.
+    /// 胶囊只是形状，不是角色。用相同基础模型组合出清晰轮廓：戴盔骑士和巨大有角巨兽，
+    /// 因为项目由代码生成资产，多关节身体只比单胶囊多少量部件。
     /// </para>
     /// <para>
-    /// Everything is parented under the visual root, which the procedural animator already moves as
-    /// a whole. A multi-part body therefore inherits every existing lunge, lean, crouch and topple
-    /// for nothing, and the character controller and hurtbox on the root above are untouched — so
-    /// none of this changes a single frame of combat timing.
+    /// 所有部件挂在程序动画整体移动的视觉根对象下，因此多部件身体免费继承已有突进、倾斜、
+    /// 下蹲和倒地效果。上方根对象的控制器与受击框不变，不改变任何战斗帧时机。
     /// </para>
     /// <para>
-    /// Silhouette is the entire point. These are lit by one directional light against a dark floor,
-    /// so what reads at a glance is the outline: the knight is narrow and upright with a crest, the
-    /// brute is wide and low with horns. Colour does far less work than shape here.
+    /// 轮廓是重点。在暗地板上由一盏方向光照明，一眼读到的是外形：骑士窄、直立、带盔饰，巨兽宽、低、带角。
+    /// 颜色作用远小于形状。
     /// </para>
     /// </remarks>
     internal static class SilhouetteBuilder
     {
         /// <summary>
-        /// Instantiates a rigged model under the visual root, if one has been supplied.
+        /// 提供蒙皮模型时，在视觉根对象下实例化。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The route for real downloaded art. It is driven from a configuration asset rather than by
-        /// adding the model to the prefab by hand, because these builders rewrite the entire
-        /// hierarchy on every run — anything added directly is destroyed the next time the project is
-        /// set up, which is precisely the trap the integration guide used to walk people into.
+        /// 真实下载美术的接入路径。由配置资产驱动，而非手动放入预制体；构建器每次重写完整层级，
+        /// 直接添加内容会在下次设置被销毁，这正是旧接入指南的陷阱。
         /// </para>
         /// <para>
-        /// Colliders are stripped from whatever arrives. A downloaded character routinely ships with
-        /// them, and one inside the character controller would fight it.
+        /// 移除导入对象上的碰撞体。下载角色常带碰撞体，放在 CharacterController 内会互相干扰。
         /// </para>
         /// </remarks>
-        /// <param name="visualRoot">Visual root to parent the model under.</param>
-        /// <param name="config">The character's animation config, carrying the rig, its controller and scale.</param>
-        /// <param name="bodyMaterial">Material every surface of the rig is drawn with.</param>
-        /// <param name="animator">The rig's Animator, for finding bones by role.</param>
-        /// <returns>True when a rig was instantiated and the generated body should be skipped.</returns>
+        /// <param name="visualRoot">模型挂载的视觉根对象。</param>
+        /// <param name="config">携带骨架、控制器和缩放的角色动画配置。</param>
+        /// <param name="bodyMaterial">绘制骨架全部表面的材质。</param>
+        /// <param name="animator">用于按角色查找骨骼的 Animator。</param>
+        /// <returns>已实例化骨架、应跳过生成身体时返回 true。</returns>
         public static bool TryBuildRig(
             Transform visualRoot,
             Combat.Feel.CharacterAnimationConfig config,
@@ -75,21 +67,19 @@ namespace AdaptiveBossArena.Editor
             {
                 animator.runtimeAnimatorController = config.AnimatorController;
 
-                // The motors move the character; a clip must never. Root motion off, and animated even
-                // when off screen so a pose never snaps when the camera swings back to it.
+                // 运动控制器移动角色，片段绝不可移动。关闭根运动，离屏也动画更新，
+                // 避免摄像机转回时姿势突然跳变。
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 
                 FaceRigForward(animator, instance.transform, visualRoot);
 
-                // Dormant until death. Built here so the knight and the brute get the same body from
-                // the same table, scaled by the same number that sizes the rig.
+                // 死亡前休眠。在此构建，确保骑士和巨兽从同一表获得相同身体，并使用与骨架相同缩放。
                 Art.RagdollBuilder.Build(animator, visualRoot.gameObject, config.RigScale);
             }
 
-            // The imported model's own materials are placeholders and are not imported, so every
-            // surface would otherwise render with the engine's default. The body takes the character's
-            // generated material, which knows the render pipeline and the art direction.
+            // 导入模型自带材质只是占位且未导入，否则所有表面使用引擎默认。
+            // 身体采用了解渲染管线与美术方向的生成角色材质。
             if (bodyMaterial != null)
             {
                 foreach (Renderer renderer in instance.GetComponentsInChildren<Renderer>(true))
@@ -109,24 +99,21 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Turns an attached rig so its body faces the character's forward.
+        /// 旋转附加骨架，使身体面向角色前方。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Art tools disagree about which way is forward. The Quaternius mannequin is authored facing -Z, and
-        /// attaching it unrotated left both fighters turned away from where they were facing: the boss
-        /// swung behind itself while its hits landed in front. The motors, the hitboxes and the boss's
-        /// perception all use the character root's forward, so the body is the thing that must agree.
+        /// 美术工具对前向定义不同。Quaternius 人偶面向 -Z，不旋转安装会让双方身体背对实际朝向：
+        /// 首领向后挥刀却在前方命中。运动控制器、命中框、首领感知都使用角色根前向，因此必须对齐身体。
         /// </para>
         /// <para>
-        /// Measured rather than assumed: the bind pose's hips give the body's facing, and the rig is turned
-        /// to match, snapped to a quarter turn so a slightly asymmetric pelvis cannot tilt it off square.
-        /// A differently authored model therefore lines up too, with nothing to remember to change.
+        /// 使用实测而非假设：绑定姿势的髋部给出身体朝向，转动骨架匹配，并吸附到四分之一圈，
+        /// 避免轻微不对称骨盆导致偏斜。不同朝向制作的模型也能自动对齐，无需记得手改。
         /// </para>
         /// </remarks>
-        /// <param name="animator">The rig's humanoid Animator.</param>
-        /// <param name="rig">The rig instance's root.</param>
-        /// <param name="visualRoot">The character's visual root, whose forward is the character's.</param>
+        /// <param name="animator">骨架的 Humanoid Animator。</param>
+        /// <param name="rig">骨架实例根对象。</param>
+        /// <param name="visualRoot">其前向即角色前向的视觉根对象。</param>
         private static void FaceRigForward(Animator animator, Transform rig, Transform visualRoot)
         {
             if (!animator.isHuman)
@@ -144,7 +131,7 @@ namespace AdaptiveBossArena.Editor
                 return;
             }
 
-            // A body facing +Z has its right side at +X, and +X cross +Y is +Z: right x up is the facing.
+            // 面向 +Z 的身体右侧为 +X，+X cross +Y 为 +Z，即右向叉乘上向得到朝向。
             Vector3 facing = Vector3.Cross(right.position - left.position, Vector3.up);
             facing.y = 0f;
 
@@ -159,33 +146,32 @@ namespace AdaptiveBossArena.Editor
             rig.localRotation = Quaternion.Euler(0f, snapped, 0f) * rig.localRotation;
         }
 
-        /// <summary>The material a rigged knight's body is drawn with.</summary>
+        /// <summary>绘制蒙皮骑士身体的材质。</summary>
         /// <remarks>
-        /// The licensed Paladin's own textured plate when present; otherwise the flat steel the CC0 mannequin
-        /// has always worn, which has no textures of its own to show.
+        /// 有许可资源时使用 Paladin 自带纹理甲胄，否则使用 CC0 人偶一直采用、
+        /// 没有自身纹理可展示的纯钢色。
         /// </remarks>
-        /// <returns>The knight's armour material.</returns>
+        /// <returns>骑士护甲材质。</returns>
         public static Material KnightRigMaterial() =>
             Art.LicensedArtMaterials.Knight() ??
             MaterialLibrary.GetOrCreateSurface("KnightArmour", ArmourColor, metallic: 0.85f, smoothness: 0.45f);
 
-        /// <summary>The material a rigged brute's body is drawn with.</summary>
-        /// <remarks>The licensed Warrok's own textured hide when present; otherwise the mannequin's flat hide.</remarks>
-        /// <returns>The brute's hide material.</returns>
+        /// <summary>绘制蒙皮巨兽身体的材质。</summary>
+        /// <remarks>有许可资源时使用 Warrok 自带纹理皮肤，否则使用人偶纯色皮肤。</remarks>
+        /// <returns>巨兽皮肤材质。</returns>
         public static Material BruteRigMaterial() =>
             Art.LicensedArtMaterials.Brute() ??
             MaterialLibrary.GetOrCreateSurface("BruteHide", HideColor, metallic: 0.05f, smoothness: 0.18f);
 
         /// <summary>
-        /// Mounts the brute's glowing core on a rigged body's chest bone.
+        /// 将巨兽发光核心安装到蒙皮身体胸骨。
         /// </summary>
         /// <remarks>
-        /// The core is the boss's facing indicator, the visible source of its phase aura and parry flash,
-        /// and marks where its weak point is. A rigged body has no core of its own, so it is carried over
-        /// onto the chest - where it moves with the body instead of floating where a primitive torso was.
+        /// 核心既标示朝向，又是阶段光环和招架闪光的可见来源，也标出弱点。蒙皮身体没有自带核心，
+        /// 因此移到胸部，让它随身体运动，而不是悬浮在旧基础躯干位置。
         /// </remarks>
-        /// <param name="animator">The rigged brute's Animator.</param>
-        /// <param name="size">Diameter of the core, in world units.</param>
+        /// <param name="animator">蒙皮巨兽的 Animator。</param>
+        /// <param name="size">核心直径，以世界单位计。</param>
         public static void AttachBruteCore(Animator animator, float size)
         {
             Transform chest = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Chest) : null;
@@ -203,58 +189,55 @@ namespace AdaptiveBossArena.Editor
             Object.DestroyImmediate(sphere.GetComponent<Collider>());
             sphere.transform.SetParent(chest, false);
 
-            // Local scale is divided out of the chest's world scale, so the core keeps its size however
-            // the rig is scaled.
+            // 局部缩放除以胸部世界缩放，使核心在任意骨架缩放下保持尺寸。
             float parentScale = Mathf.Max(0.0001f, chest.lossyScale.x);
-            // Set into the chest, not stuck on it: a whole glowing ball on the textured hide read as a flat
-            // disc glued to the model. Sunk in, only a smouldering patch shows through.
+            // 嵌入胸部而非贴在表面：纹理皮肤上完整发光球像粘上的平圆盘。下沉后仅露出闷燃光斑。
             sphere.transform.localScale = Vector3.one * (size * CoreScale / parentScale);
             sphere.transform.position = chest.position + chest.root.forward * (size * CoreDepth);
             sphere.GetComponent<MeshRenderer>().sharedMaterial = core;
         }
 
-        /// <summary>Steel plate. Metallic enough for the single light to catch an edge.</summary>
+        /// <summary>钢甲，金属度足以让单灯捕捉边缘。</summary>
         private static readonly Color ArmourColor = new Color(0.46f, 0.50f, 0.58f);
 
-        /// <summary>Cloth and cloak, deliberately matte so it reads as a different material.</summary>
+        /// <summary>布料与披风刻意哑光，以显出不同材质。</summary>
         private static readonly Color ClothColor = new Color(0.26f, 0.32f, 0.47f);
 
         /// <summary>
-        /// Visor glow, above one so it blooms.
+        /// 面罩发光强度大于一，触发泛光。
         /// </summary>
         /// <remarks>
-        /// Doubles as the facing indicator the old white cube provided. A lit slit reads as a face
-        /// without needing one, and it tells the player which way they are pointing.
+        /// 同时承担旧白方块的朝向标示。发光狭缝无需真正脸部就像面孔，并告诉玩家面朝哪里。
         /// </remarks>
         private static readonly Color VisorGlow = new Color(1.7f, 1.15f, 0.45f);
 
-        /// <summary>Dark, bloodied hide for the brute's mass.</summary>
+        /// <summary>巨兽主体使用暗色带血皮肤。</summary>
         private static readonly Color HideColor = new Color(0.56f, 0.24f, 0.26f);
 
-        /// <summary>Blackened iron for the brute's plating.</summary>
+        /// <summary>巨兽护板使用熏黑铁。</summary>
         private static readonly Color IronColor = new Color(0.33f, 0.30f, 0.33f);
 
-        /// <summary>Old bone, for horns.</summary>
+        /// <summary>角使用旧骨色。</summary>
         private static readonly Color BoneColor = new Color(0.86f, 0.83f, 0.76f);
 
         /// <summary>
-        /// The brute's core: a deep ember red, just past one so it smoulders under bloom.
+        /// 巨兽核心为深余烬红，略高于一，在泛光下闷燃。
         /// </summary>
-        /// <remarks>It was far brighter, and bloom washed it out to a flat peach disc.</remarks>
+        /// <remarks>此前亮得多，泛光将其冲淡为平桃色圆盘。</remarks>
         private static readonly Color CoreGlow = new Color(1.25f, 0.16f, 0.04f);
 
-        /// <summary>The core's diameter against the size asked for.</summary>
+        /// <summary>核心直径相对要求尺寸的比例。</summary>
         private const float CoreScale = 0.7f;
 
-        /// <summary>How far in front of the chest bone the core's centre sits, against the size asked for.</summary>
+        /// <summary>核心中心位于胸骨前方的距离，相对要求尺寸计。</summary>
         private const float CoreDepth = 0.55f;
 
         /// <summary>
-        /// Builds an armoured, upright figure for the player.
+        /// 为玩家构建直立着甲形体。
         /// </summary>
-        /// <param name="visualRoot">Visual root the parts are parented to.</param>
-        /// <param name="height">Full standing height, matching the character controller.</param>
-        /// <param name="radius">Body radius, matching the character controller.</param>
+        /// <param name="visualRoot">部件所挂载的视觉根对象。</param>
+        /// <param name="height">完整站立高度，与 CharacterController 匹配。</param>
+        /// <param name="radius">身体半径，与 CharacterController 匹配。</param>
         public static void BuildKnight(Transform visualRoot, float height, float radius)
         {
             Material armour = MaterialLibrary.GetOrCreateSurface(
@@ -280,13 +263,12 @@ namespace AdaptiveBossArena.Editor
                 new Vector3(0f, height * 0.89f, 0f),
                 Vector3.one * (radius * 0.82f));
 
-            // The crest is what makes the head read as a helm from directly above, which is the
-            // angle this camera almost always sees it from.
+            // 盔饰使正上方视角也能认出头盔，而摄像机几乎一直从这个角度观察。
             AddPart(visualRoot, "Crest", PrimitiveType.Cube, cloth,
                 new Vector3(0f, height * 0.98f, -radius * 0.06f),
                 new Vector3(radius * 0.12f, height * 0.07f, radius * 0.62f));
 
-            // Forward-facing and lit: the facing marker, wearing a different hat.
+            // 前向且发光，给朝向标记换一种外形。
             AddPart(visualRoot, "Visor", PrimitiveType.Cube, visor,
                 new Vector3(0f, height * 0.89f, radius * 0.66f),
                 new Vector3(radius * 0.46f, height * 0.028f, radius * 0.12f));
@@ -308,19 +290,18 @@ namespace AdaptiveBossArena.Editor
                     new Vector3(radius * 0.42f, height * 0.40f, radius * 0.46f));
             }
 
-            // Hangs behind the shoulders and widens downward, which is most of what separates this
-            // outline from a stack of boxes when it is moving.
+            // 从肩后悬挂并向下变宽，运动时主要靠此将轮廓区别于叠放盒子。
             AddPart(visualRoot, "Cloak", PrimitiveType.Cube, cloth,
                 new Vector3(0f, height * 0.56f, -radius * 0.52f),
                 new Vector3(radius * 1.5f, height * 0.52f, radius * 0.12f));
         }
 
         /// <summary>
-        /// Builds a wide, low, horned figure for the boss.
+        /// 为首领构建宽、低、带角的形体。
         /// </summary>
-        /// <param name="visualRoot">Visual root the parts are parented to.</param>
-        /// <param name="height">Full standing height, matching the character controller.</param>
-        /// <param name="radius">Body radius, matching the character controller.</param>
+        /// <param name="visualRoot">部件所挂载的视觉根对象。</param>
+        /// <param name="height">完整站立高度，与 CharacterController 匹配。</param>
+        /// <param name="radius">身体半径，与 CharacterController 匹配。</param>
         public static void BuildBrute(Transform visualRoot, float height, float radius)
         {
             Material hide = MaterialLibrary.GetOrCreateSurface(
@@ -345,13 +326,12 @@ namespace AdaptiveBossArena.Editor
                 new Vector3(0f, height * 0.38f, 0f),
                 new Vector3(radius * 1.3f, height * 0.16f, radius * 0.95f));
 
-            // Sunk between the shoulders rather than sitting on top of them. A low head is the
-            // single clearest way to read something as a brute rather than a person.
+            // 头嵌在肩间而非肩顶。低头位置最能让形体像巨兽而非人。
             AddPart(visualRoot, "Head", PrimitiveType.Sphere, hide,
                 new Vector3(0f, height * 0.83f, radius * 0.18f),
                 Vector3.one * (radius * 0.72f));
 
-            // The one part that must read from every angle, so it is the boss's silhouette signature.
+            // 唯一必须从各角度清晰可见的部件，作为首领轮廓标志。
             for (int side = -1; side <= 1; side += 2)
             {
                 string suffix = side < 0 ? "L" : "R";
@@ -375,22 +355,19 @@ namespace AdaptiveBossArena.Editor
                     new Vector3(radius * 0.56f, height * 0.32f, radius * 0.62f));
             }
 
-            // Forward-facing, and the reason the phase aura has a visible source. It is also the
-            // facing indicator, replacing the yellow cube that used to do the job.
+            // 朝前，成为阶段光环的可见来源；也替代旧黄方块标示朝向。
             AddPart(visualRoot, "Core", PrimitiveType.Sphere, core,
                 new Vector3(0f, height * 0.63f, radius * 0.56f),
                 Vector3.one * (radius * 0.34f));
         }
 
         /// <summary>
-        /// Creates one body part.
+        /// 创建一个身体部件。
         /// </summary>
         /// <remarks>
-        /// The collider is destroyed on every part without exception. Collision belongs to the
-        /// character controller on the root and damage to the hurtbox beside it; a stray collider
-        /// down here would fight both. Note also that a sphere and a cube are one unit across while
-        /// a capsule and a cylinder are two units tall — the scales above are written in those terms
-        /// deliberately, which is why nothing here uses a cylinder.
+        /// 所有部件毫无例外移除碰撞体。碰撞属于根对象控制器，伤害属于旁边受击框，
+        /// 此处遗漏碰撞体会干扰两者。球和立方体宽一个单位，胶囊和圆柱高两个单位；
+        /// 上方缩放刻意依据这些尺寸，因此这里不用圆柱。
         /// </remarks>
         private static GameObject AddPart(
             Transform parent,

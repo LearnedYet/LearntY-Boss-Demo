@@ -27,5 +27,5 @@ MonoBehaviour:
   - _parameter: 6
     _targetValue: 0.6
   _easeInSeconds: 6
-  _tellMessage: It presses the advantage.
+  _tellMessage: 它正在步步紧逼。
   _tellAudioCueId: 

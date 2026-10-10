@@ -4,35 +4,33 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.Combat
 {
-    /// <summary>Geometry used to test what an attack strikes.</summary>
+    /// <summary>用于检测攻击命中对象的几何形状。</summary>
     public enum AttackShape
     {
-        /// <summary>Radial burst centred on an offset from the attacker.</summary>
+        /// <summary>以攻击者偏移位置为中心的径向爆发。</summary>
         Sphere = 0,
 
-        /// <summary>Rectangular volume, suited to thrusts and sweeps along one axis.</summary>
+        /// <summary>矩形体积，适合沿单一轴线进行的突刺和横扫。</summary>
         Box = 1,
 
-        /// <summary>Wedge in front of the attacker, the natural shape for a top-down melee swing.</summary>
+        /// <summary>攻击者前方的扇形区域，是俯视角近战挥击的自然形状。</summary>
         Arc = 2
     }
 
     /// <summary>
-    /// Complete definition of one attack, authored as an asset.
+    /// 作为资源创作的一次攻击的完整定义。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Timing is expressed as three phases in seconds rather than as animation events. The project
-    /// prototypes with primitive shapes and has no animation clips to hang events on, and tying
-    /// frame data to clips would mean re-authoring every attack when real animation arrives.
-    /// Instead an <see cref="IAttackTimeline"/> raises the same callbacks an animation event would,
-    /// and swapping to animation-driven timing later replaces the driver and nothing else.
+    /// 时序以三个阶段的秒数表示，而不是动画事件。项目使用基础几何体进行原型开发，
+    /// 没有可用于挂接事件的动画片段；将帧数据绑定到片段会导致真正的动画加入后需要重新创作每次攻击。
+    /// 因此，<see cref="IAttackTimeline"/> 会触发与动画事件相同的回调，以后切换到动画驱动时序时，
+    /// 只需替换驱动器。
     /// </para>
     /// <para>
-    /// The three phases are the entire language of the combat system. Startup is the commitment the
-    /// player reads and reacts to, active is the only window that can damage, and recovery is the
-    /// punish window that makes a whiffed heavy attack a real mistake. Adjusting the ratio between
-    /// them is how an attack is made fair or oppressive.
+    /// 这三个阶段构成战斗系统的全部表达方式。前摇是供玩家观察并作出反应的动作承诺，
+    /// 生效阶段是唯一能造成伤害的窗口，后摇则是可被惩罚的窗口，让挥空重击成为真正的失误。
+    /// 调整三者的比例，就能决定一次攻击是公平还是具有压迫性。
     /// </para>
     /// </remarks>
     [CreateAssetMenu(
@@ -192,7 +190,7 @@ namespace AdaptiveBossArena.Combat
         [Tooltip("Point within recovery, as a fraction, after which the combo is dropped.")]
         private float _comboWindowEnd = 0.85f;
 
-        /// <summary>Name shown in debug tooling.</summary>
+        /// <summary>调试工具中显示的名称。</summary>
         public string DisplayName => _displayName;
 
         [SerializeField]
@@ -200,141 +198,140 @@ namespace AdaptiveBossArena.Combat
         private StrikerParts _strikers;
 
         /// <summary>
-        /// The parts of the body this attack strikes with, or none to decide it by its authored volume.
+        /// 此攻击用于命中的身体部位；若为空，则由创作的攻击体积决定。
         /// </summary>
         /// <remarks>
-        /// Structural, not tuning: the generator writes it on every run. The volume stays authored either way,
-        /// because the boss plans its reach from it and telegraphs are drawn from it.
+        /// 这是结构信息，不是调参数据：生成器每次运行都会写入它。无论哪种情况，攻击体积均由资源定义，
+        /// 因为首领会根据它规划攻击距离，预警也根据它绘制。
         /// </remarks>
         public StrikerParts Strikers => _strikers;
 
-        /// <summary>Optional effect spawned at the attacker when the attack begins, or null.</summary>
+        /// <summary>攻击开始时在攻击者位置生成的可选效果；也可为 null。</summary>
         public GameObject CastVfxPrefab => _castVfxPrefab;
 
-        /// <summary>Whether this attack scars the ground with a lingering hazard on landing.</summary>
+        /// <summary>此攻击落地时是否在地面留下持续危险区域。</summary>
         public bool LeavesHazard => _leavesHazard;
 
-        /// <summary>Radius of the hazard left behind.</summary>
+        /// <summary>所留下危险区域的半径。</summary>
         public float HazardRadius => _hazardRadius;
 
-        /// <summary>Damage the hazard deals each tick.</summary>
+        /// <summary>危险区域每次结算造成的伤害。</summary>
         public float HazardDamagePerTick => _hazardDamagePerTick;
 
-        /// <summary>How long the hazard stays dangerous, in seconds.</summary>
+        /// <summary>危险区域保持危险的时间，单位为秒。</summary>
         public float HazardDurationSeconds => _hazardDurationSeconds;
 
-        /// <summary>Health removed on a clean hit.</summary>
+        /// <summary>直接命中时扣除的生命值。</summary>
         public float Damage => _damage;
 
-        /// <summary>Category of this attack.</summary>
+        /// <summary>此攻击的类别。</summary>
         public DamageType DamageType => _damageType;
 
-        /// <summary>Poise damage dealt.</summary>
+        /// <summary>造成的姿态伤害。</summary>
         public float PoiseDamage => _poiseDamage;
 
-        /// <summary>How forcefully this hit interrupts the target.</summary>
+        /// <summary>此命中打断目标的力度。</summary>
         public StaggerStrength Stagger => _stagger;
 
-        /// <summary>Knockback speed imparted to the target.</summary>
+        /// <summary>施加给目标的击退速度。</summary>
         public float KnockbackSpeed => _knockbackSpeed;
 
-        /// <summary>Where this hit sends the target's body.</summary>
+        /// <summary>此命中将目标身体推向的位置。</summary>
         public ImpactReaction ImpactReaction => _impactReaction;
 
-        /// <summary>Wind-up duration in seconds.</summary>
+        /// <summary>前摇时长，单位为秒。</summary>
         public float StartupSeconds => _startupSeconds;
 
-        /// <summary>Duration the hitbox is live, in seconds.</summary>
+        /// <summary>命中盒生效的时长，单位为秒。</summary>
         public float ActiveSeconds => _activeSeconds;
 
-        /// <summary>Lockout duration after the hitbox closes, in seconds.</summary>
+        /// <summary>命中盒关闭后无法行动的时长，单位为秒。</summary>
         public float RecoverySeconds => _recoverySeconds;
 
-        /// <summary>Total duration of the attack from input to actionable, in seconds.</summary>
+        /// <summary>从输入到恢复行动的攻击总时长，单位为秒。</summary>
         public float TotalSeconds => _startupSeconds + _activeSeconds + _recoverySeconds;
 
-        /// <summary>Time from the start of the attack at which the hitbox opens.</summary>
+        /// <summary>从攻击开始到命中盒开启的时间。</summary>
         public float ActiveStartSeconds => _startupSeconds;
 
-        /// <summary>Time from the start of the attack at which the hitbox closes.</summary>
+        /// <summary>从攻击开始到命中盒关闭的时间。</summary>
         public float ActiveEndSeconds => _startupSeconds + _activeSeconds;
 
-        /// <summary>Volume used to test what this attack strikes.</summary>
+        /// <summary>用于检测此攻击命中对象的体积。</summary>
         public AttackShape Shape => _shape;
 
-        /// <summary>Offset of the volume from the attacker's origin, in local space.</summary>
+        /// <summary>攻击体积相对于攻击者原点的局部空间偏移。</summary>
         public Vector3 Offset => _offset;
 
-        /// <summary>Reach of the volume.</summary>
+        /// <summary>攻击体积的触及距离。</summary>
         public float Range => _range;
 
-        /// <summary>Angular width of an arc volume, in degrees.</summary>
+        /// <summary>扇形体积的角宽，单位为度。</summary>
         public float ArcDegrees => _arcDegrees;
 
-        /// <summary>Half-extents of a box volume.</summary>
+        /// <summary>箱形体积的半尺寸。</summary>
         public Vector3 BoxHalfExtents => _boxHalfExtents;
 
-        /// <summary>Stamina consumed on use.</summary>
+        /// <summary>使用时消耗的耐力。</summary>
         public float StaminaCost => _staminaCost;
 
-        /// <summary>Forward impulse applied during startup.</summary>
+        /// <summary>前摇期间施加的向前冲量。</summary>
         public float LungeSpeed => _lungeSpeed;
 
         /// <summary>
-        /// How far from its target the attacker can start this attack and still connect.
+        /// 攻击者距离目标多远开始此攻击，仍然能够命中。
         /// </summary>
         /// <remarks>
-        /// The hit range plus the ground a lunge covers during its wind-up. This used to be written out by
-        /// hand in four places across the boss's selection, approach, combo and attack logic. Any change to
-        /// how a lunge travels would have had to find all four, and missing one would leave the boss
-        /// choosing attacks it could not land, or refusing ones it could, with nothing to show which.
+        /// 命中范围加上突进在前摇期间经过的距离。过去，这个计算被手写在首领的选择、接近、
+        /// 连击和攻击逻辑四处。任何对突进移动方式的调整，都必须找到这四处；
+        /// 漏改一处就会导致首领选择无法命中的攻击，或者拒绝本可命中的攻击，而没有线索指出原因。
         /// </remarks>
         public float EffectiveReach => _range + _lungeSpeed * StartupSeconds;
 
-        /// <summary>Fraction of the wind-up during which the attacker may still turn to follow its target.</summary>
+        /// <summary>前摇中允许攻击者继续转向追踪目标的时间比例。</summary>
         public float TrackingWindowFraction => _trackingWindowFraction;
 
-        /// <summary>Whether the attacker may still turn at this point in the swing.</summary>
-        /// <param name="phase">The swing's current phase.</param>
-        /// <param name="elapsedSeconds">Time since the swing began.</param>
-        /// <returns>True while tracking is allowed.</returns>
+        /// <summary>攻击者在挥击的当前时刻是否仍可转向。</summary>
+        /// <param name="phase">挥击的当前阶段。</param>
+        /// <param name="elapsedSeconds">从挥击开始到现在的时间。</param>
+        /// <returns>允许追踪时为 true。</returns>
         public bool CanTrack(AttackPhase phase, float elapsedSeconds) =>
             AttackTracking.CanTrack(phase, elapsedSeconds, _startupSeconds, _trackingWindowFraction);
 
-        /// <summary>Freeze duration applied on a successful hit.</summary>
+        /// <summary>成功命中时施加的冻结时长。</summary>
         public float HitStopSeconds => _hitStopSeconds;
 
-        /// <summary>Camera trauma added on a successful hit.</summary>
+        /// <summary>成功命中时增加的摄像机震动强度。</summary>
         public float CameraTrauma => _cameraTrauma;
 
-        /// <summary>Colour of the startup telegraph.</summary>
+        /// <summary>前摇预警的颜色。</summary>
         public Color TelegraphColor => _telegraphColor;
 
-        /// <summary>Whether a startup telegraph is drawn.</summary>
+        /// <summary>是否绘制前摇预警。</summary>
         public bool ShowTelegraph => _showTelegraph;
 
-        /// <summary>Whether a raised guard fails to stop this attack, so it must be dodged.</summary>
+        /// <summary>此攻击是否无法被举起的防御挡住，因而必须闪避。</summary>
         public bool Unblockable => _unblockable;
 
-        /// <summary>Whether this attack refuses to be deflected.</summary>
+        /// <summary>此攻击是否无法被弹反。</summary>
         /// <remarks>
-        /// Narrower than <see cref="Unblockable"/>, and pointed the other way. An unblockable attack
-        /// is a threat the defender must answer differently; an unparryable one is a punish the
-        /// attacker has already paid for - breaking a guard, then throwing the execution into it -
-        /// which should not then be refused by the same guard that just broke.
+        /// 它比 <see cref="Unblockable"/> 范围更窄，目的也相反。
+        /// 无法格挡的攻击是一种要求防守者以不同方式应对的威胁；
+        /// 无法招架的攻击则是攻击者已经付出代价换来的惩罚——先打破防御，
+        /// 再施加处决——因此不应再次被刚刚被打破的同一防御拒绝。
         /// </remarks>
         public bool Unparryable => _unparryable;
 
-        /// <summary>Absolute time at which the combo window opens, measured from attack start.</summary>
+        /// <summary>连击窗口开启的绝对时间，从攻击开始时计时。</summary>
         public float ComboWindowStartSeconds => ActiveEndSeconds + _recoverySeconds * _comboWindowStart;
 
-        /// <summary>Absolute time at which the combo window closes, measured from attack start.</summary>
+        /// <summary>连击窗口关闭的绝对时间，从攻击开始时计时。</summary>
         public float ComboWindowEndSeconds => ActiveEndSeconds + _recoverySeconds * _comboWindowEnd;
 
-        /// <summary>Builds the hit description this attack deals.</summary>
-        /// <param name="sourceTeam">Team the attack is performed by.</param>
-        /// <param name="sourceInstanceId">Instance identifier of the attacker.</param>
-        /// <returns>A populated hit description, awaiting contact-point data.</returns>
+        /// <summary>构建此攻击造成的命中描述。</summary>
+        /// <param name="sourceTeam">发动攻击的阵营。</param>
+        /// <param name="sourceInstanceId">攻击者的实例标识符。</param>
+        /// <returns>已填充的命中描述，等待接触点数据。</returns>
         public DamageInfo BuildDamageInfo(CombatantTeam sourceTeam, int sourceInstanceId) => new DamageInfo
         {
             Amount = _damage,
@@ -357,8 +354,7 @@ namespace AdaptiveBossArena.Combat
         {
             base.OnValidate();
 
-            // An inverted combo window silently disables comboing rather than erroring, which is a
-            // frustrating thing to debug from the symptom.
+            // 颠倒的连击窗口会静默禁用连击，而不会报错；仅凭现象排查这种问题会令人困扰。
             if (_comboWindowEnd < _comboWindowStart)
             {
                 _comboWindowEnd = _comboWindowStart;

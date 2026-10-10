@@ -5,12 +5,11 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts how the game picks and adjusts its graphics quality.
+    /// 断言游戏如何选择并调整画质。
     /// </summary>
     /// <remarks>
-    /// The browser demo was tuned for integrated graphics because that was the first machine it met; the player's
-    /// laptop has a dedicated card and the demo looked flat on it. The quality now follows the machine, so the rules
-    /// that decide it are pinned here.
+    /// 浏览器演示原先针对集成显卡调优，因为首次运行的机器使用它；玩家笔记本却有独立显卡，演示显得平淡。
+    /// 现在画质随机器变化，因此在此固定选择规则。
     /// </remarks>
     [TestFixture]
     public sealed class QualityDirectorTests
@@ -43,7 +42,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void AQualityIsFoundByNameAmongTheLevelsABuildKeeps()
         {
-            // A Windows build keeps only the desktop levels; a browser build only its own.
+            // Windows 构建只保留桌面级别，浏览器构建只保留自己的级别。
             string[] desktop = { "Desktop Low", "Desktop Medium", "Desktop High" };
             string[] browser = { "Browser Low", "Browser Medium", "Browser High" };
             string[] all = { "Browser Low", "Browser Medium", "Browser High", "Desktop Low", "Desktop Medium", "Desktop High" };

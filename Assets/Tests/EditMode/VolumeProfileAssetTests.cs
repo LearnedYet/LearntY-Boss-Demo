@@ -6,12 +6,11 @@ using UnityEngine.Rendering.Universal;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests that the arena's post-processing survives being saved and reloaded.
+    /// 测试竞技场后处理能否在保存并重新加载后保留。
     /// </summary>
     /// <remarks>
-    /// The profile's effects were added in memory and never saved into its asset. The editor session that
-    /// ran setup looked graded, and every build and every later session loaded a profile of nulls: no bloom,
-    /// no tonemapping, no vignette, no grade.
+    /// 配置的效果仅在内存中添加，从未保存进资源。运行设置的编辑器会话看起来已有调色，
+    /// 而所有构建和后续会话都加载全空配置：没有泛光、色调映射、暗角或调色。
     /// </remarks>
     [TestFixture]
     public sealed class VolumeProfileAssetTests
@@ -61,7 +60,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [TestCase("Assets/_Project/Settings/UniversalRenderer_Desktop.asset")]
         public void EveryRendererCarriesThePostProcessingResources(string path)
         {
-            // Without them URP skips every effect for that renderer, whatever the camera and volume say.
+            // 没有这些配置，无论相机和 Volume 如何设置，URP 都会跳过该渲染器的全部效果。
             var renderer = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(path);
             Assume.That(renderer != null, "Setup has not generated the renderer.");
 

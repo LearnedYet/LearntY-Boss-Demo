@@ -3,124 +3,118 @@ using System;
 namespace AdaptiveBossArena.Core.Services
 {
     /// <summary>
-    /// Player-adjustable settings, persisted between sessions.
+    /// 玩家可调设置，跨会话持久化。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A plain serialisable class rather than a ScriptableObject, because this is player data that
-    /// belongs in the save folder rather than project data that belongs in the build.
+    /// 使用普通可序列化类而非 ScriptableObject，因为这是存放于存档目录的玩家数据，
+    /// 而非随构建发布的项目数据。
     /// </para>
     /// <para>
-    /// Every field carries a sensible default, so a save file written by an older version that
-    /// lacks a field still loads correctly and simply picks up the default for whatever is new.
+    /// 每个字段都有合理默认值，因此旧版存档缺少字段时仍可正确加载，只为新增项采用默认值。
     /// </para>
     /// </remarks>
     [Serializable]
     public sealed class SettingsData
     {
-        /// <summary>Schema version this record was written with.</summary>
+        /// <summary>写入此记录时使用的结构版本。</summary>
         public int SchemaVersion = CurrentSchemaVersion;
 
-        /// <summary>Version the current code writes and understands.</summary>
+        /// <summary>当前代码写入和理解的版本。</summary>
         public const int CurrentSchemaVersion = 1;
 
         /// <summary>
-        /// Starting levels, shared with the audio service.
+        /// 与音频服务共享的初始音量。
         /// </summary>
         /// <remarks>
-        /// Named constants rather than literals in two places. The service used to hard-code its own
-        /// defaults, and one of them disagreed with the value here, so music played at the wrong
-        /// level until the settings menu was opened for the first time and pushed the saved value
-        /// down.
+        /// 采用命名常量，而非在两处写字面量。服务曾硬编码自己的默认值，其中一项与这里不同，
+        /// 导致首次打开设置菜单并推送存档值前，音乐音量一直错误。
         /// </remarks>
         public const float DefaultMasterVolume = 0.8f;
 
-        /// <summary>Starting music level.</summary>
+        /// <summary>初始音乐音量。</summary>
         public const float DefaultMusicVolume = 0.7f;
 
-        /// <summary>Starting sound-effects level.</summary>
+        /// <summary>初始音效音量。</summary>
         public const float DefaultEffectsVolume = 0.9f;
 
-        /// <summary>Overall output level, zero to one.</summary>
+        /// <summary>整体输出音量，范围零到一。</summary>
         public float MasterVolume = DefaultMasterVolume;
 
-        /// <summary>Music level, zero to one.</summary>
+        /// <summary>音乐音量，范围零到一。</summary>
         public float MusicVolume = DefaultMusicVolume;
 
-        /// <summary>Sound effects level, zero to one.</summary>
+        /// <summary>音效音量，范围零到一。</summary>
         public float EffectsVolume = DefaultEffectsVolume;
 
         /// <summary>
-        /// Camera shake intensity, zero to one.
+        /// 相机震动强度，范围零到一。
         /// </summary>
         /// <remarks>
-        /// Exposed as a full range rather than an on/off toggle. Screen shake is a genuine
-        /// accessibility problem for some players, and "less" is a more useful answer than "none"
-        /// for most of them.
+        /// 暴露完整范围而非开关。屏幕震动对部分玩家确实是无障碍问题，
+        /// 而对多数人“更少”比“完全没有”更有用。
         /// </remarks>
         public float ScreenShakeIntensity = 1f;
 
         /// <summary>
-        /// When true, hit flashes are muted.
+        /// 为 true 时减弱受击闪光。
         /// </summary>
-        /// <remarks>Rapid full-screen flashing is a photosensitivity risk and must be defeatable.</remarks>
+        /// <remarks>快速全屏闪烁有光敏风险，必须可以关闭。</remarks>
         public bool ReducedFlashing;
 
-        /// <summary>When true, the boss's adaptation tells stay on screen longer.</summary>
+        /// <summary>为 true 时，Boss 适应提示在屏幕上停留更久。</summary>
         public bool ExtendedTellDuration;
 
-        /// <summary>Multiplier on how fast the camera turns with the mouse or stick; one is the default.</summary>
+        /// <summary>鼠标或摇杆控制相机转动速度的倍率，默认为一。</summary>
         public float MouseSensitivity = LookSettings.DefaultSensitivity;
 
-        /// <summary>When true, moving the mouse up looks down.</summary>
+        /// <summary>为 true 时，鼠标上移使视野向下。</summary>
         public bool InvertLook;
 
-        /// <summary>The graphics quality the player chose, zero to two, or minus one to let the game choose.</summary>
+        /// <summary>玩家选择的画质，范围零到二；负一表示由游戏选择。</summary>
         public int GraphicsQuality = -1;
 
-        /// <summary>Serialised input rebindings, in the Input System's own JSON format.</summary>
+        /// <summary>按 Input System 自身 JSON 格式序列化的输入重绑定。</summary>
         public string InputRebinds = string.Empty;
     }
 
-    /// <summary>Best results the player has achieved against the boss.</summary>
+    /// <summary>玩家对战 Boss 的最佳结果。</summary>
     /// <remarks>
-    /// Deliberately a separate record from settings. A player clearing their settings should not
-    /// lose their records, and a corrupt settings file should not cost them either.
+    /// 刻意与设置分开保存。玩家清除设置不应丢失纪录，设置文件损坏也不应损失纪录。
     /// </remarks>
     [Serializable]
     public sealed class RecordsData
     {
-        /// <summary>Schema version this record was written with.</summary>
+        /// <summary>写入此记录时使用的结构版本。</summary>
         public int SchemaVersion = CurrentSchemaVersion;
 
-        /// <summary>Version the current code writes and understands.</summary>
+        /// <summary>当前代码写入和理解的版本。</summary>
         public const int CurrentSchemaVersion = 1;
 
-        /// <summary>Whether the boss has ever been defeated.</summary>
+        /// <summary>Boss 是否曾被击败。</summary>
         public bool HasWon;
 
-        /// <summary>Fastest victory in seconds. Zero when the boss has never been beaten.</summary>
+        /// <summary>最快胜利秒数。从未击败 Boss 时为零。</summary>
         public float FastestVictorySeconds;
 
-        /// <summary>Highest health fraction the player finished a winning fight with.</summary>
+        /// <summary>玩家获胜时剩余生命比例的最高值。</summary>
         public float BestRemainingHealth;
 
-        /// <summary>Total attempts made.</summary>
+        /// <summary>总尝试次数。</summary>
         public int TotalAttempts;
 
-        /// <summary>Fewest counter-strategies the boss managed to develop in a winning fight.</summary>
+        /// <summary>获胜战斗中 Boss 成功形成的最少反制策略数。</summary>
         /// <remarks>
-        /// The most interesting score this game can offer. Winning quickly is one kind of skill;
-        /// winning while giving the boss nothing to learn from is a much harder one, because it
-        /// means varying your play rather than finding one strong tactic and repeating it.
+        /// 本游戏最有趣的成绩。快速取胜是一种技巧；获胜且不给 Boss 可学习的规律则更难，
+        /// 因为这要求不断变换打法，而非反复使用一个强力战术。
         /// </remarks>
         public int FewestAdaptationsAllowed = int.MaxValue;
 
-        /// <summary>Records a completed attempt, keeping whichever results are better.</summary>
-        /// <param name="won">Whether the boss was defeated.</param>
-        /// <param name="durationSeconds">How long the attempt lasted.</param>
-        /// <param name="remainingHealth">Player health fraction at the end.</param>
-        /// <param name="adaptationsAllowed">Counter-strategies the boss developed.</param>
+        /// <summary>记录完成的尝试，保留更好的结果。</summary>
+        /// <param name="won">Boss 是否被击败。</param>
+        /// <param name="durationSeconds">此次尝试持续的时间。</param>
+        /// <param name="remainingHealth">结束时玩家生命比例。</param>
+        /// <param name="adaptationsAllowed">Boss 形成的反制策略数。</param>
         public void RecordAttempt(
             bool won,
             float durationSeconds,
@@ -134,7 +128,7 @@ namespace AdaptiveBossArena.Core.Services
                 return;
             }
 
-            // Only winning attempts update the bests, so a deliberate loss cannot poison a record.
+            // 只有胜利才更新最佳纪录，因此故意失败无法污染纪录。
             if (!HasWon || durationSeconds < FastestVictorySeconds)
             {
                 FastestVictorySeconds = durationSeconds;

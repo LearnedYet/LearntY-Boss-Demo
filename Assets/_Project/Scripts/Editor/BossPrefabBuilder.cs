@@ -9,43 +9,38 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Generates the boss prefab from primitives and wires its references.
+    /// 从基础模型生成首领预制体，并连接引用。
     /// </summary>
     /// <remarks>
-    /// The boss is built noticeably larger than the player, which is doing real work rather than
-    /// decoration: silhouette is how the player judges range at a glance, and its attacks are tuned
-    /// against a body of this size.
+    /// 首领明显大于玩家，这不是装饰：玩家凭轮廓迅速判断距离，其攻击也按此身体尺寸调节。
     /// </remarks>
     public static class BossPrefabBuilder
     {
-        /// <summary>Where the generated prefab is written.</summary>
+        /// <summary>生成预制体的写入位置。</summary>
         public const string PrefabPath = "Assets/_Project/Prefabs/Boss.prefab";
 
         private const float BodyHeight = 2.8f;
         private const float BodyRadius = 0.9f;
         private const float HurtboxRadius = 0.85f;
 
-        // The weak point sits over the glowing core the brute silhouette already carries, and is
-        // deliberately wider than the art it covers: a 0.3 m sphere would be a pixel-hunt at combat
-        // speed, and the decision worth asking for is where the player stands, not how precisely
-        // they aim. Both numbers are read together with SilhouetteBuilder's Core part, which is
-        // placed at the same fractions of height and radius.
+        // 弱点覆盖巨兽轮廓已有的发光核心，并刻意比美术更宽：战斗速度下，
+        // 0.3 米球体会变成找像素的小游戏。值得要求玩家决定的是站位，而不是瞄准精度。
+        // 这两个数值应与 SilhouetteBuilder 的 Core 部位一起理解，后者使用相同的高度和半径比例定位。
         private const float WeakPointRadius = 0.45f;
         private const float WeakPointHeightFraction = 0.63f;
         private const float WeakPointForwardFraction = 0.56f;
 
-        /// <summary>Damage scaling for hits landing on the core.</summary>
+        /// <summary>命中核心时的伤害倍率。</summary>
         /// <remarks>
-        /// Chosen so a full light chain to the core is clearly better than one to the flank without
-        /// making anything else pointless. The trade the player is being offered is that the core
-        /// faces them only while the boss does too, so the extra damage is paid for in risk.
+        /// 使完整轻攻击连击命中核心明显优于侧面，又不让其他打法失去意义。
+        /// 代价是首领朝向玩家时核心才面对玩家，额外伤害需要承担风险。
         /// </remarks>
         private const float WeakPointMultiplier = 1.6f;
 
         private static readonly Color BossColor = new Color(0.85f, 0.25f, 0.3f);
         private static readonly Color WeakPointColor = new Color(1f, 0.85f, 0.3f);
 
-        /// <summary>Creates or replaces the boss prefab.</summary>
+        /// <summary>创建或替换首领预制体。</summary>
         [MenuItem(EditorMenus.Setup + "Generate Boss Prefab", priority = EditorMenus.SetupPriorityBuildScene - 1)]
         public static void GenerateBossPrefab()
         {
@@ -99,11 +94,9 @@ namespace AdaptiveBossArena.Editor
             var visualRoot = new GameObject("Visual");
             visualRoot.transform.SetParent(parent, false);
 
-            // A rigged model wins when one has been supplied; otherwise a wide, low, horned
-            // silhouette. Facing has to be readable from across the arena, because reading the
-            // boss's facing is how the player judges whether an attack is aimed at them — the
-            // glowing forward core does that job, and doubles as a visible source for the phase
-            // aura that previously seemed to come from nowhere.
+            // 提供蒙皮模型时优先使用，否则生成宽、低、带角的轮廓。必须从竞技场远端就能看清朝向，
+            // 因为玩家据此判断攻击是否指向自己。前方发光核心承担这个任务，也成为阶段光环的可见来源，
+            // 避免光环看起来凭空出现。
             var animationConfig =
                 GeneratedAssets.Config<CharacterAnimationConfig>("DefaultBossAnimation");
 
@@ -112,7 +105,7 @@ namespace AdaptiveBossArena.Editor
             {
                 SilhouetteBuilder.AttachBruteCore(rig, BodyRadius * 0.34f);
 
-                // The brute's clips are a two-handed great sword set, swung by nothing until now.
+                // 巨兽片段来自双手巨剑动作集，此前却没有真正挥动的武器。
                 Art.ArmsBuilder.MountCleaver(
                     rig,
                     MaterialLibrary.GetOrCreateSurface("BruteCleaver", new Color(0.3f, 0.28f, 0.27f), metallic: 0.9f, smoothness: 0.45f),
@@ -125,21 +118,19 @@ namespace AdaptiveBossArena.Editor
 
             visualRoot.AddComponent<HitFlash>();
 
-            // Same rig as the player, tuned heavier through the boss animation config so its swings
-            // feel like they carry more mass. Moves the visual only; the hurtbox stays on the root.
+            // 采用与玩家相同的动画结构，通过首领动画配置调得更沉重，让挥击更有质量感。仅移动视觉对象，
+            // 受击框仍留在根对象。
             visualRoot.AddComponent<CharacterAnimator>();
 
-            // Dormant character-art seam: drives a skeletal Animator from the same state stream once a
-            // rigged model is a child of this root. A no-op while the boss is a primitive.
+            // 暂未启用的角色美术接入点：根对象有蒙皮模型子对象后，用同一状态流驱动骨骼 Animator。
+            // 首领为基础模型时不执行任何操作。
             visualRoot.AddComponent<CharacterAnimationBridge>();
 
-            // Lights the boss from within, dark at the start and hotter each phase, so escalation is
-            // visible on the character rather than only felt in the damage.
+            // 从内部照亮首领，起初暗淡，各阶段逐渐炽热，让升级变化显现在角色身上而非仅体现在伤害上。
             visualRoot.AddComponent<PhaseAura>().SetEmberMaterial(MaterialLibrary.GetOrCreateImpactSparks());
 
-            // Along the cleaver's broad blade when there is one, and out from the body where the primitive's arm
-            // would be when there is not. Longer and faintly warm: the boss's swings cover more ground, and
-            // the smear is a large part of how the player judges whether one will reach them.
+            // 有砍刀时沿宽刀刃布置，无砍刀时放到基础模型手臂应在的位置。轨迹更长且略暖，
+            // 表现首领挥击覆盖更广；拖影也是玩家判断是否会被击中的重要依据。
             Transform hand = rig != null && rig.isHuman ? rig.GetBoneTransform(HumanBodyBones.RightHand) : null;
             Transform cleaver = hand != null ? hand.Find("Cleaver") : null;
             var warmSteel = new Color(0.5f, 0.36f, 0.3f, 1f);
@@ -148,7 +139,7 @@ namespace AdaptiveBossArena.Editor
             {
                 WeaponTrailBuilder.Attach(cleaver, Vector3.zero, baseDistance: 0.45f, tipDistance: 1.6f, warmSteel);
 
-                // The great sword the brute's cuts land with, over the same span the trail smears.
+                // 巨兽斩击使用的巨剑，范围与轨迹拖影一致。
                 StrikeVolumeBuilder.Attach(cleaver, Combat.StrikerParts.Weapon, 0.45f, 1.6f, 0.14f);
             }
             else
@@ -157,8 +148,8 @@ namespace AdaptiveBossArena.Editor
                     visualRoot.transform, new Vector3(BodyRadius * 0.8f, BodyHeight * 0.6f, 0f), 0.3f, 1.4f, warmSteel);
             }
 
-            // Fists, a foot and the body, for the kick, the grab, the leap and the frenzy's bare hands. A fist is
-            // wide on this body; the body sphere is its torso, for landing on the knight. A no-op without a rig.
+            // 为踢击、抓取、跃击和狂暴徒手攻击配置拳、脚和身体。此身体的拳头较宽；身体球体代表躯干，
+            // 用于落到骑士身上。没有骨架时不操作。
             StrikeVolumeBuilder.AttachLimbs(rig, fistRadius: 0.2f, footRadius: 0.2f, bodyRadius: 0.8f);
         }
 
@@ -183,17 +174,15 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Adds the second, higher-multiplier hurtbox over the boss's forward core.
+        /// 在首领前方核心上添加第二个伤害倍率更高的受击框。
         /// </summary>
         /// <remarks>
-        /// Parented to the root rather than to the visual, for the same reason the body hurtbox is:
-        /// the visual leans and bobs under the animator, and a hitbox that moved with an idle
-        /// animation would make the same swing land differently from one moment to the next.
+        /// 与身体受击框一样挂在根对象而非视觉对象：视觉对象在动画中倾斜起伏，
+        /// 若命中框跟随待机动画移动，同一挥击在不同瞬间会有不同结果。
         /// <para>
-        /// It sits entirely inside the body capsule, which is intended. Both are found by a swing
-        /// from the front, and <see cref="AttackHitDetector"/> resolves that overlap in favour of
-        /// the higher multiplier — so the core rewards fighting the boss face-on, where its own
-        /// attacks are pointed.
+        /// 它完全位于身体胶囊内，这是有意设计。正面挥击会同时找到两者，
+        /// 而 <see cref="AttackHitDetector"/> 会让较高倍率优先。因此核心奖励玩家正面面对首领战斗，
+        /// 同时也承受首领正面攻击的风险。
         /// </para>
         /// </remarks>
         private static void BuildWeakPoint(Transform parent)
@@ -223,8 +212,8 @@ namespace AdaptiveBossArena.Editor
         {
             BossController controller = root.AddComponent<BossController>();
 
-            // Heavier, slower-cadenced footfalls than the player, so the boss reads as a large mass
-            // moving around the arena even as a primitive, and each one drives up more dust.
+            // 脚步比玩家更沉、更慢，让首领即使是基础模型也像一大团质量在竞技场移动，
+            // 并且每步扬起更多尘土。
             root.AddComponent<Combat.Feel.FootstepEmitter>()
                 .Configure(
                     Game.AudioService.Cues.FootstepBoss, strideLength: 2.4f,

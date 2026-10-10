@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests when the fight holds the mouse and when a menu gets it back.
+    /// 测试战斗何时捕获鼠标、菜单何时归还鼠标。
     /// </summary>
     [TestFixture]
     public sealed class CursorLockTests

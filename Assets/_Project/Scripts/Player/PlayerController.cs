@@ -16,102 +16,95 @@ using UnityEngine;
 namespace AdaptiveBossArena.Player
 {
     /// <summary>
-    /// Assembles the player character and drives its state machine.
+    /// 组装玩家角色并驱动状态机。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The character is one component that owns several plain C# collaborators, rather than a
-    /// cluster of components that find each other at runtime. Movement, health, stamina and input
-    /// buffering are all testable without a scene, and the prefab stays simple enough to generate
-    /// from code.
+    /// 角色由一个组件持有多个普通 C# 协作者，而非一组在运行时互相查找的组件。移动、生命、
+    /// 体力和输入缓存均可脱离场景测试，预制体也足够简单，可由代码生成。
     /// </para>
     /// <para>
-    /// This type implements both halves of the character's contract with the rest of the game:
-    /// <see cref="IDamageable"/>, which decides whether an incoming hit lands, and
-    /// <see cref="IObservablePlayer"/>, which is the sole channel through which the boss may learn
-    /// anything about the player. Everything the boss will ever know passes through
-    /// <see cref="CaptureObservation"/>, so that method is the place to scrutinise when judging
-    /// whether the boss is playing fair.
+    /// 此类型实现角色与游戏其余部分的两个契约：<see cref="IDamageable"/>决定传入攻击是否命中，
+    /// <see cref="IObservablePlayer"/>则是 Boss 获取玩家信息的唯一通道。
+    /// Boss能知道的一切均经过 <see cref="CaptureObservation"/>，因此评估 Boss 是否公平时，
+    /// 应重点审查该方法。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController))]
     public sealed class PlayerController : MonoBehaviour, IDamageable, IObservablePlayer, IPushBody
     {
-        /// <summary>Transition priority for death, which must beat every other condition.</summary>
+        /// <summary>死亡转移优先级，必须高于全部其他条件。</summary>
         private const int DeathTransitionPriority = 1000;
 
-        /// <summary>Transition priority for being staggered.</summary>
+        /// <summary>受硬直转移优先级。</summary>
         private const int StaggerTransitionPriority = 500;
 
         /// <summary>
-        /// Knockdowns and launches outrank a stagger, which is the lesser of two reactions to one hit,
-        /// and rank below death.
+        /// 击倒和击飞优先于同次攻击较轻的硬直反应，但低于死亡。
         /// </summary>
         private const int ReactionTransitionPriority = 600;
 
-        /// <summary>Transition priority for beginning a dash.</summary>
+        /// <summary>开始闪避的转移优先级。</summary>
         private const int DashTransitionPriority = 100;
 
-        /// <summary>Transition priority for beginning an attack, below dash by design.</summary>
+        /// <summary>开始攻击的转移优先级，刻意低于闪避。</summary>
         private const int AttackTransitionPriority = 90;
 
-        /// <summary>Transition priority for beginning a heal, the least urgent action.</summary>
+        /// <summary>开始治疗的转移优先级，属于最不紧急的动作。</summary>
         private const int HealTransitionPriority = 80;
 
-        /// <summary>Time scale granted as the perfect-dodge reward.</summary>
+        /// <summary>完美闪避奖励的时间倍率。</summary>
         /// <remarks>
-        /// Slow rather than frozen. The player needs to see the opening and act inside it, which
-        /// means the window has to remain playable, not merely dramatic.
+        /// 减慢而非冻结。玩家需要看清空当并行动，因此窗口必须可操作，而非只是戏剧效果。
         /// </remarks>
         private const float PerfectDodgeTimeScale = 0.35f;
 
-        /// <summary>Freeze on a clean deflect. Longer than a normal hit — this is the moment to sell.</summary>
+        /// <summary>精准弹反的冻结时间。长于普通命中，因为此刻值得强调。</summary>
         private const float DeflectHitStopSeconds = 0.12f;
 
-        /// <summary>Camera trauma on a clean deflect.</summary>
+        /// <summary>精准弹反的相机震动强度。</summary>
         private const float DeflectTrauma = 0.42f;
 
-        /// <summary>Transition priority for raising a guard, above attacking but below dashing.</summary>
+        /// <summary>举起防御的转移优先级，高于攻击但低于闪避。</summary>
         private const int GuardTransitionPriority = 95;
 
         /// <summary>
-        /// Transition priority for the parry, just above the guard.
+        /// 主动招架的转移优先级，略高于防御。
         /// </summary>
         /// <remarks>
-        /// A player holding block who then presses parry meant to parry: it is the riskier, more deliberate
-        /// choice, so it wins. Still below the dash, which is the panic button.
+        /// 按住格挡后又按招架，表示玩家想主动招架：这是更冒险、更明确的选择，因此优先。
+        /// 仍低于作为紧急逃生按钮的闪避。
         /// </remarks>
         private const int ParryTransitionPriority = 96;
 
-        /// <summary>How close the player must be for the kneeling boss to be within reach of a riposte.</summary>
+        /// <summary>跪倒 Boss 进入反击范围所需的玩家距离。</summary>
         private const float RiposteReachMetres = 2.8f;
 
-        /// <summary>How squarely the player must face the boss to take the punish: within about 60 degrees.</summary>
+        /// <summary>玩家需多正对 Boss 才能惩罚，约在 60 度以内。</summary>
         private const float RiposteFacingDot = 0.5f;
 
-        /// <summary>Freeze on a parry: longer than a deflect, because it is the harder thing to do.</summary>
+        /// <summary>主动招架的冻结时间，因难度更高而长于弹反。</summary>
         private const float ParryHitStopSeconds = 0.14f;
 
-        /// <summary>World speed of the beat a parry buys.</summary>
+        /// <summary>招架赢得的节奏窗口中世界运行速度。</summary>
         private const float ParrySlowMotionScale = 0.5f;
 
-        /// <summary>How long that beat lasts, in real seconds.</summary>
+        /// <summary>该窗口持续的真实秒数。</summary>
         private const float ParrySlowMotionSeconds = 0.25f;
 
-        /// <summary>Camera trauma on a parry.</summary>
+        /// <summary>主动招架的相机震动强度。</summary>
         private const float ParryTrauma = 0.5f;
 
         /// <summary>
-        /// Guard a parry takes from the boss, against the 28 a deflect takes.
+        /// 主动招架削减的 Boss 架势，普通弹反削减 28。
         /// </summary>
         /// <remarks>
-        /// Two parries and a deflect break a hundred-point guard, which is the reward for choosing the
-        /// committed answer over the safe one.
+        /// 两次招架加一次弹反可击破一百点架势，这是选择有投入应对而非安全选择的奖励。
         /// </remarks>
         private const float ParryPostureDamage = 45f;
 
-        /// <summary>Transition priority for a riposte, which outranks every ordinary action.</summary>
+        /// <summary>反击的转移优先级，高于全部普通动作。</summary>
         private const int RiposteTransitionPriority = 300;
 
         [Header("Configuration")]
@@ -161,19 +154,18 @@ namespace AdaptiveBossArena.Player
         [Tooltip("Carries the drawn weapon's swing cue, so each weapon sounds like itself.")]
         private StringEventChannel _weaponSwingCueChannel;
 
-        /// <summary>Health a Training-mode player is never allowed to fall below.</summary>
+        /// <summary>训练模式玩家生命永远不会低于的下限。</summary>
         private const float TrainingHealthFloor = 1f;
 
         private CharacterController _characterController;
         private HitFlash _hitFlash;
         private CharacterAnimator _animator;
 
-        /// <summary>The rig's physical body, woken on death. Null for a primitive body.</summary>
+        /// <summary>角色的物理身体，死亡时唤醒。基础几何体身体没有此项。</summary>
         private RagdollActivator _ragdoll;
         private WeaponSocket _weaponSocket;
 
-        // Run-modifier state, applied by the encounter director at the start of a run. Defaults leave
-        // the ordinary fight untouched.
+        // 挑战修正状态，由战斗导演在挑战开始时应用。默认值不改变普通战斗。
         private float _incomingDamageMultiplier = 1f;
         private bool _immortal;
         private IPlayerInput _input;
@@ -204,15 +196,14 @@ namespace AdaptiveBossArena.Player
         private IScreenShake _screenShake;
 
         /// <summary>
-        /// The opponent, used only to orient guards and riposts.
+        /// 对手，仅用于让防御和反击面向目标。
         /// </summary>
         /// <remarks>
-        /// A transform and nothing more. The player may look at the boss; the reverse relationship
-        /// is what the whole architecture forbids, and it stays forbidden.
+        /// 只有 Transform，没有更多信息。玩家可以看向Boss；反向关系才是整个架构禁止的内容，且仍然禁止。
         /// </remarks>
         private Transform _threat;
 
-        /// <summary>Index into the configured weapon list.</summary>
+        /// <summary>配置武器列表的索引。</summary>
         private int _weaponIndex;
 
         private bool _isInitialised;
@@ -223,32 +214,31 @@ namespace AdaptiveBossArena.Player
         /// <inheritdoc />
         public bool IsAlive => _health != null && _health.IsAlive;
 
-        /// <summary>Health pool, exposed read-only for the heads-up display.</summary>
+        /// <summary>生命值池，以只读方式暴露给 HUD。</summary>
         public IHealth Health => _health;
 
-        /// <summary>Stamina pool, exposed read-only for the heads-up display.</summary>
+        /// <summary>体力池，以只读方式暴露给 HUD。</summary>
         public IStaminaPool Stamina => _stamina;
 
-        /// <summary>Name of the state the character currently occupies. For debug tooling.</summary>
+        /// <summary>角色当前状态名称，供调试工具使用。</summary>
         public string CurrentStateName => _machine?.CurrentState?.Name ?? "Uninitialised";
 
         /// <summary>
-        /// Whether construction finished. Exposed because the failure is otherwise silent.
+        /// 构建是否完成。暴露此项，因为否则失败会被静默掩盖。
         /// </summary>
         /// <remarks>
-        /// A controller that bailed during setup still answers <see cref="TakeDamage"/> — it simply
-        /// ignores every hit — so from the outside it is indistinguishable from a player who is
-        /// dodging everything. The diagnostic overlay has to be able to tell those two apart.
+        /// 初始化提前退出的控制器仍会响应 <see cref="TakeDamage"/>，只是忽略每次攻击，
+        /// 因此外部看来与避开所有攻击的玩家无法区分。诊断面板必须能区分两者。
         /// </remarks>
         public bool IsInitialised => _isInitialised;
 
-        /// <summary>True while dash invincibility frames are active. For debug tooling.</summary>
+        /// <summary>闪避无敌帧生效时为 true，供调试工具使用。</summary>
         public bool IsInvulnerable => _context != null && _context.IsInvulnerable;
 
-        /// <summary>True while the guard is up. For debug tooling.</summary>
+        /// <summary>防御举起时为 true，供调试工具使用。</summary>
         public bool IsGuarding => _context != null && _context.IsGuarding;
 
-        /// <summary>True when Training mode is holding the player above death. For debug tooling.</summary>
+        /// <summary>训练模式让玩家保持不死时为 true，供调试工具使用。</summary>
         public bool IsImmortal => _immortal;
 
         private void Awake()
@@ -260,18 +250,17 @@ namespace AdaptiveBossArena.Player
             _ragdoll = GetComponentInChildren<RagdollActivator>();
             _weaponSocket = GetComponentInChildren<WeaponSocket>();
 
-            // Registered during Awake so the boss can resolve it in Start. This registration is the
-            // entire surface the boss can reach the player through, and it is an interface exposing
-            // only what is visible on screen.
+            // Awake 期间注册，使 Boss 可在Start 解析。此注册是 Boss 接触玩家的完整接口，
+            // 仅暴露屏幕上可见信息。
             ServiceRegistry.Current.RegisterOrReplace<IObservablePlayer>(this);
         }
 
         /// <summary>
-        /// Builds the character once every other object's <c>Awake</c> has run.
+        /// 所有其他对象的 <c>Awake</c> 运行后构建角色。
         /// </summary>
         /// <remarks>
-        /// Deferred to <c>Start</c> because the time service is registered by the game bootstrapper
-        /// during <c>Awake</c>, and Unity guarantees every <c>Awake</c> precedes every <c>Start</c>.
+        /// 延后到 <c>Start</c>，因为游戏启动器在 <c>Awake</c> 注册时间服务，
+        /// 而 Unity 保证全部 <c>Awake</c> 先于全部 <c>Start</c>。
         /// </remarks>
         private void Start()
         {
@@ -292,13 +281,12 @@ namespace AdaptiveBossArena.Player
             _stamina = new StaminaPool(
                 _config.MaxStamina, _config.StaminaRegenPerSecond, _config.StaminaRegenDelaySeconds);
 
-            // Reuses the boss's poise implementation. Posture and poise are the same mechanic seen
-            // from two sides, so sharing it keeps a guard break and a stagger behaving identically.
+            // 复用 Boss 架势实现。玩家架势与 Boss 韧性是同一机制的两面，
+            // 共享实现确保防御崩溃与硬直行为一致。
             _posture = new PoisePool(
                 _config.MaxPosture, _config.PostureRegenPerSecond, StaggerDurations.BreakSeconds);
 
-            // Earned by defending well, spent to empower a special. Starts empty; it is a reward for
-            // reading the boss within the fight, not a resource granted at its start.
+            // 通过良好防御获得，并用于强化特殊技能。初始为空：它奖励战斗中读懂 Boss，而非开场赠送资源。
             _focus = new FocusMeter(
                 _config.MaxFocus, _config.FocusPerDeflect, _config.FocusPerPerfectDodge);
 
@@ -306,7 +294,7 @@ namespace AdaptiveBossArena.Player
                 transform, CombatantTeam.Player, Layers.PlayerAttackMask, _time, _events, screenShake,
                 GetComponentInChildren<AttackVisualizer>());
 
-            // The sword, so a cut lands where the blade actually went.
+            // 注册剑，使斩击命中刀刃真正经过的位置。
             attacks.SetStrikers(GetComponentsInChildren<StrikeVolume>(includeInactive: true));
 
             _context = new PlayerContext(
@@ -335,9 +323,8 @@ namespace AdaptiveBossArena.Player
                 return;
             }
 
-            // While paused the combat clock is frozen, so a press recorded now would never age out
-            // of the buffer and would fire the instant play resumed. Skipping the update entirely
-            // is simpler and safer than trying to reason about a stopped clock.
+            // 暂停时战斗时钟冻结，此时记录的按键永不从缓存中过期，并会在恢复瞬间触发。
+            // 完全跳过更新比推理停住的时钟更简单安全。
             if (_time.IsPaused)
             {
                 return;
@@ -345,15 +332,13 @@ namespace AdaptiveBossArena.Player
 
             float deltaTime = _time.DeltaTime;
 
-            // Presses are recorded before the machine runs so that an input made this frame can be
-            // acted on this frame. Recording afterwards would cost every action a frame of latency.
+            // 状态机运行前记录按键，使本帧输入可在本帧执行。若之后记录，每个动作都增加一帧延迟。
             _context.InputBuffer.RecordPressesFrom(_input, _time.CombatTime);
 
             _context.TickCooldowns(deltaTime);
             _stamina.Tick(deltaTime);
 
-            // Posture only recovers while the guard is down, so holding block indefinitely is not a
-            // way to wait out pressure.
+            // 只有防御放下时架势才恢复，因此无法通过无限格挡等待压力消失。
             if (!_context.IsGuarding)
             {
                 _posture.Tick(deltaTime);
@@ -367,11 +352,10 @@ namespace AdaptiveBossArena.Player
             DriveAnimation();
         }
 
-        /// <summary>Pushes the frame's visible state to the procedural animator.</summary>
+        /// <summary>将本帧可见状态传递给程序化动画器。</summary>
         /// <remarks>
-        /// Presentation only, and fed from exactly the same observable state the boss is allowed to
-        /// see — the action and the attack phase — plus movement speed. The animator turns a hitbox
-        /// timeline into a swing without ever touching the timeline.
+        /// 仅用于表现，输入来自 Boss 允许看到的相同可观察状态，即动作与攻击阶段，再加移动速度。
+        /// 动画器把判定时间轴表现为挥击，却从不改变时间轴。
         /// </remarks>
         private void DriveAnimation()
         {
@@ -399,15 +383,13 @@ namespace AdaptiveBossArena.Player
                 return DamageResult.NoDamage(DamageOutcome.Ignored);
             }
 
-            // Friendly fire is rejected outright, independently of the physics layer setup, so a
-            // mis-assigned prefab layer cannot make the player damage themselves.
+            // 独立于物理层设置直接拒绝友军伤害，避免预制体层分配错误导致玩家伤害自身。
             if (damage.SourceTeam == Team)
             {
                 return DamageResult.NoDamage(DamageOutcome.Ignored);
             }
 
-            // Before anything else, hazards included: nothing may touch a body on the floor or rising,
-            // or the knockdown's cap on lost control stops being a cap.
+            // 首先检查，包括危险区域：倒地或起身的身体不能受伤，否则击倒对失控时长的上限就不再有效。
             if (!_context.Reactions.CanBeHurt)
             {
                 return DamageResult.NoDamage(DamageOutcome.Ignored);
@@ -418,9 +400,8 @@ namespace AdaptiveBossArena.Player
                 return ResolveEvasion();
             }
 
-            // One decision, shared with the boss. A perilous (unblockable) attack resolves as None
-            // here and slips past a raised guard entirely; the invulnerability check above still
-            // lets a dash avoid it.
+            // 与 Boss 共享的单一判断。危险且不可格挡的攻击在此得到 None，完全穿过举起的防御；
+            // 上方无敌检查仍允许通过闪避避开。
             if (IsParryingThisBlow(damage))
             {
                 return ResolveParry(damage);
@@ -435,9 +416,8 @@ namespace AdaptiveBossArena.Player
                     return ResolveBlock(damage);
             }
 
-            // Run modifiers scale incoming damage (Fragile) and, in Training, hold the player one hit
-            // above death so a practice fight never ends. Neither changes what the hit does otherwise:
-            // the flash, recoil, knockback and stagger below all still play, so training still teaches.
+            // 挑战修正缩放脆弱模式的传入伤害，并在训练模式使玩家保持至少能再活一次命中的生命，
+            // 确保练习不会结束。其他受击效果不变：闪光、反震、击退和硬直仍正常播放，因此训练仍能学习。
             float amount = damage.Amount * _incomingDamageMultiplier;
 
             if (_immortal)
@@ -453,8 +433,7 @@ namespace AdaptiveBossArena.Player
             ImpactReaction reaction = _context.Reactions.Admit(damage.Reaction, _time.CombatTime);
             ApplyKnockback(damage, reaction == ImpactReaction.Knockback ? _config.KnockbackReactionMultiplier : 1f);
 
-            // A knockdown or launch is the whole reaction; stacking a posture stagger on top would
-            // only queue an interruption for the moment the player stands back up.
+            // 击倒或击飞本身就是完整反应；再叠加架势硬直只会在玩家刚起身时额外排入一次中断。
             if (reaction == ImpactReaction.Knockdown || reaction == ImpactReaction.Launch)
             {
                 _context.RequestReaction(reaction);
@@ -468,25 +447,21 @@ namespace AdaptiveBossArena.Player
         }
 
         /// <summary>
-        /// Decides whether a landed hit interrupts the player, through their posture pool.
+        /// 通过玩家架势池判断已命中攻击是否中断玩家。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Every hit used to interrupt outright: the attack's stagger strength went straight to a
-        /// stagger request and the posture pool was never consulted, while the boss's identical
-        /// situation ran through <see cref="Combat.Vitals.PoisePool"/>. That pool discards poise
-        /// damage while already broken and refills to full on recovery, so the boss cannot be
-        /// chain-staggered — and the player could, by every hit, indefinitely. It is why being hit
-        /// read as being stuck with no way out.
+        /// 此前每次命中直接中断：攻击硬直强度直接变成硬直请求，从未查询架势池，
+        /// 而 Boss 同样情况经过 <see cref="Combat.Vitals.PoisePool"/>。该池在已崩溃时忽略架势伤害，
+        /// 恢复时回满，因此 Boss 不会连续硬直，玩家却可被每一击无限连锁中断。
+        /// 受击因此像陷入无法脱出的停滞。
         /// </para>
         /// <para>
-        /// Now the same rules govern both. A hit costs posture; only emptying the pool interrupts,
-        /// and the interruption that follows carries its own immunity. Absorbing a hit is not the
-        /// same as ignoring it — the flash, recoil and knockback above all still play, so a blow
-        /// that does not stop the player still lands visibly.
+        /// 现在双方遵守相同规则。命中消耗架势，只有耗尽才中断，后续中断带有自身免疫。
+        /// 承受命中不等于忽略命中：上方闪光、反震和击退仍播放，因此不中断玩家的攻击也可见地命中。
         /// </para>
         /// </remarks>
-        /// <param name="damage">The hit that landed.</param>
+        /// <param name="damage">已命中的攻击。</param>
         private void ResolveIncomingStagger(in DamageInfo damage)
         {
             if (damage.Stagger == StaggerStrength.None)
@@ -494,11 +469,9 @@ namespace AdaptiveBossArena.Player
                 return;
             }
 
-            // A Break-strength blow stops the player whatever their posture: it is the tier reserved
-            // for something that should never be walked through. It empties the pool rather than
-            // bypassing it, so it still goes through the one path — and so the interruption it
-            // causes carries the same immunity every other break does. Bypassing would let two of
-            // them in a row chain, which is the exact failure this method exists to remove.
+            // Break 强度无论当前架势多少都会停止玩家，这是不能直接承受穿过的最高层级。
+            // 通过清空资源池而非绕过它，仍沿唯一处理路径，也获得与其他崩溃相同的免疫。
+            // 绕过会让连续两次此类攻击连锁，而本方法正要消除该问题。
             float postureCost = damage.Stagger == StaggerStrength.Break
                 ? _posture.Maximum
                 : damage.PoiseDamage;
@@ -508,12 +481,9 @@ namespace AdaptiveBossArena.Player
                 return;
             }
 
-            // Hyper-armour refuses the interruption and nothing else, which is what its own
-            // documentation promises: the posture was still spent above, so a greatsword pushing
-            // through a flurry arrives at the end of it one hit from breaking rather than untouched.
-            // Refusing the whole resolution would have quietly turned hyper-armour into posture
-            // immunity, a buff nobody asked for and which only appeared because posture had never
-            // been on the path of an unblocked hit before.
+            // 霸体仅拒绝中断，这正是文档承诺。上方仍消耗架势，因此巨剑顶住连击后可能只差一击便崩溃，
+            // 而非毫发无损。拒绝整个裁决会无声地把霸体变成架势免疫；这是无人要求的强化，
+            // 只因此前未格挡攻击从不经过架势路径而出现。
             if (ResistsIncomingStagger())
             {
                 return;
@@ -522,16 +492,16 @@ namespace AdaptiveBossArena.Player
             BreakPosture();
         }
 
-        /// <summary>Interrupts the player for the full break duration.</summary>
+        /// <summary>在完整崩溃时长内中断玩家。</summary>
         private void BreakPosture()
         {
             _context.RequestStagger(StaggerDurations.BreakSeconds, StaggerReason.PoiseBreak);
 
-            // Composure broken: the focus built from clean defence is lost with it.
+            // 沉着被打破：精准防御积累的专注随之清空。
             _focus?.Reset();
         }
 
-        /// <summary>True when the equipped weapon's hyper-armour carries the current swing through a hit.</summary>
+        /// <summary>装备武器的霸体让当前挥击承受命中继续执行时为 true。</summary>
         private bool ResistsIncomingStagger()
         {
             WeaponDefinition weapon = _context.Weapon;
@@ -542,15 +512,14 @@ namespace AdaptiveBossArena.Player
         }
 
         /// <summary>
-        /// Captures what an onlooker could perceive about the player right now.
+        /// 捕获旁观者此刻能感知的玩家信息。
         /// </summary>
         /// <remarks>
-        /// The entire anti-cheat guarantee narrows to this method. Every field assigned below
-        /// corresponds to something visible on screen. Nothing here reads input, stamina, cooldowns
-        /// or the invincibility flag, and nothing may be added that does.
+        /// 全部防作弊保证集中于此方法。下方每个字段都对应屏幕可见内容。这里不读取输入、体力、
+        /// 冷却或无敌标志，也绝不能添加会读取这些内容的字段。
         /// </remarks>
-        /// <param name="timestamp">Combat-clock time to stamp the snapshot with.</param>
-        /// <returns>A populated snapshot.</returns>
+        /// <param name="timestamp">用于给快照加时间戳的战斗时钟时间。</param>
+        /// <returns>已填充的快照。</returns>
         public PlayerObservation CaptureObservation(float timestamp)
         {
             if (!_isInitialised)
@@ -571,8 +540,8 @@ namespace AdaptiveBossArena.Player
             };
         }
 
-        /// <summary>Restores the character to its starting condition for a retry.</summary>
-        /// <param name="spawnPosition">Where to place the character.</param>
+        /// <summary>重试时恢复角色初始状态。</summary>
+        /// <param name="spawnPosition">角色的放置位置。</param>
         public void ResetForNewAttempt(Vector3 spawnPosition)
         {
             if (!_isInitialised)
@@ -603,18 +572,16 @@ namespace AdaptiveBossArena.Player
             _input.SetEnabled(true);
             _machine.ForceState(_idleState);
 
-            // After the forced state change, whose exit from a get-up would otherwise leave the retry
-            // starting inside a fresh knockdown immunity.
+            // 在强制切换状态后重置，否则退出起身状态会使重试从新的击倒免疫期开始。
             _context.Reactions.Reset();
-            // The body goes back to the Animator before the pose is reset, or the reset would pose bones
-            // that physics still owns.
+            // 先把身体交回 Animator，再重置姿势，否则会修改仍归物理管理的骨骼。
             _ragdoll?.Restore();
             _animator?.ResetPose();
 
             PublishVitals();
         }
 
-        /// <summary>Wires the states and the conditions that move between them.</summary>
+        /// <summary>连接各状态和状态间转移条件。</summary>
         private void BuildStateMachine()
         {
             _idleState = new PlayerIdleState();
@@ -636,55 +603,51 @@ namespace AdaptiveBossArena.Player
             _machine.AddTransition(_idleState, _moveState, HasMoveInput);
             _machine.AddTransition(_moveState, _idleState, IsStandingStill);
 
-            // Dash and attacks are offered from the grounded states only. Registering them globally
-            // would let either one cancel a stagger, erasing the cost of being hit.
+            // 闪避和攻击仅在地面状态提供。注册为全局转移会让它们取消硬直，抹去受击代价。
             AddGroundedTransitions(_idleState);
             AddGroundedTransitions(_moveState);
 
-            // The roll's slow tail can be cancelled into a buffered attack. Ranked above the roll's
-            // own exits, so an attack pressed during the tail comes out of the roll rather than waiting
-            // for it to finish and then starting from standing.
+            // 翻滚缓慢尾段可由缓存攻击取消。优先于翻滚自然退出，使尾段按下的攻击直接接出，
+            // 而非等待翻滚结束后从站立重新开始。
             _machine.AddTransition(_dashState, _attackState, WantsToCancelRollIntoAttack, AttackTransitionPriority);
 
-            // The same slow tail can raise the guard, so a roll that lands in front of a swing is not a trap.
+            // 同样的缓慢尾段也可举起防御，避免翻滚落在攻击前方成为陷阱。
             _machine.AddTransition(_dashState, _parryState, WantsToCancelRollIntoGuard, GuardTransitionPriority);
             _machine.AddTransition(_dashState, _moveState, DashFinishedWithInput);
             _machine.AddTransition(_dashState, _idleState, DashFinished);
 
-            // Dash outranks the natural exit, so a player holding dash through recovery escapes the
-            // moment they are allowed to rather than after the attack fully resolves.
+            // 闪避高于自然退出，使玩家在后摇中按闪避时，一恢复资格便逃开，而非等待攻击完全结束。
             _machine.AddTransition(_attackState, _dashState, WantsToDashCancel, DashTransitionPriority);
             _machine.AddTransition(_attackState, _parryState, WantsToGuardCancel, GuardTransitionPriority);
             _machine.AddTransition(_attackState, _moveState, AttackFinishedWithInput);
             _machine.AddTransition(_attackState, _idleState, AttackFinished);
 
-            // Early in the channel a dodge abandons the heal, and the charge with it.
+            // 治疗引导早期闪避会放弃治疗，并消耗该次数。
             _machine.AddTransition(_healState, _dashState, WantsToAbandonHeal, DashTransitionPriority);
             _machine.AddTransition(_healState, _moveState, HealFinishedWithInput);
             _machine.AddTransition(_healState, _idleState, HealFinished);
 
-            // The guard can be left for a roll or a swing at any moment, not only by letting go. Only letting go
-            // is held to the deflect window's length, so a quick tap still deflects.
+            // 防御可随时转为翻滚或挥击，而非只能松开按钮。只有松开才受弹反窗口时长限制，
+            // 使快速点击仍能弹反。
             _machine.AddTransition(_parryState, _dashState, WantsToDash, DashTransitionPriority);
             _machine.AddTransition(_parryState, _attackState, WantsToAttack, AttackTransitionPriority);
             _machine.AddTransition(_parryState, _moveState, GuardDroppedWithInput);
             _machine.AddTransition(_parryState, _idleState, GuardDropped);
 
-            // A parry runs to its end: whiffing one has to be punishable, or it would simply be a better guard.
+            // 主动招架必须执行到结束：挥空必须可惩罚，否则它只会成为更好的防御。
             _machine.AddTransition(_parryStrikeState, _moveState, ParryFinishedWithInput);
             _machine.AddTransition(_parryStrikeState, _idleState, ParryFinished);
 
             _machine.AddTransition(_riposteState, _moveState, RiposteFinishedWithInput);
             _machine.AddTransition(_riposteState, _idleState, RiposteFinished);
 
-            // A riposte outranks everything: an earned punish must never be swallowed by another
-            // action the player happened to have buffered.
+            // 反击优先于一切：赢得的惩罚不能被偶然缓存的另一个动作吞掉。
             _machine.AddGlobalTransition(_riposteState, CanRiposte, RiposteTransitionPriority);
 
             _machine.AddTransition(_staggerState, _moveState, StaggerFinishedWithInput);
             _machine.AddTransition(_staggerState, _idleState, StaggerFinished);
 
-            // Losing footing runs one way: air, floor, rising, standing. Nothing but death leaves it early.
+            // 失去站姿单向推进：空中、倒地、起身、站立。只有死亡能提前离开。
             _machine.AddTransition(_airborneState, _knockedDownState, HasLanded);
             _machine.AddTransition(_knockedDownState, _getUpState, KnockdownFinished);
             _machine.AddTransition(_getUpState, _moveState, GetUpFinishedWithInput);
@@ -697,12 +660,11 @@ namespace AdaptiveBossArena.Player
         }
 
         /// <summary>
-        /// Registers the actions available from a state in which the player has full control.
+        /// 注册玩家完全控制状态下可执行的动作。
         /// </summary>
         /// <remarks>
-        /// Ordering here is the character's priority of intent. Dash outranks attacking because a
-        /// player who presses both under pressure meant to escape, and an attack that came out
-        /// instead would feel like the game overrode them.
+        /// 顺序表达角色意图的优先级。闪避高于攻击，因为压力下同时按两者的玩家想逃开；若反而出招，
+        /// 会感觉游戏覆盖了自身意图。
         /// </remarks>
         private void AddGroundedTransitions(IState<PlayerContext> from)
         {
@@ -719,13 +681,11 @@ namespace AdaptiveBossArena.Player
             !context.HasMoveInput && context.Motor.IsStationary;
 
         /// <summary>
-        /// Consumes a buffered dash press when a dash is actually possible.
+        /// 确实可以闪避时消费缓存闪避按键。
         /// </summary>
         /// <remarks>
-        /// The eligibility check is evaluated first on purpose. Consuming the press before knowing
-        /// whether the dash can happen would swallow it, and the player would experience a dash that
-        /// simply never came. Left buffered, it fires the moment stamina or the cooldown allows,
-        /// which is precisely what buffering exists to do.
+        /// 刻意先检查资格。尚不知道能否闪避就消费按键会吞掉它，玩家只会感到闪避没有出现。保留缓存后，
+        /// 一旦体力或冷却允许就会触发，这正是缓存的目的。
         /// </remarks>
         private bool WantsToDash(PlayerContext context) =>
             context.CanBeginDash &&
@@ -749,11 +709,10 @@ namespace AdaptiveBossArena.Player
             _dashState.IsComplete(context) && context.HasMoveInput;
 
         /// <summary>
-        /// Selects and consumes whichever attack input is buffered and currently affordable.
+        /// 选择并消费当前已缓存且资源足够的攻击输入。
         /// </summary>
         /// <remarks>
-        /// Heavy is tested before light so that a player pressing both, or rolling from one to the
-        /// other, gets the committed option they were reaching for rather than the poke.
+        /// 重击优先于轻击检查，使同时按下或从一种切换到另一种的玩家得到希望的高投入攻击，而非试探。
         /// </remarks>
         private bool WantsToAttack(PlayerContext context)
         {
@@ -767,9 +726,8 @@ namespace AdaptiveBossArena.Player
             if (context.CanUseSpecial &&
                 context.InputBuffer.TryConsume(PlayerInputAction.Special, now))
             {
-                // A full focus meter turns the special into its empowered form and is spent doing so.
-                // The empowered attack falls back to the ordinary one, so a charged meter is never
-                // wasted even on a weapon without a distinct empowered version.
+                // 专注槽满时，特殊攻击会消耗专注并变为强化形态。若未配置强化攻击，则回退为普通攻击，
+                // 因此即使武器没有独立强化版本，也不会白白浪费已充满的专注。
                 bool empowered = _focus != null && _focus.TryConsumeFull();
 
                 context.PendingAttack = empowered ? context.EmpoweredSpecialAttack : context.SpecialAttack;
@@ -788,15 +746,15 @@ namespace AdaptiveBossArena.Player
             return false;
         }
 
-        /// <summary>Consumes a buffered press for one attack when it is affordable.</summary>
+        /// <summary>资源足够时消费一次攻击的缓存按键。</summary>
         private static bool TryStartAttack(
             PlayerContext context,
             PlayerInputAction action,
             AttackDefinition attack,
             float now)
         {
-            // Affordability is checked before consuming, for the same reason as the dash: swallowing
-            // a press the character could not act on makes the game look like it dropped an input.
+            // 与闪避一样，先检查资源是否足够，再消费输入。吞掉角色无法执行的按键会让游戏看起来丢失了输
+            // 入。
             if (attack == null || !context.Stamina.CanSpend(attack.StaminaCost))
             {
                 return false;
@@ -813,18 +771,17 @@ namespace AdaptiveBossArena.Player
         }
 
         /// <summary>
-        /// Raises the guard while the control is held.
+        /// 按住控制键时举起防御。
         /// </summary>
         /// <remarks>
-        /// Tested against the held state rather than a buffered press, because the deflect window
-        /// opens the instant the guard rises. Consuming a buffered press could open that window a
-        /// frame or two after the player pressed, which is enough to turn a deflect into a block and
-        /// would feel like the game stealing the input.
+        /// 检查持续按住状态，而非缓存按键，因为防御举起的瞬间就会开启弹反窗口。
+        /// 消费缓存按键可能比玩家实际按下晚一两帧才开启窗口，足以把弹反变成格挡，
+        /// 令玩家感觉游戏吞掉了输入。
         /// </remarks>
         private static bool WantsToGuard(PlayerContext context) =>
             context.Input.IsHeld(PlayerInputAction.Guard);
 
-        /// <summary>Consumes a buffered parry press when there is stamina to swing.</summary>
+        /// <summary>体力足够挥击时消费缓存招架按键。</summary>
         private bool WantsToParry(PlayerContext context) =>
             context.Stamina.CanSpend(PlayerParryStrikeState.StaminaCost) &&
             context.InputBuffer.TryConsume(PlayerInputAction.Parry, _time.CombatTime);
@@ -839,18 +796,17 @@ namespace AdaptiveBossArena.Player
         private bool GuardDroppedWithInput(PlayerContext context) =>
             _parryState.IsComplete(context) && context.HasMoveInput;
 
-        /// <summary>True when the boss's guard is broken and the punish has not been spent.</summary>
+        /// <summary>Boss 防御已破且惩罚机会尚未使用时为 true。</summary>
         private bool CanRiposte(PlayerContext context) =>
             IsRiposteOffered(context) &&
             context.InputBuffer.TryConsume(PlayerInputAction.LightAttack, _time.CombatTime);
 
         /// <summary>
-        /// Whether the boss is kneeling within reach, and the punish has not been spent.
+        /// Boss 是否跪倒在可触及范围内，且惩罚机会尚未使用。
         /// </summary>
         /// <remarks>
-        /// The riposte used to fire itself the instant the guard broke, from any state and any distance,
-        /// interrupting whatever the player was doing. It is now an offer: walk in, face it, and press attack
-        /// inside the kneel, or let the chance pass.
+        /// 原先防御一破，反击就会从任何状态、任何距离自动触发，打断玩家正在做的事。
+        /// 现在它是一项可选择的机会：走近、面向 Boss，在其跪倒期间按攻击，或任由机会过去。
         /// </remarks>
         private static bool IsRiposteOffered(PlayerContext context) =>
             context.IsThreatPostureBroken &&
@@ -859,7 +815,7 @@ namespace AdaptiveBossArena.Player
             context.ThreatDistance <= RiposteReachMetres &&
             Vector3.Dot(context.Motor.Facing, context.FacingTowardThreat) >= RiposteFacingDot;
 
-        /// <summary>True while the player could take the punish right now, for the prompt on screen.</summary>
+        /// <summary>玩家此刻可执行惩罚攻击时为 true，用于屏幕提示。</summary>
         public bool RiposteOffered => _context != null && IsRiposteOffered(_context);
 
         private bool RiposteFinished(PlayerContext context) => _riposteState.IsComplete(context);
@@ -868,18 +824,16 @@ namespace AdaptiveBossArena.Player
             _riposteState.IsComplete(context) && context.HasMoveInput;
 
         /// <summary>
-        /// Cycles to the next weapon when the player asks and is free to do so.
+        /// 玩家请求且可以切换时，轮换至下一把武器。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Refused mid-action on purpose. Swapping out of a swing would let the player cancel any
-        /// commitment for free, which would undo the entire point of attacks having recovery.
+        /// 刻意拒绝动作中途切换。若能通过切换取消挥击，玩家便可免费取消任何投入，
+        /// 攻击后摇也就失去了意义。
         /// </para>
         /// <para>
-        /// The swap is published as a combat occurrence, so the boss can observe which weapon the
-        /// player favours. That is legitimately visible — the weapon is in their hands — and it turns
-        /// the weapon system into something the adaptation feeds on rather than something that
-        /// dilutes it.
+        /// 切换会作为战斗事件发布，使 Boss能观察玩家偏好的武器。武器就在玩家手中，属于合理可见信息；
+        /// 这样武器系统便能为自适应提供依据，而非削弱自适应。
         /// </para>
         /// </remarks>
         private void TrySwapWeapon()
@@ -902,7 +856,7 @@ namespace AdaptiveBossArena.Player
             EquipWeapon(weapons[_weaponIndex]);
         }
 
-        /// <summary>Draws a weapon and announces it.</summary>
+        /// <summary>取出武器并发布通知。</summary>
         private void EquipWeapon(WeaponDefinition weapon)
         {
             if (weapon == null)
@@ -913,14 +867,13 @@ namespace AdaptiveBossArena.Player
             _context.Weapon = weapon;
             _context.ComboIndex = 0;
 
-            // Swaps the held model to match. Null model today, so this clears the socket and the
-            // weapon still reads through its trail and swing colour.
+            // 替换手持模型使其匹配武器。当前模型为空，因此会清空挂点，武器仍可通过拖尾和挥击颜色辨认。
             _weaponSocket?.Equip(weapon.ModelPrefab);
 
             _weaponChannel?.Raise(weapon.DisplayName);
 
-            // Announced separately from the name so the audio director can pick this weapon's swing
-            // without matching on a display string, which would break the moment one were reworded.
+            // 独立于名称发布通知，使音频导演可选择该武器的挥击声音，无需匹配显示字符串；否则文字一改，
+            // 匹配就会失效。
             if (!string.IsNullOrEmpty(weapon.SwingCueId))
             {
                 _weaponSwingCueChannel?.Raise(weapon.SwingCueId);
@@ -929,7 +882,7 @@ namespace AdaptiveBossArena.Player
             _context.PublishCombatEvent(CombatEventKind.WeaponDrawn);
         }
 
-        /// <summary>Points the context at the boss so guarding and riposting face the right way.</summary>
+        /// <summary>将上下文指向 Boss，使防御和反击面向正确方向。</summary>
         private void UpdateThreatFacing()
         {
             if (_threat == null)
@@ -950,7 +903,7 @@ namespace AdaptiveBossArena.Player
         private bool WantsToHeal(PlayerContext context) =>
             context.CanHeal && context.InputBuffer.TryConsume(PlayerInputAction.Heal, _time.CombatTime);
 
-        /// <summary>Consumes a buffered dash when the attack has reached a cancellable phase.</summary>
+        /// <summary>攻击进入可取消阶段时消费缓存闪避。</summary>
         private bool WantsToDashCancel(PlayerContext context) =>
             _attackState.CanDashCancel(context) && WantsToDash(context);
 
@@ -971,7 +924,7 @@ namespace AdaptiveBossArena.Player
 
         private static bool IsDefeated(PlayerContext context) => !context.Health.IsAlive;
 
-        /// <summary>A stagger may only start on the player's feet; mid-air or on the floor it would cut the reaction short.</summary>
+        /// <summary>硬直只能在玩家站立时开始；在空中或倒地时触发会提前打断受击反应。</summary>
         private static bool IsStaggerRequested(PlayerContext context) =>
             context.StaggerRequested && context.Reactions.AdmitsStagger;
 
@@ -991,18 +944,16 @@ namespace AdaptiveBossArena.Player
             _getUpState.IsComplete(context) && context.HasMoveInput;
 
         /// <summary>
-        /// Decides whether an avoided hit was merely dodged or dodged perfectly.
+        /// 判断避开的攻击属于普通闪避还是完美闪避。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The distinction is timing, and only timing. A hit negated within a short window of the
-        /// dash beginning means the player read the attack and committed at the last moment; the
-        /// same hit negated later in the same dash means they happened to already be moving. Both
-        /// avoid damage, but only the first is a read worth rewarding.
+        /// 区别只在时机。若攻击在闪避开始后的短窗口内被抵消，说明玩家读懂攻击并在最后一刻行动；
+        /// 同一次闪避中更晚抵消攻击，则说明玩家恰好已在移动。两者都避免伤害，
+        /// 但只有前者是值得奖励的判断。
         /// </para>
         /// <para>
-        /// The reward is slow-motion rather than damage or resources, because what a perfect dodge
-        /// should buy is the clarity to act on the opening it just created.
+        /// 奖励是慢动作，而非伤害或资源，因为完美闪避应提供看清并利用刚创造的破绽的机会。
         /// </para>
         /// </remarks>
         private DamageResult ResolveEvasion()
@@ -1025,31 +976,28 @@ namespace AdaptiveBossArena.Player
         }
 
         /// <summary>
-        /// Decides whether a guarded hit was deflected on the beat or merely blocked late.
+        /// 判断防御承受的攻击是准确弹反还是较晚格挡。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The whole rhythm of the fight lives in this one branch. A deflect negates the hit
-        /// entirely, costs the attacker posture, and rewards the player with hit-stop and a
-        /// metallic ring — standing your ground made progress. A late block survives the hit but
-        /// pays chip damage and the player's own posture, so turtling loses slowly.
+        /// 整场战斗的节奏都集中在这个分支。弹反完全抵消攻击、削减攻击者架势，
+        /// 并以命中停顿和金属声奖励玩家，坚守位置也能推进战斗。较晚格挡虽能承受攻击，
+        /// 却付出削减伤害和自身架势，因此龟缩只会缓慢落败。
         /// </para>
         /// <para>
-        /// Note that this is timing alone. There is no leniency scaling with difficulty and no
-        /// hidden assistance; the window is the window, which is what makes learning it feel like
-        /// the player improved rather than the game relented.
+        /// 这里只看时机。没有随难度变化的宽容度，也没有隐藏辅助；窗口始终固定，
+        /// 才能让学习过程体现玩家进步，而非游戏让步。
         /// </para>
         /// </remarks>
         /// <summary>
-        /// Asks the shared resolver how the player's guard meets an incoming hit.
+        /// 询问共享解析器，玩家防御如何处理传入攻击。
         /// </summary>
         /// <remarks>
-        /// The player can always fall back on a block, so <c>CanBlock</c> is true here and false for
-        /// the boss. That single flag is the whole difference between the two combatants' defences;
-        /// everything else about the decision is the same function.
+        /// 玩家总能退而格挡，因此这里的 <c>CanBlock</c> 为 true，Boss 则为 false。
+        /// 双方防御只有这一个标志不同，其余判断都使用同一函数。
         /// </remarks>
-        /// <param name="damage">The incoming hit.</param>
-        /// <returns>How the hit resolves against the guard.</returns>
+        /// <param name="damage">传入的攻击。</param>
+        /// <returns>攻击对防御的解析结果。</returns>
         private DefenceOutcome DescribeDefence(in DamageInfo damage) =>
             DefenceResolver.ResolveDefence(new DefenceQuery
             {
@@ -1063,16 +1011,16 @@ namespace AdaptiveBossArena.Player
             });
 
         /// <summary>
-        /// Refuses a hit met on the beat, at no cost to the player.
+        /// 拒绝准确接下的攻击，玩家无需付出代价。
         /// </summary>
-        /// <param name="damage">The incoming hit.</param>
-        /// <returns>A result carrying no damage.</returns>
+        /// <param name="damage">传入的攻击。</param>
+        /// <returns>不包含伤害的结果。</returns>
         /// <summary>
-        /// Whether a parry swing is live and this blow is one a blade can turn aside.
+        /// 招架挥击是否正在生效，以及这一击是否能被刀刃拨开。
         /// </summary>
         /// <remarks>
-        /// Not an unblockable, not an unparryable, and not a shockwave or hazard: those are the attacks the
-        /// fight wants answered by moving, and a parry that stopped everything would remove the reason to dodge.
+        /// 不能是不可格挡、不可招架、冲击波或环境危险攻击：战斗希望玩家以移动应对这些攻击；
+        /// 若招架能挡住一切，闪避便没有了存在理由。
         /// </remarks>
         private bool IsParryingThisBlow(in DamageInfo damage) =>
             _context.IsParryStriking &&
@@ -1083,10 +1031,10 @@ namespace AdaptiveBossArena.Player
             damage.Type != DamageType.Hazard;
 
         /// <summary>
-        /// Turns a blow aside with the blade, and holds the world for a beat.
+        /// 以刀刃拨开攻击，并让世界停顿一拍。
         /// </summary>
-        /// <param name="damage">The incoming hit.</param>
-        /// <returns>A result carrying no damage.</returns>
+        /// <param name="damage">传入的攻击。</param>
+        /// <returns>不含伤害的结果。</returns>
         private DamageResult ResolveParry(in DamageInfo damage)
         {
             _time.RequestHitStop(ParryHitStopSeconds);
@@ -1094,14 +1042,13 @@ namespace AdaptiveBossArena.Player
             _screenShake?.AddTrauma(ParryTrauma);
             _screenShake?.Punch(ParryTrauma);
 
-            // Reported as a deflect so every listener - sparks, sound, the boss recoiling - already knows what to
-            // do; the outcome returned below is what tells the attacker this one cost more.
+            // 以弹反事件报告，使火花、声音、Boss 后仰等所有监听者已知如何响应；
+            // 下方返回的结果会告诉攻击者，这一次付出的代价更大。
             _context.LastDefenceWasParry = true;
             _context.PublishCombatEvent(CombatEventKind.Deflected, damage.HitDirection);
             _context.PublishCombatEvent(CombatEventKind.PlayerParried, damage.HitDirection);
 
-            // The body answers the blow it just turned: without this the knight stood perfectly still through
-            // the one moment the fight is about.
+            // 身体会对刚拨开的攻击作出反应；否则骑士会在战斗最重要的时刻完全静止。
             _animator?.Recoil(damage.HitDirection);
             _deflectChannel?.Raise();
             _focus?.AddFromDeflect();
@@ -1117,27 +1064,26 @@ namespace AdaptiveBossArena.Player
             _screenShake?.AddTrauma(DeflectTrauma);
             _screenShake?.Punch(DeflectTrauma);
 
-            // Carries the incoming direction so the sparks are thrown back the way the blow
-            // came from rather than in an undirected puff.
+            // 携带攻击来向，使火花沿来向反射回去，而非无方向地散开。
             _context.PublishCombatEvent(CombatEventKind.Deflected, damage.HitDirection);
             _deflectChannel?.Raise();
             _focus?.AddFromDeflect();
             _animator?.Recoil(damage.HitDirection);
 
-            // Deflected, not Blocked. The distinction is for the attacker: this is the outcome that
-            // recoils the swing that caused it, and a late block must not.
+            // 结果是 Deflected，而非 Blocked。区别针对攻击者：前者会让造成这次攻击的挥击后仰，
+            // 较晚格挡则不能如此。
             return DamageResult.NoDamage(DamageOutcome.Deflected);
         }
 
         /// <summary>
-        /// Absorbs a hit the guard was raised for but not timed for.
+        /// 承受防御已举起但时机不准确的攻击。
         /// </summary>
-        /// <param name="damage">The incoming hit.</param>
-        /// <returns>The chip damage that got through.</returns>
+        /// <param name="damage">传入的攻击。</param>
+        /// <returns>穿过防御的削减伤害。</returns>
         private DamageResult ResolveBlock(in DamageInfo damage)
         {
-            // Late. The hit is survived but it costs, and enough of these break the guard outright. A
-            // sustained guard bleeds slower here, which is what lets it be held rather than only timed.
+            // 时机较晚。虽承受住攻击，却付出代价；次数足够便会彻底破防。这里持续防御损耗较慢，
+            // 使其可以持续保持，而非只能抓时机。
             float chip = damage.Amount * _config.BlockChipFraction;
             float applied = _health.Reduce(chip, damage);
 
@@ -1159,12 +1105,11 @@ namespace AdaptiveBossArena.Player
         }
 
         /// <summary>
-        /// Staggers a player shoved hard into a wall.
+        /// 玩家被强力推向墙壁时触发硬直。
         /// </summary>
         /// <remarks>
-        /// Reads only the imposed shove, never the player's own running or rolling, so walking into a
-        /// pillar is harmless and being knocked into one is not. Goes through the reaction gate's rule
-        /// like every stagger: a thrown or floored player is not interrupted by the wall they land by.
+        /// 只读取外部施加的推力，不读取玩家自身跑动或翻滚，因此走向柱子无害，被击退撞上柱子则会受罚。
+        /// 与所有硬直一样遵循反应门控规则：被抛飞或倒地的玩家不会被落点附近的墙壁打断。
         /// </remarks>
         private void ResolveWallImpact()
         {
@@ -1179,9 +1124,9 @@ namespace AdaptiveBossArena.Player
             _context.RequestStagger(_config.WallImpactStaggerSeconds, StaggerReason.Hit);
         }
 
-        /// <summary>Pushes the character away from an impact.</summary>
-        /// <param name="damage">The hit.</param>
-        /// <param name="multiplier">Scale on the hit's knockback speed, above one for a knockback reaction.</param>
+        /// <summary>将角色推离撞击位置。</summary>
+        /// <param name="damage">此次攻击。</param>
+        /// <param name="multiplier">攻击击退速度的倍率；击退反应使用大于一的值。</param>
         private void ApplyKnockback(in DamageInfo damage, float multiplier)
         {
             if (damage.KnockbackSpeed <= 0f)
@@ -1197,12 +1142,12 @@ namespace AdaptiveBossArena.Player
                 return;
             }
 
-            // Added, not assigned. Assigning was overwritten by the player's own movement input on
-            // the very next frame, so a heavy blow moved a player holding a direction by nothing.
+            // 使用叠加，而非赋值。直接赋值会在下一帧被玩家移动输入覆盖，
+            // 导致持续按方向的玩家挨重击后完全不动。
             _context.Motor.AddImpulse(direction.normalized * (damage.KnockbackSpeed * multiplier));
         }
 
-        /// <summary>Relays pool changes onto the event channels the interface listens to.</summary>
+        /// <summary>将资源池变化转发至界面监听的事件通道。</summary>
         private void SubscribeToVitals()
         {
             _health.Changed += args => _healthChannel?.Raise(args.Normalized);
@@ -1211,25 +1156,24 @@ namespace AdaptiveBossArena.Player
             _focus.Changed += args => _focusChannel?.Raise(args.Normalized);
             _health.Died += _ => _deathChannel?.Raise();
 
-            // Thrown along the killing blow, so the fall reads as caused by it.
+            // 沿致命一击的方向抛出，使倒下明显由这一击造成。
             _health.Died += args => _ragdoll?.Activate(
                 args.FinalBlow.HitDirection.normalized * args.FinalBlow.KnockbackSpeed);
         }
 
-        /// <summary>Publishes the starting values so bars are correct before the first change.</summary>
+        /// <summary>发布初始数值，使资源条在首次变化前就显示正确。</summary>
         private void PublishVitals()
         {
             _healthChannel?.Raise(_health.Normalized);
             _staminaChannel?.Raise(_stamina.Normalized);
             _focusChannel?.Raise(_focus.Normalized);
 
-            // Posture was missing here, so its bar was never given a starting value. It only ever
-            // moves when a late block lands, which makes a bar that was never initialised and a bar
-            // that simply has nothing to report indistinguishable.
+            // 原先这里遗漏架势，导致架势条从未获得初始值。它只有较晚格挡受击时才变化，
+            // 未初始化的资源条与只是没有变化可报告的资源条因而无法区分。
             _postureChannel?.Raise(_posture.Normalized);
         }
 
-        /// <summary>Resolves the camera to interpret input against.</summary>
+        /// <summary>确定用于解释输入方向的相机。</summary>
         private Transform ResolveCameraTransform()
         {
             if (_cameraTransform != null)
@@ -1241,7 +1185,7 @@ namespace AdaptiveBossArena.Player
             return main != null ? main.transform : null;
         }
 
-        /// <summary>Reports missing dependencies clearly rather than failing with a null reference.</summary>
+        /// <summary>明确报告缺失依赖，避免以空引用失败。</summary>
         private bool ValidateSetup()
         {
             if (_config == null)
@@ -1271,23 +1215,22 @@ namespace AdaptiveBossArena.Player
             return true;
         }
 
-        /// <summary>Assigns the configuration. Used by the prefab generator.</summary>
-        /// <param name="config">Character tuning values.</param>
+        /// <summary>指定配置，供预制体生成器使用。</summary>
+        /// <param name="config">角色调节参数。</param>
         public void SetConfig(PlayerConfig config) => _config = config;
 
         /// <summary>
-        /// Tells the player where the opponent is, and whether its guard is currently broken.
+        /// 告知玩家对手的位置，以及其防御当前是否已破。
         /// </summary>
         /// <remarks>
-        /// Pushed in by the encounter director rather than pulled, because the player must not hold
-        /// a reference to the boss any more than the boss holds one to the player. A transform and a
-        /// flag are the whole of what crosses.
+        /// 由遭遇导演推入，而非主动拉取，因为玩家不应持有 Boss引用，正如 Boss 不持有玩家引用。
+        /// 跨越边界的只有一个 Transform 和一个标志。
         /// </remarks>
-        /// <param name="threat">The opponent's transform.</param>
+        /// <param name="threat">对手的 Transform。</param>
         public void SetThreat(Transform threat) => _threat = threat;
 
-        /// <summary>Tells the character whether the camera is locked onto the boss. Called by the encounter director.</summary>
-        /// <param name="lockedOn">True while locked on.</param>
+        /// <summary>告知角色相机是否锁定 Boss，由遭遇导演调用。</summary>
+        /// <param name="lockedOn">锁定时为 true。</param>
         public void SetLockedOn(bool lockedOn)
         {
             if (_context != null)
@@ -1297,16 +1240,15 @@ namespace AdaptiveBossArena.Player
         }
 
         /// <summary>
-        /// Applies the run's challenge modifiers to the player.
+        /// 将本轮挑战修正应用于玩家。
         /// </summary>
         /// <remarks>
-        /// Called once by the encounter director at the start of a run. Every value defaults to the
-        /// ordinary fight, so an unmodified run passes the defaults straight through and nothing here
-        /// changes how the player plays.
+        /// 由遭遇导演在一轮开始时调用一次。所有值默认对应普通战斗，因此未加修正的对局直接传入默认值，
+        /// 不会改变玩家玩法。
         /// </remarks>
-        /// <param name="healingEnabled">Whether the player may heal.</param>
-        /// <param name="incomingDamageMultiplier">Multiplier on damage the player takes.</param>
-        /// <param name="immortal">When true, the player is held one hit above death (Training).</param>
+        /// <param name="healingEnabled">玩家是否可以治疗。</param>
+        /// <param name="incomingDamageMultiplier">玩家承受伤害的倍率。</param>
+        /// <param name="immortal">为 true 时，玩家始终保留高于死亡的一击生存空间（训练模式）。</param>
         public void ApplyRunModifiers(bool healingEnabled, float incomingDamageMultiplier, bool immortal)
         {
             _incomingDamageMultiplier = Mathf.Max(0f, incomingDamageMultiplier);
@@ -1318,8 +1260,8 @@ namespace AdaptiveBossArena.Player
             }
         }
 
-        /// <summary>Reports whether the opponent's guard is broken, opening a riposte.</summary>
-        /// <param name="isBroken">True while the opponent is staggered by a posture break.</param>
+        /// <summary>报告对手是否破防，从而开放反击机会。</summary>
+        /// <param name="isBroken">对手因架势崩溃而硬直时为 true。</param>
         public void SetThreatPostureBroken(bool isBroken)
         {
             if (_context == null)
@@ -1327,7 +1269,7 @@ namespace AdaptiveBossArena.Player
                 return;
             }
 
-            // Leaving the break resets the spent flag, so the next break offers a fresh punish.
+            // 离开破防状态时重置已使用标志，使下一次破防提供新的惩罚机会。
             if (!isBroken)
             {
                 _context.RiposteConsumed = false;
@@ -1337,30 +1279,26 @@ namespace AdaptiveBossArena.Player
         }
 
         /// <summary>
-        /// Recoils from a swing the boss met on the beat.
+        /// 玩家挥击被 Boss 准确接下时后仰。
         /// </summary>
         /// <remarks>
-        /// Requested rather than applied. This runs from inside the attack executor's own
-        /// phase-stepping loop, so tearing the swing down here would re-enter a loop still in
-        /// progress. A stagger request defers it by one tick, and the attack state's exit already
-        /// cancels the swing on the way out - the recoil and the cancellation are the same
-        /// mechanism, which is why no second one was added.
+        /// 发送请求，而非立即应用。此调用发生在攻击执行器自身的阶段推进循环内，
+        /// 立即拆除挥击会重入尚未结束的循环。硬直请求将处理推迟一帧，攻击状态退出时会自然取消挥击；
+        /// 后仰与取消使用同一机制，因此无需再添加第二套机制。
         /// </remarks>
         private void OnOwnAttackParried() =>
             _context.RequestStagger(StaggerDurations.InterruptSeconds, StaggerReason.Parried);
 
         /// <summary>
-        /// Applies posture damage from a swing the boss met on the beat.
+        /// 玩家挥击被 Boss 准确接下时施加架势伤害。
         /// </summary>
         /// <remarks>
-        /// The mirror of <c>BossController.ApplyDeflectPosture</c>, called by the encounter director
-        /// so the player never holds a reference to the boss. It is also the second thing that has
-        /// ever damaged the player's posture: until now the pool was fed only by late blocks, so a
-        /// player who never blocked could not have their guard broken at all - over-blocking cost
-        /// everything and over-committing cost nothing. A parry landing during an existing break is
-        /// discarded by the pool, which is what stops breaks from chaining.
+        /// 对应 <c>BossController.ApplyDeflectPosture</c> 的镜像操作，由遭遇导演调用，
+        /// 使玩家始终无需持有 Boss 引用。这也是第二种能伤害玩家架势的方式：
+        /// 此前资源池只接受较晚格挡的损耗，从不格挡的玩家便不可能破防，过度格挡代价极大，
+        /// 过度出手却毫无代价。已破防期间到来的招架会被资源池丢弃，从而阻止连续破防。
         /// </remarks>
-        /// <param name="postureDamage">Posture to remove.</param>
+        /// <param name="postureDamage">要扣除的架势。</param>
         public void ApplyParriedPosture(float postureDamage)
         {
             if (!_isInitialised || _posture == null)
@@ -1374,12 +1312,10 @@ namespace AdaptiveBossArena.Player
             }
         }
 
-        /// <summary>The reach of a swing whose hitbox is open right now, or zero if none is.</summary>
+        /// <summary>当前判定框开启的挥击范围；若无则为零。</summary>
         /// <remarks>
-        /// Deliberately narrower than exposing the attack executor. The encounter director needs to
-        /// know whether a live blade is out and how far it reaches in order to detect a clash, and
-        /// nothing more; handing it the executor would hand it Cancel as well, and cancelling a swing
-        /// from outside is exactly the thing Stage D's constraint exists to control.
+        /// 刻意只暴露比攻击执行器更窄的信息。遭遇导演只需要知道是否有生效刀刃及其攻击范围，
+        /// 以检测拼刀；交出执行器也会交出 Cancel，而从外部取消挥击正是阶段 D 的约束所要控制的行为。
         /// </remarks>
         public float LiveSwingReach =>
             _isInitialised &&
@@ -1390,14 +1326,12 @@ namespace AdaptiveBossArena.Player
                 : 0f;
 
         /// <summary>
-        /// Refuses the swing in progress because it met another blade.
+        /// 因挥击与另一把刀刃相撞而拒绝正在进行的挥击。
         /// </summary>
         /// <remarks>
-        /// Routed through the same stagger request a parry uses, and for the same reason: it defers
-        /// to the next tick, where the attack state's exit tears the swing down. Called from the
-        /// director's LateUpdate, which is outside any executor's phase-stepping loop, so a
-        /// synchronous cancel would in fact be safe here - but there is no reason to have two ways of
-        /// stopping a swing when the existing one already reads correctly on both fighters.
+        /// 与招架使用相同的硬直请求，原因也相同：推迟至下一帧，再由攻击状态退出拆除挥击。
+        /// 调用来自导演的 LateUpdate，位于任何执行器阶段推进循环之外，因此此处同步取消其实安全；
+        /// 但现有方式已能正确表现双方的中断，没有理由再加入第二种停止挥击的方式。
         /// </remarks>
         public void RecoilFromClash()
         {
@@ -1432,16 +1366,15 @@ namespace AdaptiveBossArena.Player
             }
         }
 
-        /// <summary>Player posture, exposed for the guard bar.</summary>
+        /// <summary>为防御条暴露的玩家架势。</summary>
         public IPoise Posture => _posture;
 
-        /// <summary>Posture a clean deflect deals to the attacker.</summary>
+        /// <summary>准确弹反对攻击者造成的架势伤害。</summary>
         /// <remarks>
-        /// Read from the context, not the config, so the drawn weapon decides. Reading the config
-        /// here made every weapon deflect for the same 28 posture and turned the authored per-weapon
-        /// values into dead data — the blade's tight, rewarding deflect and the energy blade's
-        /// cheaper, weaker one were indistinguishable in the only number that matters.
-        /// The context falls back to the config when nothing is drawn, so the unarmed path survives.
+        /// 从上下文而非配置读取，使当前武器决定数值。原先读取配置使每种武器弹反都造成相同的 28 点架势
+        /// 伤害，编写的每武器数值成了无效数据：长剑更严格且奖励更高的弹反，与能量刃代价更低、
+        /// 威力更弱的弹反，在最重要的数值上毫无区别。未持武器时上下文会回退至配置，
+        /// 因此无武器路径仍可运行。
         /// </remarks>
         public float DeflectPostureDamage
         {
@@ -1456,14 +1389,14 @@ namespace AdaptiveBossArena.Player
             }
         }
 
-        /// <summary>Assigns the event channels. Used by the prefab generator.</summary>
-        /// <param name="health">Normalised health channel.</param>
-        /// <param name="stamina">Normalised stamina channel.</param>
-        /// <param name="death">Player death channel.</param>
-        /// <param name="perfectDodge">Perfect dodge channel.</param>
-        /// <param name="deflect">Clean deflect channel.</param>
-        /// <param name="posture">Normalised posture channel.</param>
-        /// <param name="focus">Normalised focus channel.</param>
+        /// <summary>指定事件通道，供预制体生成器使用。</summary>
+        /// <param name="health">归一化生命值通道。</param>
+        /// <param name="stamina">归一化体力通道。</param>
+        /// <param name="death">玩家死亡通道。</param>
+        /// <param name="perfectDodge">完美闪避通道。</param>
+        /// <param name="deflect">准确弹反通道。</param>
+        /// <param name="posture">归一化架势通道。</param>
+        /// <param name="focus">归一化专注通道。</param>
         public void SetChannels(
             FloatEventChannel health,
             FloatEventChannel stamina,

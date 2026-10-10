@@ -4,19 +4,18 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// Tunable magnitudes for a character's procedural animation.
+    /// 角色程序化动画的可调幅度。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The whole point of this game's characters being primitives is that they are cheap to move in
-    /// code, so every bit of life they have comes from <see cref="CharacterAnimator"/> reading these
-    /// numbers. Kept as an asset so the feel can be tuned in play mode and kept — the same reason
-    /// <see cref="AdaptiveBossArena.Player.PlayerConfig"/> is an asset.
+    /// 游戏角色采用基础几何体的目的，就是便于通过代码移动，
+    /// 因此全部生命感都来自 <see cref="CharacterAnimator"/> 读取这些数值。保存为资源，
+    /// 让手感能在运行模式调参并保留——这也是<see cref="AdaptiveBossArena.Player.PlayerConfig"/> 采用
+    /// 资源的原因。
     /// </para>
     /// <para>
-    /// Everything here is a <em>magnitude</em>, never a rule. The animation is presentation only: it
-    /// changes how a swing looks, never when its hitbox opens. That timing lives in the attack's own
-    /// frame data, which the animator reads but never alters.
+    /// 这里所有内容都是<em>幅度</em>，绝不是规则。动画仅用于表现：它改变挥击外观，
+    /// 绝不改变命中盒开启时机。时序属于攻击自身的帧数据，动画器只读取，绝不修改。
     /// </para>
     /// </remarks>
     [CreateAssetMenu(
@@ -187,42 +186,40 @@ namespace AdaptiveBossArena.Combat.Feel
         [Tooltip("Scale (squash & stretch) easing half-life.")]
         private float _scaleHalfLife = 0.06f;
 
-        /// <summary>Vertical breathing amplitude while idle.</summary>
+        /// <summary>空闲时垂直呼吸幅度。</summary>
         /// <summary>
-        /// Rigged model to build this character around, or null to use the generated body.
+        /// 围绕其构建角色的骨架模型；为 null 则使用生成的身体。
         /// </summary>
         /// <remarks>
-        /// Lives on an asset rather than being added to the prefab by hand, because the prefab
-        /// builders rewrite the whole hierarchy every run: anything dropped into the prefab directly
-        /// is destroyed the next time the project is set up. Referencing it from here means the
-        /// builder puts it back each time, so a downloaded character survives regeneration.
+        /// 放在资源中，而不是手动加入预制体，因为预制体构建器每次都会重写整个层级：
+        /// 直接放入预制体的任何对象都会在下次设置项目时被销毁。从这里引用，
+        /// 意味着构建器每次会将它放回，让下载的角色在重新生成后保留。
         /// </remarks>
         public GameObject RigPrefab => _rigPrefab;
 
-        /// <summary>Controller the rig plays through.</summary>
+        /// <summary>骨架播放所使用的控制器。</summary>
         public RuntimeAnimatorController AnimatorController => _animatorController;
 
-        /// <summary>Controller for the final phase, in which the fighter has thrown its weapon away.</summary>
-        /// <remarks>Null for anything that fights the same way throughout, which is every fighter but the brute.</remarks>
+        /// <summary>最终阶段的控制器，该阶段战斗者已经丢弃武器。</summary>
+        /// <remarks>始终采用相同方式战斗的对象为 null，即除巨兽之外的所有战斗者。</remarks>
         public RuntimeAnimatorController FrenzyController => _frenzyController;
 
-        /// <summary>Uniform scale applied to the rig.</summary>
+        /// <summary>应用于骨架的统一缩放。</summary>
         public float RigScale => _rigScale;
 
-        /// <summary>Where in each attack clip, as a fraction of its length, the blade lands.</summary>
+        /// <summary>各攻击片段中刀刃落下的位置，以片段长度比例表示。</summary>
         public float ClipContactFraction => _clipContactFraction;
 
-        /// <summary>When in its clip an attack's blow lands.</summary>
+        /// <summary>攻击打击在片段中落下的时刻。</summary>
         /// <remarks>
-        /// Measured per clip by the generator, because the clips differ too much for one number: a one-second
-        /// cut and a two-second leap do not strike at the same fraction of their length.
+        /// 生成器逐片段测量，因为片段差异太大，无法共用一个数值：一秒的斩击与两秒的跳跃，
+        /// 不会在相同进度命中。
         /// </remarks>
-        /// <param name="attack">The attack in progress.</param>
+        /// <param name="attack">进行中的攻击。</param>
         /// <param name="frenzied">
-        /// Whether the frenzy's controller is playing. The same state plays a different clip there - a thrown fist
-        /// instead of a raised blade - and the blow lands at a different point in it.
+        /// 是否正在播放狂暴控制器。相同状态在其中播放不同片段——挥拳而不是举刃——打击也在不同位置落下。
         /// </param>
-        /// <returns>The contact fraction, falling back to the config's default where none was measured.</returns>
+        /// <returns>接触比例；未测量时回退到配置默认值。</returns>
         public float ContactFractionFor(AttackDefinition attack, bool frenzied = false)
         {
             foreach (AttackClipBinding binding in _attackClips)
@@ -246,12 +243,12 @@ namespace AdaptiveBossArena.Combat.Feel
             return _clipContactFraction;
         }
 
-        /// <summary>Every attack's clip binding, for the generator's measurements.</summary>
+        /// <summary>各攻击的片段绑定，供生成器测量使用。</summary>
         public System.Collections.Generic.IReadOnlyList<AttackClipBinding> AttackClips => _attackClips;
 
-        /// <summary>The attack state an attack plays.</summary>
-        /// <param name="attack">The attack in progress.</param>
-        /// <returns>The state name, falling back by damage type when the attack has no binding.</returns>
+        /// <summary>攻击播放的攻击状态。</summary>
+        /// <param name="attack">进行中的攻击。</param>
+        /// <returns>状态名称；攻击没有绑定时，根据伤害类型回退。</returns>
         public string AttackStateFor(AttackDefinition attack)
         {
             if (attack == null)
@@ -282,86 +279,86 @@ namespace AdaptiveBossArena.Combat.Feel
 
         public float IdleBobAmplitude => _idleBobAmplitude;
 
-        /// <summary>Breaths per second while idle.</summary>
+        /// <summary>空闲时每秒呼吸次数。</summary>
         public float IdleBobFrequency => _idleBobFrequency;
 
-        /// <summary>Idle sway magnitude in degrees.</summary>
+        /// <summary>空闲摇摆幅度，单位为度。</summary>
         public float IdleSwayDegrees => _idleSwayDegrees;
 
-        /// <summary>Forward lean at full running speed, in degrees.</summary>
+        /// <summary>全速奔跑时前倾角度，单位为度。</summary>
         public float MoveLeanDegrees => _moveLeanDegrees;
 
-        /// <summary>Coil-back distance during an attack wind-up.</summary>
+        /// <summary>攻击前摇期间向后蓄势的距离。</summary>
         public float AnticipationCrouch => _anticipationCrouch;
 
-        /// <summary>Squash amount during an attack wind-up.</summary>
+        /// <summary>攻击前摇期间的压缩量。</summary>
         public float AnticipationSquash => _anticipationSquash;
 
-        /// <summary>Lean-back angle during an attack wind-up.</summary>
+        /// <summary>攻击前摇期间的后倾角度。</summary>
         public float AnticipationLeanDegrees => _anticipationLeanDegrees;
 
-        /// <summary>Forward lunge distance on the live frames.</summary>
+        /// <summary>生效帧的向前突进距离。</summary>
         public float StrikeLunge => _strikeLunge;
 
-        /// <summary>Stretch amount as the blow commits.</summary>
+        /// <summary>投入打击时的拉伸量。</summary>
         public float StrikeStretch => _strikeStretch;
 
-        /// <summary>Lean-into angle on the live frames.</summary>
+        /// <summary>生效帧的前倾角度。</summary>
         public float StrikeLeanDegrees => _strikeLeanDegrees;
 
-        /// <summary>Multiplier applied to heavy attacks and abilities.</summary>
+        /// <summary>应用于重攻击和技能的倍率。</summary>
         public float HeavyMultiplier => _heavyMultiplier;
 
-        /// <summary>Braced-stance sink distance while guarding.</summary>
+        /// <summary>防御时支撑姿态的下沉距离。</summary>
         public float GuardCrouch => _guardCrouch;
 
-        /// <summary>Brace lean while guarding.</summary>
+        /// <summary>防御时支撑姿态的倾斜。</summary>
         public float GuardLeanDegrees => _guardLeanDegrees;
 
-        /// <summary>Lean into travel during a dash.</summary>
+        /// <summary>冲刺期间沿移动方向倾斜。</summary>
         public float DashLeanDegrees => _dashLeanDegrees;
 
-        /// <summary>Stretch along a dash.</summary>
+        /// <summary>沿冲刺方向的拉伸。</summary>
         public float DashStretch => _dashStretch;
 
-        /// <summary>Vulnerable-crouch depth while healing.</summary>
+        /// <summary>治疗时易受攻击的蹲伏深度。</summary>
         public float HealCrouch => _healCrouch;
 
-        /// <summary>Hit-recoil throw distance.</summary>
+        /// <summary>受击反作用的推开距离。</summary>
         public float RecoilDistance => _recoilDistance;
 
-        /// <summary>Hit-recoil spring-back duration.</summary>
+        /// <summary>受击反作用的回弹时长。</summary>
         public float RecoilDurationSeconds => _recoilDurationSeconds;
 
-        /// <summary>Squash flinch on being hit.</summary>
+        /// <summary>受击时的压缩动作。</summary>
         public float RecoilSquash => _recoilSquash;
 
-        /// <summary>Topple angle when defeated.</summary>
+        /// <summary>战败时的倾倒角度。</summary>
         public float DeathFallDegrees => _deathFallDegrees;
 
-        /// <summary>Sink distance when defeated.</summary>
+        /// <summary>战败时的下沉距离。</summary>
         public float DeathSink => _deathSink;
 
-        /// <summary>Rear-back angle during a phase transition.</summary>
+        /// <summary>阶段转换时的后仰角度。</summary>
         public float FlourishRearDegrees => _flourishRearDegrees;
 
-        /// <summary>Stretch during a phase transition.</summary>
+        /// <summary>阶段转换期间的拉伸。</summary>
         public float FlourishStretch => _flourishStretch;
 
-        /// <summary>Duration of a phase-transition flourish.</summary>
+        /// <summary>阶段转换表现动作的时长。</summary>
         public float FlourishDurationSeconds => _flourishDurationSeconds;
 
-        /// <summary>Position easing half-life.</summary>
+        /// <summary>位置缓动半衰期。</summary>
         public float PositionHalfLife => _positionHalfLife;
 
-        /// <summary>Rotation easing half-life.</summary>
+        /// <summary>旋转缓动半衰期。</summary>
         public float RotationHalfLife => _rotationHalfLife;
 
-        /// <summary>Scale easing half-life.</summary>
+        /// <summary>缩放缓动半衰期。</summary>
         public float ScaleHalfLife => _scaleHalfLife;
     }
 
-    /// <summary>Which attack state one attack plays.</summary>
+    /// <summary>某次攻击播放的攻击状态。</summary>
     [System.Serializable]
     public struct AttackClipBinding
     {
@@ -383,16 +380,16 @@ namespace AdaptiveBossArena.Combat.Feel
         [Tooltip("The same, for the clip the frenzy plays in this state. Zero falls back to the armed fraction.")]
         private float _frenzyContactFraction;
 
-        /// <summary>The attack.</summary>
+        /// <summary>攻击。</summary>
         public AttackDefinition Attack => _attack;
 
-        /// <summary>The Animator state it plays.</summary>
+        /// <summary>播放的 Animator 状态。</summary>
         public string State => _state;
 
-        /// <summary>Fraction of the clip at which the blow lands, or zero when unmeasured.</summary>
+        /// <summary>打击落下时的片段比例，未测量时为零。</summary>
         public float ContactFraction => _contactFraction;
 
-        /// <summary>Fraction of the frenzy's clip at which the blow lands, or zero when unmeasured.</summary>
+        /// <summary>打击在狂暴片段中落下时的比例，未测量时为零。</summary>
         public float FrenzyContactFraction => _frenzyContactFraction;
     }
 }

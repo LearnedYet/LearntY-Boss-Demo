@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: AdaptiveBossArena.Combat::AdaptiveBossArena.Combat.WeaponDefinition
   _id: weapon.weaponenergyblade
   _designerNotes: 
-  _displayName: Energy Blade
+  _displayName: 能量刃
   _signatureColor: {r: 0.7, g: 1, b: 0.8, a: 0.6}
   _swingCueId: swing.energy
   _modelPrefab: {fileID: 3277714974277267885, guid: d6f743af038d4694f88abb87350c78a7, type: 3}

@@ -4,24 +4,23 @@ using UnityEngine;
 namespace AdaptiveBossArena.Core.Events
 {
     /// <summary>
-    /// Base for asset-backed event channels that carry a payload.
+    /// 携带载荷的资源事件通道基类。
     /// </summary>
     /// <remarks>
-    /// Concrete channels are one-line subclasses that close the generic parameter, because Unity
-    /// cannot serialise an open generic type as an asset. The subclass exists purely to give the
-    /// closed type a name that <c>CreateAssetMenu</c> can attach to.
+    /// 具体通道是封闭泛型参数的一行子类，因为 Unity 不能把开放泛型类型序列化为资源。
+    /// 子类仅用于给封闭类型一个可附加<c>CreateAssetMenu</c> 的名称。
     /// </remarks>
-    /// <typeparam name="TPayload">Data carried with the signal.</typeparam>
+    /// <typeparam name="TPayload">随信号传递的数据。</typeparam>
     public abstract class EventChannel<TPayload> : EventChannelBase
     {
-        /// <summary>Raised when the channel fires, carrying the payload.</summary>
+        /// <summary>通道触发时调用，并携带载荷。</summary>
         public event Action<TPayload> Raised;
 
-        /// <summary>Number of currently attached listeners.</summary>
+        /// <summary>当前连接的监听者数量。</summary>
         public int ListenerCount => Raised?.GetInvocationList().Length ?? 0;
 
-        /// <summary>Fires the channel with a payload.</summary>
-        /// <param name="payload">Data to deliver to listeners.</param>
+        /// <summary>携带载荷触发通道。</summary>
+        /// <param name="payload">要投递给监听者的数据。</param>
         public void Raise(TPayload payload)
         {
             if (LogRaises)
@@ -32,7 +31,7 @@ namespace AdaptiveBossArena.Core.Events
             Raised?.Invoke(payload);
         }
 
-        /// <summary>Drops all listeners when the asset unloads, preventing cross-session leaks.</summary>
+        /// <summary>资源卸载时移除全部监听者，避免跨会话泄漏。</summary>
         private void OnDisable() => Raised = null;
     }
 }

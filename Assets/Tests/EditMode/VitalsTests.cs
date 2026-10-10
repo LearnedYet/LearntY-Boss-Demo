@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace AdaptiveBossArena.Tests.EditMode
 {
-    /// <summary>Tests for the shared health pool.</summary>
+    /// <summary>测试共享生命值池。</summary>
     [TestFixture]
     public sealed class HealthPoolTests
     {
@@ -48,8 +48,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             float applied = health.Reduce(250f, Hit(250f));
 
-            // Overkill damage must not be reported as dealt, or damage statistics and any future
-            // score based on them would be inflated by the killing blow.
+            // 过量伤害不能报告为实际造成伤害，否则伤害统计及未来依据它的评分都会被致命一击虚增。
             Assert.AreEqual(100f, applied, Tolerance);
             Assert.AreEqual(0f, health.Current, Tolerance);
         }
@@ -65,7 +64,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             health.Reduce(50f, Hit(50f));
 
-            // A death screen reacting to Died must find the health bar already showing zero.
+            // 死亡界面响应 Died 时，生命条必须已经显示为零。
             CollectionAssert.AreEqual(new[] { "changed", "died" }, order);
         }
 
@@ -114,7 +113,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             var health = new HealthPool(10f, CombatantTeam.Player);
             health.Reduce(10f, Hit(10f));
 
-            // Reviving would leave listeners that already handled the death in an inconsistent state.
+            // 复活会使已处理死亡的监听者处于不一致状态。
             Assert.AreEqual(0f, health.Heal(50f), Tolerance);
             Assert.IsFalse(health.IsAlive);
         }
@@ -133,11 +132,10 @@ namespace AdaptiveBossArena.Tests.EditMode
     }
 
     /// <summary>
-    /// Tests for the stamina pool.
+    /// 测试体力池。
     /// </summary>
     /// <remarks>
-    /// The regeneration delay is what turns stamina from a speed limit into a commitment, so the
-    /// tests concentrate on the pause rather than on the arithmetic.
+    /// 恢复延迟让体力从限速器变为动作投入，因此测试重点是暂停恢复，而非算术本身。
     /// </remarks>
     [TestFixture]
     public sealed class StaminaPoolTests
@@ -169,7 +167,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             var stamina = new StaminaPool(100f, regenPerSecond: 50f, regenDelaySeconds: 0.5f);
             stamina.TrySpend(50f);
 
-            // Well inside the delay, so nothing should have come back yet.
+            // 明显处于延迟时间内，因此尚不应恢复任何体力。
             for (int i = 0; i < 12; i++)
             {
                 stamina.Tick(Frame);
@@ -213,7 +211,7 @@ namespace AdaptiveBossArena.Tests.EditMode
                 stamina.Tick(Frame);
             }
 
-            // Repeated dashing must not creep back to full; each spend restarts the pause.
+            // 连续闪避不能逐渐回满；每次消耗都重新开始暂停恢复。
             Assert.IsTrue(stamina.IsRegenerationBlocked);
             Assert.AreEqual(beforeSecondSpend - 20f, stamina.Current, Tolerance);
         }

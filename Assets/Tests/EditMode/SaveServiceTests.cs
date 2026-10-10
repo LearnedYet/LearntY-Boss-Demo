@@ -7,12 +7,11 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for persistence.
+    /// 测试持久化。
     /// </summary>
     /// <remarks>
-    /// The interesting cases are the failures rather than the round trip. A save system that works
-    /// when everything is fine but loses a player's settings the one time a file is truncated is
-    /// worse than no save system, because the player has come to rely on it.
+    /// 有意义的情况是失败，而非写入后读回。平时正常、文件偶尔截断时却丢失玩家设置的存档系统，
+    /// 比没有存档更糟，因为玩家已开始依赖它。
     /// </remarks>
     [TestFixture]
     public sealed class JsonSaveServiceTests
@@ -66,7 +65,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         {
             File.WriteAllText(Path.Combine(_folder, "broken.json"), "{ this is not valid json ][");
 
-            // The player with a damaged file must still reach the game, with defaults.
+            // 文件损坏的玩家仍须能用默认值进入游戏。
             Assert.DoesNotThrow(() => _service.TryLoad("broken", out SettingsData _));
         }
 
@@ -93,7 +92,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         {
             _service.Save(SaveKeys.Settings, new SettingsData { MasterVolume = 0.33f });
 
-            // The second write leaves the first behind as a backup.
+            // 第二次写入将第一次内容保留为备份。
             _service.Save(SaveKeys.Settings, new SettingsData { MasterVolume = 0.77f });
 
             string primary = Path.Combine(_folder, SaveKeys.Settings + ".json");
@@ -117,7 +116,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         }
     }
 
-    /// <summary>Tests for the personal-best bookkeeping.</summary>
+    /// <summary>测试个人最佳纪录管理。</summary>
     [TestFixture]
     public sealed class RecordsDataTests
     {
@@ -164,7 +163,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             var records = new RecordsData();
             records.RecordAttempt(true, 60f, 0.5f, 4);
 
-            // Slower, but the boss learned less. That is the harder achievement and must register.
+            // 用时更久，但首领学到更少。这是更难的成就，必须记录。
             records.RecordAttempt(true, 90f, 0.2f, 1);
 
             Assert.AreEqual(1, records.FewestAdaptationsAllowed);

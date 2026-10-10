@@ -1,48 +1,45 @@
 namespace AdaptiveBossArena.Core.Services
 {
     /// <summary>
-    /// Persists settings and records between sessions.
+    /// 跨会话持久化设置和纪录。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Abstracted rather than calling <c>PlayerPrefs</c> or <c>File</c> at the call site so that the
-    /// storage backend, the serialisation format and the schema-version migration all stay in one
-    /// place, and so tests can substitute an in-memory implementation.
+    /// 采用抽象接口而非在调用处直接使用 <c>PlayerPrefs</c> 或 <c>File</c>，使存储后端、
+    /// 序列化格式和架构版本迁移都集中在一处，测试也能替换为内存实现。
     /// </para>
     /// <para>
-    /// The implementation arriving in the save-system phase writes atomically, to a temporary file
-    /// that then replaces the original. A player alt-F4ing mid-write would otherwise be left with a
-    /// truncated settings file and a game that fails to start.
+    /// 存档系统阶段引入的实现采用原子写入：先写临时文件，再替换原文件。
+    /// 否则玩家写入过程中按 Alt+ F4 会留下截断的设置文件，导致游戏无法启动。
     /// </para>
     /// </remarks>
     public interface ISaveService
     {
-        /// <summary>True when a record exists under the given key.</summary>
-        /// <param name="key">Record name.</param>
-        /// <returns>Whether the record exists.</returns>
+        /// <summary>指定键下存在记录时为 true。</summary>
+        /// <param name="key">记录名称。</param>
+        /// <returns>记录是否存在。</returns>
         bool Exists(string key);
 
-        /// <summary>Writes a record, overwriting any existing one.</summary>
-        /// <typeparam name="TData">Serialisable record type.</typeparam>
-        /// <param name="key">Record name.</param>
-        /// <param name="data">Record contents.</param>
+        /// <summary>写入记录，覆盖已有记录。</summary>
+        /// <typeparam name="TData">可序列化的记录类型。</typeparam>
+        /// <param name="key">记录名称。</param>
+        /// <param name="data">记录内容。</param>
         void Save<TData>(string key, TData data) where TData : class;
 
         /// <summary>
-        /// Reads a record.
+        /// 读取记录。
         /// </summary>
-        /// <typeparam name="TData">Serialisable record type.</typeparam>
-        /// <param name="key">Record name.</param>
-        /// <param name="data">Receives the record, or null when absent or unreadable.</param>
+        /// <typeparam name="TData">可序列化的记录类型。</typeparam>
+        /// <param name="key">记录名称。</param>
+        /// <param name="data">接收记录，不存在或无法读取时为 null。</param>
         /// <returns>
-        /// False when the record is missing or corrupt. Callers must fall back to defaults rather
-        /// than treating a failed load as fatal; a player with a damaged settings file should still
-        /// reach the main menu.
+        /// 记录缺失或损坏时返回 false。调用者必须回退到默认值，不能把加载失败视为致命错误；
+        /// 设置文件损坏的玩家仍应能进入主菜单。
         /// </returns>
         bool TryLoad<TData>(string key, out TData data) where TData : class;
 
-        /// <summary>Deletes a record if it exists.</summary>
-        /// <param name="key">Record name.</param>
+        /// <summary>存在记录时将其删除。</summary>
+        /// <param name="key">记录名称。</param>
         void Delete(string key);
     }
 }

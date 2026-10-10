@@ -6,20 +6,19 @@ using UnityEngine;
 namespace AdaptiveBossArena.Player.States
 {
     /// <summary>
-    /// Reeling from a hit that broke through.
+    /// 受到穿透防御的攻击后后仰。
     /// </summary>
     /// <remarks>
-    /// The stagger duration is carried on the context rather than fixed here, because how long a hit
-    /// interrupts for is a property of the hit. A light poke and a boss slam both stagger; only one
-    /// of them should cost the player their next several decisions.
+    /// 硬直持续时间放在上下文中，而非在此固定，因为打断多久属于攻击自身属性。
+    /// 轻刺和 Boss 砸击都会造成硬直，但只有其中一种应让玩家失去接下来多次决策的机会。
     /// </remarks>
     public sealed class PlayerStaggerState : StateBase<PlayerContext>
     {
         private float _remainingSeconds;
 
-        /// <summary>True once the interruption has run its course.</summary>
-        /// <param name="context">The player context.</param>
-        /// <returns>Whether the player may act again.</returns>
+        /// <summary>打断持续结束时为 true。</summary>
+        /// <param name="context">玩家上下文。</param>
+        /// <returns>玩家是否可以再次行动。</returns>
         public bool IsComplete(PlayerContext context) => _remainingSeconds <= 0f;
 
         /// <inheritdoc />
@@ -30,23 +29,19 @@ namespace AdaptiveBossArena.Player.States
             _remainingSeconds = context.RequestedStaggerSeconds;
             context.StaggerRequested = false;
 
-            // The player's stagger announces nothing, so the reason has no presentation to get
-            // wrong here - but it is consumed all the same. Left set, the next ordinary hit would
-            // inherit it, and the boss's stagger, which does announce itself, shares the field's
-            // contract.
+            // 玩家硬直不发布通知，因此此处原因不会造成错误的表现，但仍须消费它。若保留该值，
+            // 下一次普通攻击便会继承它；会发布通知的 Boss 硬直也共享该字段约定。
             context.RequestedStaggerReason = StaggerReason.Hit;
 
-            // Buffered presses from before the hit would otherwise fire the instant control returns,
-            // spending an attack or a dash the player no longer wants.
+            // 若不清空，受击前缓存的按键会在恢复控制的瞬间触发，消耗玩家已不再想使用的攻击或闪避。
             context.InputBuffer.Clear();
         }
 
         /// <inheritdoc />
         protected override void OnTick(PlayerContext context, float deltaTime)
         {
-            // A hit landing mid-stagger cannot re-enter this state, because the machine refuses to
-            // transition into the state it is already in. It is absorbed here instead, extending the
-            // interruption rather than being silently discarded.
+            // 硬直期间再被命中无法重入此状态，因为状态机拒绝转移至当前状态。
+            // 因此在此处接收它并延长打断，而非悄然丢弃。
             if (context.StaggerRequested)
             {
                 _remainingSeconds = Mathf.Max(_remainingSeconds, context.RequestedStaggerSeconds);
@@ -62,11 +57,10 @@ namespace AdaptiveBossArena.Player.States
     }
 
     /// <summary>
-    /// Defeated. A terminal state with no outgoing transitions.
+    /// 被击败。没有向外转移的终止状态。
     /// </summary>
     /// <remarks>
-    /// Input is suspended on entry rather than merely ignored, so that presses made during the death
-    /// animation cannot be buffered and replayed if the fight is restarted.
+    /// 进入时暂停输入，而非仅忽略输入，使死亡动画期间的按键无法被缓存并在战斗重启后重放。
     /// </remarks>
     public sealed class PlayerDeadState : StateBase<PlayerContext>
     {

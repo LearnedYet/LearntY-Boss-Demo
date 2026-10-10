@@ -8,26 +8,23 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// Runs one attack from wind-up to recovery and resolves everything it touches.
+    /// 执行一次攻击，从前摇到后摇，并处理它触及的一切。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Shared by the player and the boss. Both throw attacks defined the same way, so both should
-    /// resolve them through the same code; duplicating it would let their damage, hit-stop and
-    /// whiff reporting drift apart, and the learning system depends on those signals meaning the
-    /// same thing for each side.
+    /// 玩家与首领共用。双方发动的攻击采用相同定义，因此双方应通过同一套代码处理；重复实现会让伤害、
+    /// 顿帧和挥空报告逐渐偏离，而学习系统依赖这些信号对双方具有相同含义。
     /// </para>
     /// <para>
-    /// A target can only be struck once per attack. Without that, an active window spanning several
-    /// frames would deal its damage on every one of them, making an attack's real damage depend on
-    /// frame rate.
+    /// 每次攻击只能命中同一目标一次。否则，跨越多个帧的生效窗口会在每一帧造成伤害，
+    /// 使攻击的实际伤害取决于帧率。
     /// </para>
     /// </remarks>
     public sealed class AttackExecutor
     {
         /// <summary>
-        /// Safety-net lifetime for a spawned cast effect, in seconds. Well past the longest attack, so
-        /// a self-cleaning effect finishes first and only a leaked one is caught here.
+        /// 生成的施法效果的兜底存活时间，单位为秒。远长于最长攻击，因此能自行清理的效果会先结束，
+        /// 这里只捕获未被清理的效果。
         /// </summary>
         private const float CastVfxLifetimeSeconds = 4f;
 
@@ -47,22 +44,21 @@ namespace AdaptiveBossArena.Combat
 
         private bool _landedThisAttack;
 
-        /// <summary>Creates an executor bound to one combatant.</summary>
-        /// <param name="origin">Transform attack volumes are positioned relative to.</param>
-        /// <param name="team">Team the attacks belong to.</param>
-        /// <param name="targetLayerMask">Layers this combatant's attacks may strike.</param>
-        /// <param name="time">Time service, used to request hit-stop.</param>
-        /// <param name="events">Bus that witnessed occurrences are published to.</param>
-        /// <param name="screenShake">Optional shake sink for impact feedback.</param>
+        /// <summary>创建绑定到一个战斗参与者的执行器。</summary>
+        /// <param name="origin">攻击体积定位所相对的 Transform。</param>
+        /// <param name="team">攻击所属的阵营。</param>
+        /// <param name="targetLayerMask">此战斗参与者的攻击可以命中的层。</param>
+        /// <param name="time">时间服务，用于请求顿帧。</param>
+        /// <param name="events">发布已观察事件的总线。</param>
+        /// <param name="screenShake">用于命中反馈的可选震动接收器。</param>
         /// <param name="visualizer">
-        /// Optional ground overlay showing the hit volume. Without it the attack is invisible, so it
-        /// is only optional for tests that have no scene.
+        /// 显示命中体积的可选地面叠加效果。缺少它时攻击不可见，因此只有不存在场景的测试可以省略它。
         /// </param>
         /// <param name="hazardField">
-        /// Optional sink for ground hazards. Supplied to the boss and left null for the player, which
-        /// is precisely what makes only boss attacks scar the ground.
+        /// 地面危险区域的可选接收器。首领会提供它，玩家则保留 null，
+        /// 这正是只有首领攻击会在地面留下痕迹的原因。
         /// </param>
-        /// <exception cref="ArgumentNullException">Thrown when a required dependency is missing.</exception>
+        /// <exception cref="ArgumentNullException">缺少必要依赖时抛出。</exception>
         public AttackExecutor(
             Transform origin,
             CombatantTeam team,
@@ -84,21 +80,21 @@ namespace AdaptiveBossArena.Combat
             _hazardField = hazardField;
         }
 
-        /// <summary>Most samples a striking part is tested at in one frame.</summary>
+        /// <summary>单帧内检测一个攻击部件的最大采样次数。</summary>
         private const int MaxSweepSamples = 6;
 
-        /// <summary>The parts of this body that can strike, or empty for one with no rig.</summary>
+        /// <summary>此身体能够用于攻击的部件；没有骨架时为空。</summary>
         private System.Collections.Generic.IReadOnlyList<StrikeVolume> _strikers = System.Array.Empty<StrikeVolume>();
 
-        /// <summary>Where each striking part's base and tip were at the last tick, by index into the strikers.</summary>
+        /// <summary>各攻击部件在上次推进时的根部和尖端位置，以攻击部件索引存储。</summary>
         private Vector3[] _previousStart = System.Array.Empty<Vector3>();
 
         private Vector3[] _previousEnd = System.Array.Empty<Vector3>();
 
-        /// <summary>False until a tick of this attack has recorded where its parts were.</summary>
+        /// <summary>此攻击推进并记录过部件位置之前为 false。</summary>
         private bool _hasPreviousPose;
 
-        /// <summary>The strikers this attack uses this tick, by index.</summary>
+        /// <summary>此攻击本次推进使用的攻击部件索引。</summary>
         private readonly System.Collections.Generic.List<int> _activeStrikers = new System.Collections.Generic.List<int>(6);
 
         private readonly Collider[] _sweepBuffer = new Collider[AttackHitDetector.MaxOverlaps];
@@ -106,13 +102,13 @@ namespace AdaptiveBossArena.Combat
         private readonly Vector3[] _sweepContacts = new Vector3[AttackHitDetector.MaxOverlaps];
 
         /// <summary>
-        /// Gives the executor the parts of the body it strikes with.
+        /// 向执行器提供身体用于攻击的部件。
         /// </summary>
         /// <remarks>
-        /// Include the inactive ones: the brute's cleaver is hidden in the frenzy and shown again on a retry, and
-        /// the executor asks each part whether it is available at the moment it swings.
+        /// 也要包含未激活的部件：巨兽的砍刀在狂暴时隐藏，重试时再次显示，
+        /// 执行器会在挥击时询问各部件当前是否可用。
         /// </remarks>
-        /// <param name="strikers">Every striking part on the body.</param>
+        /// <param name="strikers">身体上的全部攻击部件。</param>
         public void SetStrikers(System.Collections.Generic.IReadOnlyList<StrikeVolume> strikers)
         {
             _strikers = strikers ?? System.Array.Empty<StrikeVolume>();
@@ -121,57 +117,55 @@ namespace AdaptiveBossArena.Combat
             _hasPreviousPose = false;
         }
 
-        /// <summary>The attack currently running, or null.</summary>
+        /// <summary>当前执行的攻击；也可为 null。</summary>
         public AttackDefinition CurrentAttack => _timeline.CurrentAttack;
 
-        /// <summary>True while an attack is in progress.</summary>
+        /// <summary>攻击进行中时为 true。</summary>
         public bool IsRunning => _timeline.IsRunning;
 
-        /// <summary>The phase the current attack has reached.</summary>
+        /// <summary>当前攻击到达的阶段。</summary>
         public AttackPhase Phase => _timeline.Phase;
 
         /// <summary>
-        /// Whether the last swing turned aside was met by a deliberate parry rather than a timed guard.
+        /// 上次被化解的挥击是否遇到主动招架，而不是计时防御。
         /// </summary>
         /// <remarks>
-        /// Read by the attacker to decide how long it reels. A parry is a committed, punishable move, so it
-        /// buys a longer opening than a deflect does.
+        /// 攻击者读取它来决定受挫时长。招架是需要投入且可被惩罚的动作，因此换来的空档比弹反更长。
         /// </remarks>
         public bool LastParryWasStrike { get; private set; }
 
-        /// <summary>Seconds elapsed in the current attack.</summary>
+        /// <summary>当前攻击已经过的秒数。</summary>
         public float ElapsedSeconds => _timeline.ElapsedSeconds;
 
-        /// <summary>True while the current attack will accept a follow-up input.</summary>
+        /// <summary>当前攻击接受后续输入时为 true。</summary>
         public bool IsInComboWindow => _timeline.IsInComboWindow;
 
-        /// <summary>True when the current attack has struck at least one target.</summary>
+        /// <summary>当前攻击已命中至少一个目标时为 true。</summary>
         public bool HasLanded => _landedThisAttack;
 
-        /// <summary>Raised each time this attack deals damage.</summary>
+        /// <summary>此攻击每次造成伤害时触发。</summary>
         public event Action<DamageResult> HitLanded;
 
-        /// <summary>Raised when the attack finishes and the attacker becomes actionable.</summary>
+        /// <summary>攻击结束且攻击者恢复行动能力时触发。</summary>
         public event Action Completed;
 
-        /// <summary>Raised whenever the running attack changes phase.</summary>
+        /// <summary>进行中的攻击切换阶段时触发。</summary>
         public event Action<AttackPhase> PhaseChanged;
 
         /// <summary>
-        /// Raised when this attack was met on the beat and refused.
+        /// 此攻击被精准应对并化解时触发。
         /// </summary>
         /// <remarks>
-        /// <b>A handler may set flags only.</b> This fires from inside the timeline's phase-stepping
-        /// loop, so calling <see cref="Cancel"/> from a handler re-enters that loop while it is
-        /// still running. The recoil a parry deserves must therefore be requested and acted on next
-        /// tick — which the stagger request already does, since entering the stagger state exits the
-        /// attack state and its exit cancels the swing.
+        /// <b>处理器只能设置标记。</b>此事件在时间轴逐阶段推进循环内部触发，
+        /// 因此在处理器中调用 <see cref="Cancel"/> 会在循环仍运行时重入。
+        /// 招架应产生的反作用必须在下一次推进时请求并执行——硬直请求已经如此处理，
+        /// 因为进入硬直状态会退出攻击状态，而退出会取消挥击。
         /// </remarks>
         public event Action Parried;
 
-        /// <summary>Begins an attack, replacing any already running.</summary>
-        /// <param name="attack">The attack to perform.</param>
-        /// <param name="separationDistance">Distance to the opponent, recorded with the event.</param>
+        /// <summary>开始一次攻击，替换任何已进行的攻击。</summary>
+        /// <param name="attack">需要执行的攻击。</param>
+        /// <param name="separationDistance">与对手的距离，会记录在事件中。</param>
         public void Begin(AttackDefinition attack, float separationDistance = 0f)
         {
             if (attack == null)
@@ -200,8 +194,8 @@ namespace AdaptiveBossArena.Combat
             });
         }
 
-        /// <summary>Advances the attack and resolves hits while its window is open.</summary>
-        /// <param name="deltaTime">Elapsed scaled time, so hit-stop freezes attack progress.</param>
+        /// <summary>推进攻击，并在命中窗口开启时处理命中。</summary>
+        /// <param name="deltaTime">经过的缩放时间，因此顿帧会冻结攻击进度。</param>
         public void Tick(float deltaTime)
         {
             if (!_timeline.IsRunning)
@@ -211,19 +205,18 @@ namespace AdaptiveBossArena.Combat
 
             _timeline.Tick(deltaTime);
 
-            // Resolution runs after the tick so a frame that opens the window also tests it. Testing
-            // first would cost every attack one frame of reach.
+            // 在推进后处理命中，让开启窗口的帧也能执行检测。先检测会让每次攻击损失一帧的触及距离。
             if (_timeline.Phase == AttackPhase.Active)
             {
                 ResolveHits(_timeline.CurrentAttack);
             }
 
-            // Recorded through the wind-up too, so the first live frame sweeps from where the blade was on the
-            // last frame of the wind-up rather than starting from wherever it happens to be.
+            // 前摇期间也记录位置，因此首个生效帧从前摇最后一帧的刀刃位置开始扫掠，
+            // 而不是从恰好位于的位置开始。
             RecordStrikerPoses();
         }
 
-        /// <summary>Remembers where every striking part is, for the next tick's sweep.</summary>
+        /// <summary>记住各攻击部件位置，供下次推进时扫掠使用。</summary>
         private void RecordStrikerPoses()
         {
             for (int i = 0; i < _strikers.Count; i++)
@@ -238,13 +231,13 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// Picks the parts an attack strikes with that are there to strike with.
+        /// 选择攻击所使用、且当前存在的攻击部件。
         /// </summary>
         /// <remarks>
-        /// A weapon attack thrown with no weapon in hand - the frenzy, after the sword is gone - lands with the
-        /// fists instead, so every move in the armed set still has something to hit with.
+        /// 没有手持武器时发动的武器攻击——剑消失后的狂暴阶段——改用拳头命中，
+        /// 让持械招式组中的每个动作仍有可用于命中的部件。
         /// </remarks>
-        /// <returns>True when at least one part was found.</returns>
+        /// <returns>找到至少一个部件时为 true。</returns>
         private bool CollectStrikers(StrikerParts parts)
         {
             _activeStrikers.Clear();
@@ -272,7 +265,7 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// Tests the path each striking part swept since the last tick, and applies the blow to what it touched.
+        /// 检测各攻击部件从上次推进以来扫过的路径，并对触及对象施加打击。
         /// </summary>
         private void SweepHits(AttackDefinition attack)
         {
@@ -289,7 +282,7 @@ namespace AdaptiveBossArena.Combat
 
                 int samples = StrikeSweep.SampleCount(fromStart, fromEnd, start, end, striker.Radius, MaxSweepSamples);
 
-                // From the first step past last tick's pose, which was already tested then, to this tick's.
+                // 从上次姿势之后的第一个采样步开始，直到本次姿势；上次姿势已经检测过。
                 for (int step = 1; step <= samples; step++)
                 {
                     StrikeSweep.Between(
@@ -320,11 +313,11 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// Records a touched hurtbox, keeping the most valuable one per combatant, as the volume query does.
+        /// 记录触及的受击盒，和体积查询一样，每个战斗参与者保留价值最高的一个。
         /// </summary>
         /// <remarks>
-        /// The brute's core sits inside its body, and a blade that crosses the core crosses the body too. Taking
-        /// whichever physics listed first would make striking the core a coin flip rather than a decision.
+        /// 巨兽核心位于身体内，穿过核心的刀刃也会穿过身体。选择物理系统列出的第一个对象，
+        /// 会让命中核心变成掷硬币般的随机结果，而不是决策。
         /// </remarks>
         private int KeepBestPerTarget(Hurtbox hurtbox, Vector3 contact, int found)
         {
@@ -355,14 +348,14 @@ namespace AdaptiveBossArena.Combat
             return found + 1;
         }
 
-        /// <summary>Aborts the attack, typically because the attacker was staggered.</summary>
+        /// <summary>中止攻击，通常因为攻击者进入硬直。</summary>
         public void Cancel() => _timeline.Cancel();
 
-        /// <summary>Spawns the attack's optional cast effect at the attacker, parented so it follows.</summary>
+        /// <summary>在攻击者位置生成可选施法效果，并设为子对象以跟随攻击者。</summary>
         /// <remarks>
-        /// The ability-art seam. Null for every attack today, so this does nothing. A prefab dropped
-        /// onto an attack appears here, parented to the origin so it rides the lunge, and is destroyed
-        /// after a generous safety lifetime in case the effect does not clean itself up.
+        /// 这是技能美术资源的接入点。目前所有攻击都为 null，因此没有效果。
+        /// 挂到攻击上的预制体会在此出现，设为原点的子对象以随突进移动；如果效果没有自行清理，
+        /// 会在宽裕的兜底存活时间后被销毁。
         /// </remarks>
         private void SpawnCastVfx(AttackDefinition attack)
         {
@@ -376,7 +369,7 @@ namespace AdaptiveBossArena.Combat
             UnityEngine.Object.Destroy(effect, CastVfxLifetimeSeconds);
         }
 
-        /// <summary>Announces that a blow's live window has opened, for whoever voices the swing.</summary>
+        /// <summary>通知打击的生效窗口已经开启，供负责挥击音效的对象使用。</summary>
         private void PublishActive(AttackDefinition attack)
         {
             if (attack == null)
@@ -396,11 +389,11 @@ namespace AdaptiveBossArena.Combat
             });
         }
 
-        /// <summary>Tests every hurtbox in the volume and applies damage to those not yet struck.</summary>
+        /// <summary>检测体积内的全部受击盒，并对尚未命中的对象造成伤害。</summary>
         private void ResolveHits(AttackDefinition attack)
         {
-            // What the body struck with, when it has the parts to strike with. The authored volume decides
-            // only area attacks and bodies with no rig.
+            // 身体具有攻击部件时，使用身体实际参与打击的部件。
+            // 创作的攻击体积只决定范围攻击和没有骨架的身体的命中。
             if (attack.Strikers != StrikerParts.None && CollectStrikers(attack.Strikers))
             {
                 SweepHits(attack);
@@ -414,8 +407,8 @@ namespace AdaptiveBossArena.Combat
                 Hurtbox hurtbox = _detector.Results[i];
                 int targetId = hurtbox.Owner.GetHashCode();
 
-                // Recording the target before knowing the outcome is intentional. An attack that was
-                // dodged must not get a second chance at the same target on the next frame.
+                // 在得知结果之前记录目标是有意的。被闪避的攻击不应在下一帧获得再次命中同一目标的机会
+                // 。
                 if (!_alreadyStruck.Add(targetId))
                 {
                     continue;
@@ -425,11 +418,10 @@ namespace AdaptiveBossArena.Combat
             }
         }
 
-        /// <summary>Offers the attack to one hurtbox and reacts to what the target decided.</summary>
+        /// <summary>将攻击交给一个受击盒，并对目标决定的结果作出反应。</summary>
         private void ApplyTo(AttackDefinition attack, Hurtbox hurtbox, Vector3? contact = null)
         {
-            // Where the part actually touched, when it is known, so sparks and blood come off the blade rather
-            // than out of the middle of the body.
+            // 若已知，则使用部件实际触及的位置，让火花和鲜血从刀刃处迸出，而不是从身体中心冒出。
             Vector3 contactPoint = contact ?? hurtbox.transform.position;
             Vector3 direction = contactPoint - _origin.position;
             direction.y = 0f;
@@ -464,12 +456,11 @@ namespace AdaptiveBossArena.Combat
             }
         }
 
-        /// <summary>Reports that this swing was parried, so the attacker can pay for it.</summary>
+        /// <summary>报告此挥击已被招架，让攻击者为此付出代价。</summary>
         /// <remarks>
-        /// The only place an attacker learns it was parried. The event carries the <em>defender</em>
-        /// as its actor, per the convention documented on <see cref="CombatEventKind.Parried"/>, and
-        /// the incoming direction so sparks are thrown back the way the blow came rather than in an
-        /// undirected puff.
+        /// 这是攻击者得知自己被招架的唯一位置。事件以<em>防守者</em>为执行者，
+        /// 遵循 <see cref="CombatEventKind.Parried"/> 中记录的约定，并携带来袭方向，
+        /// 让火花沿打击来向反弹，而不是形成无方向的喷散。
         /// </remarks>
         private void OnParried(AttackDefinition attack, Vector3 contactPoint, Vector3 direction)
         {
@@ -487,7 +478,7 @@ namespace AdaptiveBossArena.Combat
             Parried?.Invoke();
         }
 
-        /// <summary>Applies impact feedback and reports a landed hit.</summary>
+        /// <summary>施加命中反馈并报告成功命中。</summary>
         private void OnDamageDealt(AttackDefinition attack, Vector3 contactPoint, DamageResult result)
         {
             _landedThisAttack = true;
@@ -495,8 +486,7 @@ namespace AdaptiveBossArena.Combat
             _time.RequestHitStop(Mathf.Min(attack.HitStopSeconds, GameplayConstants.MaxHitStopSeconds));
             _screenShake?.AddTrauma(attack.CameraTrauma);
 
-            // A punch on top of the shake, scaled by the same trauma, so a heavy blow lunges the
-            // camera in while a light one barely registers it.
+            // 在震动之上增加按相同强度缩放的冲击，让重击推动摄像机向前，而轻击几乎不会产生明显变化。
             _screenShake?.Punch(attack.CameraTrauma);
 
             _events.Publish(new CombatEvent
@@ -513,7 +503,7 @@ namespace AdaptiveBossArena.Combat
             HitLanded?.Invoke(result);
         }
 
-        /// <summary>Reports an attack that reached its target but was avoided.</summary>
+        /// <summary>报告已经触及目标但被回避的攻击。</summary>
         private void PublishEvaded(AttackDefinition attack, Vector3 contactPoint) =>
             _events.Publish(new CombatEvent
             {
@@ -525,14 +515,13 @@ namespace AdaptiveBossArena.Combat
                 Direction = _origin.forward
             });
 
-        /// <summary>Relays timeline completion, reporting a whiff when nothing was struck.</summary>
+        /// <summary>转发时间轴完成事件；没有命中任何对象时报告挥空。</summary>
         private void OnTimelineCompleted()
         {
             if (!_landedThisAttack)
             {
-                // The signal behind the boss noticing its pattern has been read, and behind the
-                // player's whiff ratio. An attack that touched nothing is as informative as one that
-                // connected.
+                // 这个信号让首领察觉自身模式已被识破，也用于计算玩家挥空率。
+                // 没有触及任何对象的攻击和成功命中的攻击一样具有信息价值。
                 _events.Publish(new CombatEvent
                 {
                     Kind = CombatEventKind.AttackWhiffed,
@@ -548,7 +537,7 @@ namespace AdaptiveBossArena.Combat
 
         private bool _isSubscribed;
 
-        /// <summary>Attaches to the timeline once, on first use.</summary>
+        /// <summary>首次使用时连接到时间轴，且只连接一次。</summary>
         private void EnsureSubscribed()
         {
             if (_isSubscribed)
@@ -562,12 +551,11 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// Drives the on-ground visual and relays the phase to subscribers.
+        /// 驱动地面视觉效果，并向订阅者转发阶段。
         /// </summary>
         /// <remarks>
-        /// Driven from the phase transition rather than polled, so the telegraph appears on exactly
-        /// the frame the wind-up begins and the flash on exactly the frame the hitbox opens. Any
-        /// drift between the two would teach the player a timing that is not real.
+        /// 由阶段转换驱动，而不是轮询，确保预警恰好出现在前摇开始的帧，闪光恰好出现在命中盒开启的帧。
+        /// 两者若有偏差，就会让玩家学到并不存在的时机。
         /// </remarks>
         private void OnPhaseChanged(AttackPhase phase)
         {
@@ -586,8 +574,8 @@ namespace AdaptiveBossArena.Combat
                         break;
 
                     case AttackPhase.Active:
-                        // The same rule as the wind-up. A bright shape flashed under every ordinary swing,
-                        // the player's included, read as a board game piece and hid the blow the body made.
+                        // 与前摇采用相同规则。每次普通挥击下都闪出明亮形状，包括玩家挥击，
+                        // 会看起来像棋盘游戏棋子，并遮住身体实际做出的打击。
                         if (attack != null && attack.ShowTelegraph)
                         {
                             _visualizer.ShowStrike(attack);
@@ -606,33 +594,28 @@ namespace AdaptiveBossArena.Combat
                 PublishActive(_timeline.CurrentAttack);
                 TrySpawnHazard(_timeline.CurrentAttack);
 
-                // Resolved here as well as per frame, so entering the window always tests it at
-                // least once. The timeline steps one phase at a time specifically so a long frame
-                // cannot skip past an active window without the hitbox opening -- but Tick then
-                // reads the phase only after that stepping has finished, so a frame long enough to
-                // cross startup, active and recovery together ended on recovery and never queried
-                // at all. The swing looked like it should have connected and nothing happened.
+                // 除逐帧处理外，也在此处理，让进入窗口时至少检测一次。时间轴逐个阶段推进，
+                // 正是为了让长帧无法在未开启命中盒的情况下跳过生效窗口——但 Tick 只在推进全部结束后
+                // 读取阶段，因此足以同时跨越前摇、生效和后摇的帧会最终停在后摇，从未执行查询。
+                // 挥击看似应该命中，却没有任何结果。
                 //
-                // Running twice on an ordinary frame is harmless: the already-struck set dedupes
-                // per swing, so the second pass is a no-op for anything already hit and can still
-                // catch something that moved in.
+                // 普通帧执行两次没有危害：已命中集合按挥击去重，因此第二次对已命中对象不做任何操作，
+                // 同时仍可捕捉新进入的对象。
                 //
-                // One constraint this creates: damage is now applied from inside the timeline's own
-                // phase-stepping loop, so nothing reached from a damage path may cancel this
-                // executor's timeline synchronously. Every Cancel call site today sits in a state
-                // tick or a state exit, so none does -- but a deflect that aborts the attacker's
-                // swing would, and must therefore defer rather than cancel inline.
+                // 这带来一个约束：伤害现在从时间轴自身的逐阶段推进循环内部施加，
+                // 因此伤害路径触及的任何对象都不能同步取消此执行器的时间轴。
+                // 目前每处 Cancel 调用都位于状态推进或退出中，
+                // 因此没有问题——但若弹反要中止攻击者的挥击，就必须延迟处理，不能当场取消。
                 ResolveHits(_timeline.CurrentAttack);
             }
 
             PhaseChanged?.Invoke(phase);
         }
 
-        /// <summary>Scars the ground beneath the attacker when a hazard-leaving attack goes live.</summary>
+        /// <summary>会留下危险区域的攻击开始生效时，在攻击者脚下留下地面痕迹。</summary>
         /// <remarks>
-        /// Spawned at the attacker's own position, at floor height: the boss's slams and shockwaves
-        /// erupt from under it, so the scar sits where it struck. Null field (the player) or a
-        /// non-hazard attack does nothing.
+        /// 生成在攻击者自身位置的地面高度：首领的砸击和冲击波从它脚下爆发，因此痕迹位于打击位置。
+        /// 危险区域接收器为 null（玩家），或者攻击不留下危险区域时，不做任何操作。
         /// </remarks>
         private void TrySpawnHazard(AttackDefinition attack)
         {

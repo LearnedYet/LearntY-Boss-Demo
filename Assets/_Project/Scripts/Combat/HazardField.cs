@@ -4,12 +4,11 @@ using UnityEngine.Rendering;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// A fixed pool of reusable ground hazards, handed out round-robin.
+    /// 固定容量、轮流发放的可复用地面危险区域池。
     /// </summary>
     /// <remarks>
-    /// Mirrors <see cref="Feel.ImpactBurstPool"/>: instantiating a zone per attack would allocate in
-    /// the middle of combat, so every zone is built once at startup and recycled. A capacity of a
-    /// handful covers even the Last Stand, where several scars can overlap at once.
+    /// 与 <see cref="Feel.ImpactBurstPool"/> 对应：每次攻击实例化区域会在战斗中分配内存，
+    /// 因此所有区域启动时构建一次再回收复用。少量容量足以覆盖最后一搏阶段多个痕迹同时重叠的情况。
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class HazardField : MonoBehaviour, IHazardField
@@ -18,11 +17,11 @@ namespace AdaptiveBossArena.Combat
         private const string FallbackShaderName = "Sprites/Default";
 
         /// <summary>
-        /// Raised with the centre and radius of every scar a ground impact leaves.
+        /// 每次地面冲击留下痕迹时，携带中心与半径触发。
         /// </summary>
         /// <remarks>
-        /// Presentation listens - stone breaks where a slam lands. Nothing on the boss's side may, because
-        /// this fires on the frame of the impact with no perception delay.
+        /// 表现层监听，在砸击落点破坏石材。首领侧任何系统都不能监听，因为该事件在冲击当帧触发，
+        /// 没有感知延迟。
         /// </remarks>
         public event System.Action<Vector3, float> Spawned;
 
@@ -38,17 +37,17 @@ namespace AdaptiveBossArena.Combat
         private HazardZone[] _zones;
         private int _next;
 
-        /// <summary>The material the hazard discs are drawn with.</summary>
+        /// <summary>绘制危险圆盘的材质。</summary>
         public Material DiscMaterial => _discMaterial;
 
-        /// <summary>Assigns the disc material. Used by the scene generator.</summary>
-        /// <param name="material">The generated hazard material.</param>
+        /// <summary>分配圆盘材质，供场景生成器使用。</summary>
+        /// <param name="material">生成的危险区域材质。</param>
         public void SetMaterial(Material material) => _discMaterial = material;
 
         private void Awake()
         {
-            // See ImpactBurstPool.Construct: a shader found by name at runtime is one a build may
-            // strip, so the generated asset is used and runtime creation is only a reported fallback.
+            // 参见 ImpactBurstPool.Construct：运行时按名称查找的着色器可能被构建剥离，
+            // 因此优先使用生成资源，运行时创建只作为明确报告的回退。
             Material material = _discMaterial;
 
             if (material == null)
@@ -75,8 +74,7 @@ namespace AdaptiveBossArena.Combat
         /// <inheritdoc />
         public void Spawn(Vector3 center, float radius, float damagePerTick, float durationSeconds)
         {
-            // Announced before the pool check: a ground impact still breaks stone in a scene built
-            // without hazard discs.
+            // 在对象池检查前宣告事件：没有危险圆盘的场景中，地面冲击仍应破坏石材。
             Spawned?.Invoke(center, radius);
 
             if (_zones == null || _zones.Length == 0)
@@ -88,7 +86,7 @@ namespace AdaptiveBossArena.Combat
             _next = (_next + 1) % _zones.Length;
         }
 
-        /// <summary>Builds the one transparent material every disc shares.</summary>
+        /// <summary>构建所有圆盘共享的透明材质。</summary>
         private static Material CreateDiscMaterial()
         {
             Shader shader = Shader.Find(ShaderName) ?? Shader.Find(FallbackShaderName);
@@ -99,8 +97,8 @@ namespace AdaptiveBossArena.Combat
                 hideFlags = HideFlags.HideAndDontSave
             };
 
-            // Alpha-blended rather than additive, so a scar reads as a stain darkening the floor
-            // rather than as light. Property names set defensively: a shader lacking one ignores it.
+            // 采用透明混合而非叠加，使痕迹像让地面变暗的污渍，而非光源。防御性设置属性；
+            // 缺少属性的着色器会忽略它。
             material.SetFloat("_Surface", 1f);
             material.SetFloat("_Blend", 0f);
             material.SetFloat("_ZWrite", 0f);

@@ -9,41 +9,39 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Builds the Animator controller the rigged characters play through.
+    /// 构建蒙皮角色播放动画所需的 Animator Controller。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Rebuilt from code on every run rather than loaded if it exists, because it is structure, not
-    /// tuning: nothing in it is meant to be adjusted by hand, and a stale controller missing a state the
-    /// code crossfades to would fail silently - the character would simply keep its last pose.
+    /// 每次都从代码重建，而不是在已存在时直接加载，因为它属于结构而非调参数据：其内容不应手动调整。
+    /// 若旧控制器缺少代码要交叉淡入的状态，角色会悄然停留在最后的姿势。
     /// </para>
     /// <para>
-    /// It has no transitions at all. The bridge decides which state a character should be in from the
-    /// same observable state everything else reads, and crossfades to it. Encoding those decisions a
-    /// second time as Animator transitions would give two sources of truth for what a character is doing.
-    /// Attack states play by an <c>AttackTime</c> parameter rather than by the clock, so the attack's own
-    /// timeline - and its hit-stop - drives the pose.
+    /// 其中没有任何状态转换。桥接组件依据其他系统读取的同一可观察状态决定角色应处于哪个动画状态，
+    /// 并交叉淡入。再用 Animator转换重复表达这些决定，就会产生两个角色行为的事实来源。
+    /// 攻击状态由以下参数驱动： <c>AttackTime</c> 而不是按时钟播放，
+    /// 因此攻击自身的时间轴及其 hit-stop 决定姿势。
     /// </para>
     /// </remarks>
     public static class AnimatorControllerBuilder
     {
-        /// <summary>Folder the generated controller lives in.</summary>
+        /// <summary>生成的控制器所在文件夹。</summary>
         public const string ControllerFolder = EditorMenus.GeneratedAssetFolder + "/Animation";
 
-        /// <summary>Whether a table's model is in the project.</summary>
-        /// <param name="table">The fighter's table.</param>
-        /// <returns>True when its model can be loaded.</returns>
+        /// <summary>判断表格指定的模型是否存在于项目中。</summary>
+        /// <param name="table">战斗角色的动画表。</param>
+        /// <returns>模型可加载时返回 true。</returns>
         public static bool IsAvailable(CharacterClipTable table) => LoadRigModel(table) != null;
 
-        /// <summary>Loads the model a fighter is built from.</summary>
-        /// <param name="table">The fighter's table.</param>
-        /// <returns>The imported model, or null when its art is absent.</returns>
+        /// <summary>加载用于构建战斗角色的模型。</summary>
+        /// <param name="table">战斗角色的动画表。</param>
+        /// <returns>导入的模型；美术资源缺失时返回 null。</returns>
         public static GameObject LoadRigModel(CharacterClipTable table) =>
             AssetDatabase.LoadAssetAtPath<GameObject>(table.RigModel);
 
-        /// <summary>Rebuilds one fighter's controller from its table.</summary>
-        /// <param name="table">The fighter's table.</param>
-        /// <returns>The controller, or null when the table's clips are not in the project.</returns>
+        /// <summary>根据表格重建一个战斗角色的控制器。</summary>
+        /// <param name="table">战斗角色的动画表。</param>
+        /// <returns>生成的控制器；项目中没有表格指定的动画片段时返回 null。</returns>
         public static AnimatorController Build(CharacterClipTable table)
         {
             Dictionary<string, AnimationClip> clips = LoadClips(table.ClipSources);
@@ -74,7 +72,7 @@ namespace AdaptiveBossArena.Editor.Art
 
             foreach (KeyValuePair<string, string> entry in table.States)
             {
-                // The flinch lives on its own layer, below.
+                // 受击动作放在下方独立的动画层。
                 if (entry.Key == CharacterAnimatorParameters.HitState)
                 {
                     continue;
@@ -97,7 +95,7 @@ namespace AdaptiveBossArena.Editor.Art
                     state.timeParameterActive = true;
                     state.timeParameter = CharacterAnimatorParameters.AttackTime;
 
-                    // Its twin, for a swing that follows another on the same clip.
+                    // 同一动画片段连续攻击时使用的配对状态。
                     AnimatorState twin = machine.AddState(entry.Key + CharacterAnimatorParameters.AlternateSuffix);
                     twin.motion = state.motion;
                     twin.timeParameterActive = true;
@@ -114,11 +112,11 @@ namespace AdaptiveBossArena.Editor.Art
         }
 
         /// <summary>
-        /// Adds the layer a landed blow plays on: the fighter's own impact clip, masked to the upper body.
+        /// 添加命中时播放的动画层：使用该角色的受击片段，并限定在上半身。
         /// </summary>
         /// <remarks>
-        /// Weight zero at rest; the bridge raises it for the length of the flinch. Override blending with an upper-
-        /// body mask means the torso and arms take the blow while the legs carry on with the step or stance below.
+        /// 静止时权重为零；桥接组件在受击动作期间提高权重。使用上半身遮罩进行 Override 混合，
+        /// 躯干和手臂表现受击，腿部仍继续下层的步伐或站姿。
         /// </remarks>
         private static void AddHitLayer(AnimatorController controller, Dictionary<string, AnimationClip> clips, CharacterClipTable table)
         {
@@ -145,7 +143,7 @@ namespace AdaptiveBossArena.Editor.Art
             });
         }
 
-        /// <summary>Loads or creates the mask covering the spine, head and arms, but not the legs or root.</summary>
+        /// <summary>加载或创建覆盖脊柱、头部和手臂，但不覆盖腿部或根节点的遮罩。</summary>
         private static AvatarMask UpperBodyMask()
         {
             string path = ControllerFolder + "/UpperBody.mask";
@@ -171,13 +169,12 @@ namespace AdaptiveBossArena.Editor.Art
         }
 
         /// <summary>
-        /// Loads the existing controller emptied of its contents, or creates it.
+        /// 清空已有控制器后加载它；不存在时创建一个。
         /// </summary>
         /// <remarks>
-        /// Emptied in place rather than deleted and recreated: recreating an asset gives it a new GUID,
-        /// and every prefab and config pointing at the controller would then point at nothing - the
-        /// failure that once left the boss unable to attack. Its contents are structure and are rebuilt
-        /// in full each run; only its identity is kept.
+        /// 原地清空，而不是删除后重建：重建资产会生成新 GUID，
+        /// 所有指向此控制器的预制体和配置都会失去引用；这曾导致首领无法攻击。其内容属于结构，
+        /// 每次都完整重建，仅保留资产身份。
         /// </remarks>
         private static AnimatorController LoadEmptiedOrCreate(string path)
         {
@@ -190,7 +187,7 @@ namespace AdaptiveBossArena.Editor.Art
 
             controller.parameters = new AnimatorControllerParameter[0];
 
-            // Every layer above the base is rebuilt too; keeping them would stack a new hit layer on each run.
+            // 基础层之上的每一层也重建；保留它们会让每次运行都叠加新的受击层。
             while (controller.layers.Length > 1)
             {
                 AnimatorStateMachine extra = controller.layers[controller.layers.Length - 1].stateMachine;
@@ -220,7 +217,7 @@ namespace AdaptiveBossArena.Editor.Art
             return controller;
         }
 
-        /// <summary>Every clip in the sources, by name; where two share a name, the earlier source wins.</summary>
+        /// <summary>按名称收集所有来源中的片段；出现同名片段时保留较早来源。</summary>
         private static Dictionary<string, AnimationClip> LoadClips(IEnumerable<string> sources)
         {
             var clips = new Dictionary<string, AnimationClip>();
@@ -265,12 +262,12 @@ namespace AdaptiveBossArena.Editor.Art
         }
 
         /// <summary>
-        /// A two-dimensional blend of idle, walks, runs, back-steps and strafes, each placed where it travels.
+        /// 二维混合待机、步行、跑步、后退和侧移，每个片段按实际移动方向定位。
         /// </summary>
         /// <remarks>
-        /// Each clip's position is its measured travel over the fastest clip's, so the run sits at one along the
-        /// facing, a walk about a third of the way, and a strafe out to its side at the speed it actually steps.
-        /// Driven by movement relative to the facing, so sideways and backwards motion gets legs that match.
+        /// 每个片段的位置以其测得的移动速度除以最快片段的速度确定：跑步位于朝向轴上的 1，
+        /// 步行约在三分之一处，侧移则按实际步速置于对应侧。参数由相对朝向的移动驱动，
+        /// 让侧向和后退移动匹配腿部动作。
         /// </remarks>
         private static Motion BuildDirectionalLocomotion(
             AnimatorController controller, Dictionary<string, AnimationClip> clips, CharacterClipTable table)
@@ -307,7 +304,7 @@ namespace AdaptiveBossArena.Editor.Art
             return tree;
         }
 
-        /// <summary>Travel below which a clip is treated as standing, in metres per second.</summary>
+        /// <summary>低于此移动速度的片段按站立处理，单位为米每秒。</summary>
         private const float MinimumTravel = 0.2f;
 
         private static void AddChild(BlendTree tree, Dictionary<string, AnimationClip> clips, string clip, float threshold)

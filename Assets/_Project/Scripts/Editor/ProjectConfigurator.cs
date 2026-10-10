@@ -6,32 +6,30 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Applies the project's layers, tags, collision matrix and physics timing.
+    /// 应用项目层、标签、碰撞矩阵和物理时间设置。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// These settings live in binary-ish YAML under <c>ProjectSettings</c> that is impractical to
-    /// author by hand and unpleasant to review in a diff. Expressing them as code makes the intent
-    /// legible, makes the setup reproducible on a fresh clone, and lets the collision matrix be
-    /// derived from <see cref="LayerNames"/> rather than duplicated in an inspector grid.
+    /// 这些设置保存为接近二进制结构的 YAML，位于 <c>ProjectSettings</c> ，难以手写且差异难审查。
+    /// 代码表达使意图清楚，新克隆可复现设置，也让碰撞矩阵从以下定义推导： <see cref="LayerNames"/> ，
+    /// 而非在 Inspector 网格中重复维护。
     /// </para>
     /// <para>
-    /// Safe to run repeatedly. Existing layers and tags are detected and reused rather than
-    /// duplicated.
+    /// 可安全重复运行。检测并复用已有层与标签，不重复添加。
     /// </para>
     /// </remarks>
     public static class ProjectConfigurator
     {
-        /// <summary>First layer index Unity leaves free for projects to use.</summary>
+        /// <summary>Unity 为项目开放的首个层索引。</summary>
         private const int FirstUserLayerIndex = 8;
 
-        /// <summary>Total layer slots Unity provides.</summary>
+        /// <summary>Unity 提供的总层槽数。</summary>
         private const int TotalLayerCount = 32;
 
         private const string TagManagerAssetPath = "ProjectSettings/TagManager.asset";
         private const string TimeManagerAssetPath = "ProjectSettings/TimeManager.asset";
 
-        /// <summary>Creates layers and tags, configures collisions, and sets the physics rate.</summary>
+        /// <summary>创建层和标签，配置碰撞，设置物理频率。</summary>
         [MenuItem(EditorMenus.Setup + "1. Configure Project", priority = EditorMenus.SetupPriorityConfigureProject)]
         public static void ConfigureProject()
         {
@@ -41,7 +39,7 @@ namespace AdaptiveBossArena.Editor
             ConfigureInputHandling();
             ConfigureColorSpace();
 
-            // Layer indices are cached at runtime, and they have just moved.
+            // 运行时会缓存层索引，而它们刚发生变化。
             Layers.InvalidateCache();
 
             ConfigureCollisionMatrix();
@@ -52,26 +50,20 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Puts the project in linear colour space.
+        /// 将项目设为线性颜色空间。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// A project made from Unity's URP template is linear from the first day. This one generates
-        /// its own settings and nothing ever set it, so it had been rendering in gamma throughout —
-        /// which is the single largest reason the game looked cheap, and it is invisible as a bug
-        /// because nothing errors and everything still draws.
+        /// Unity URP 模板项目从开始就是线性。本项目自行生成配置却未设置，始终在 Gamma渲染；
+        /// 这是游戏显得粗糙的最大原因，但没有报错、仍可绘制，因此难以识别。
         /// </para>
         /// <para>
-        /// In gamma, light accumulates and falls off with the wrong curve: the terminator between lit
-        /// and unlit is too abrupt and too saturated, physically-based metal and smoothness come out
-        /// chalky, the ACES tonemapper is handed values it was never designed to receive, and
-        /// emission above one blooms at a threshold other than the intended one. Every one of those
-        /// reads to a player as "this looks like a prototype" without suggesting a cause.
+        /// Gamma 中光线累积与衰减曲线错误：明暗分界过急、过饱和，物理金属和平滑度发白，
+        /// ACES 接收不适合的值，强度超过一的自发光在非预期阈值泛光。玩家只会觉得像原型，却不知道原因。
         /// </para>
         /// <para>
-        /// Switching also makes the scene noticeably darker, because colours that were being
-        /// double-brightened no longer are. The palette constants in the generators were re-balanced
-        /// against linear afterwards; anything tuned by eye against the old space would need the same.
+        /// 切换也会明显变暗，因为颜色不再被重复提亮。生成器配色常量随后按线性重新平衡，
+        /// 所有针对旧空间目测调整的内容都需要同样处理。
         /// </para>
         /// </remarks>
         private static void ConfigureColorSpace()
@@ -88,7 +80,7 @@ namespace AdaptiveBossArena.Editor
                 "and textures, which takes a moment.");
         }
 
-        /// <summary>Ensures every layer named in <see cref="LayerNames"/> exists.</summary>
+        /// <summary>确保以下定义中的每个层都 <see cref="LayerNames"/> 存在。</summary>
         private static void ConfigureLayers()
         {
             SerializedObject tagManager = LoadProjectSettingsAsset(TagManagerAssetPath);
@@ -112,7 +104,7 @@ namespace AdaptiveBossArena.Editor
             tagManager.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        /// <summary>Tests whether a layer name is already present in any slot.</summary>
+        /// <summary>检查任一槽中是否已有该层名。</summary>
         private static bool LayerExists(SerializedProperty layers, string layerName)
         {
             for (int i = 0; i < layers.arraySize; i++)
@@ -126,7 +118,7 @@ namespace AdaptiveBossArena.Editor
             return false;
         }
 
-        /// <summary>Writes a layer name into the first empty user slot.</summary>
+        /// <summary>将层名写入首个空用户槽。</summary>
         private static bool TryAssignToFreeSlot(SerializedProperty layers, string layerName)
         {
             for (int i = FirstUserLayerIndex; i < TotalLayerCount && i < layers.arraySize; i++)
@@ -142,7 +134,7 @@ namespace AdaptiveBossArena.Editor
             return false;
         }
 
-        /// <summary>Ensures every tag named in <see cref="TagNames"/> exists.</summary>
+        /// <summary>确保以下定义中的每个标签都存在： <see cref="TagNames"/> 存在。</summary>
         private static void ConfigureTags()
         {
             SerializedObject tagManager = LoadProjectSettingsAsset(TagManagerAssetPath);
@@ -162,7 +154,7 @@ namespace AdaptiveBossArena.Editor
             tagManager.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        /// <summary>Tests whether a tag is already defined.</summary>
+        /// <summary>检查标签是否已定义。</summary>
         private static bool TagExists(SerializedProperty tags, string tagName)
         {
             for (int i = 0; i < tags.arraySize; i++)
@@ -177,13 +169,11 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Restricts hit-detection layers so they only interact with their intended partner.
+        /// 限制命中检测层仅与预期对象交互。
         /// </summary>
         /// <remarks>
-        /// Built by denying everything first and then allowing named pairs, rather than by disabling
-        /// the pairs known to be wrong. Deny-by-default means a layer added later cannot silently
-        /// start colliding with hitboxes, which is the failure mode that produces attacks landing
-        /// through walls.
+        /// 先禁止全部，再允许命名层对，而非仅禁用已知错误组合。默认拒绝可防止新增层悄然与命中框碰撞，
+        /// 从而出现穿墙攻击。
         /// </remarks>
         private static void ConfigureCollisionMatrix()
         {
@@ -204,23 +194,20 @@ namespace AdaptiveBossArena.Editor
                 }
             }
 
-            // The only interactions hit detection is permitted to see.
+            // 命中检测唯一允许观察的交互。
             AllowCollision(Layers.PlayerHitbox, Layers.BossHurtbox);
             AllowCollision(Layers.BossHitbox, Layers.PlayerHurtbox);
             AllowCollision(Layers.Projectile, Layers.PlayerHurtbox);
             AllowCollision(Layers.Projectile, Layers.Arena);
 
-            // Bodies collide with the world. They deliberately do not collide with each other: two
-            // character controllers meeting simply stop dead, so neither fighter could ever give
-            // ground. Contact between them is resolved by BodySeparation instead, which pushes both
-            // apart by mass.
+            // 身体与世界碰撞，刻意不互相碰撞：两个 CharacterController 相遇会完全停住，无法互相逼退。
+            // BodySeparation 按质量推开双方，负责身体接触。
             AllowCollision(Layers.Player, Layers.Arena);
             AllowCollision(Layers.Boss, Layers.Arena);
             Physics.IgnoreLayerCollision(Layers.Player, Layers.Boss, true);
 
-            // Corpses and broken stone are scenery that obeys physics. Deny-by-default for the same
-            // reason as the hit volumes: a body or a chip of column that could touch a fighter or a
-            // hurtbox would start deciding the fight.
+            // 尸体和碎石是遵守物理的景物。与攻击体积一样默认拒绝交互：
+            // 若尸体或柱碎片能接触角色或受击框，就会开始决定战斗。
             foreach (int loose in new[] { Layers.Ragdoll, Layers.Debris })
             {
                 for (int other = 0; other < TotalLayerCount; other++)
@@ -236,22 +223,21 @@ namespace AdaptiveBossArena.Editor
             AllowCollision(Layers.Debris, Layers.Ragdoll);
         }
 
-        /// <summary>Re-enables collision between a specific pair of layers.</summary>
+        /// <summary>重新启用指定层对之间的碰撞。</summary>
         private static void AllowCollision(int layerA, int layerB) =>
             Physics.IgnoreLayerCollision(layerA, layerB, false);
 
         /// <summary>
-        /// Switches the project to the Input System package exclusively.
+        /// 将项目切换为仅使用 Input System 包。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Unity defaults to supporting both input backends when the package is added, which leaves a
-        /// standing deprecation warning and, worse, lets legacy <c>UnityEngine.Input</c> calls compile
-        /// and run. Those throw the moment the project is switched to the new backend, so allowing
-        /// them to work now is storing up a failure for later.
+        /// 添加包时 Unity 默认支持新旧两个输入后端，产生持续弃用警告，
+        /// 更会允许旧版 <c>UnityEngine.Input</c> 调用编译运行；切到新后端时立即抛异常。
+        /// 现在容许它们工作，就是积累未来故障。
         /// </para>
         /// <para>
-        /// Changing this requires an editor restart to take effect, which Unity handles by prompting.
+        /// 修改需重启编辑器才生效，Unity 会提示处理。
         /// </para>
         /// </remarks>
         private static void ConfigureInputHandling()
@@ -282,21 +268,20 @@ namespace AdaptiveBossArena.Editor
                 "Unity will ask to restart for this to take effect.");
         }
 
-        /// <summary>Pins the physics step to the rate the project's frame data is authored against.</summary>
+        /// <summary>将物理步长固定为项目帧数据所依据的频率。</summary>
         private static void ConfigureTimeSettings()
         {
             SerializedObject timeManager = LoadProjectSettingsAsset(TimeManagerAssetPath);
 
             SetFloatIfPresent(timeManager, "Fixed Timestep", GameplayConstants.FixedTimeStep);
 
-            // Capping the catch-up step stops a frame spike from producing a burst of physics steps,
-            // which would let attacks resolve several frames' worth of movement at once.
+            // 限制追赶步长，防止帧尖峰触发一串物理步骤，让攻击一次处理数帧移动。
             SetFloatIfPresent(timeManager, "Maximum Allowed Timestep", 0.1f);
 
             timeManager.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        /// <summary>Assigns a float project setting, warning if Unity has renamed the property.</summary>
+        /// <summary>设置浮点项目属性；Unity 重命名属性时警告。</summary>
         private static void SetFloatIfPresent(SerializedObject target, string propertyName, float value)
         {
             SerializedProperty property = target.FindProperty(propertyName);
@@ -312,15 +297,15 @@ namespace AdaptiveBossArena.Editor
             property.floatValue = value;
         }
 
-        /// <summary>Opens a project settings asset for serialized editing.</summary>
+        /// <summary>打开项目设置资产进行序列化编辑。</summary>
         private static SerializedObject LoadProjectSettingsAsset(string assetPath)
         {
             Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
             return new SerializedObject(assets[0]);
         }
 
-        /// <summary>Reports which of the project's layers and tags are currently missing.</summary>
-        /// <returns>Human-readable descriptions of every missing item.</returns>
+        /// <summary>报告项目当前缺少的层和标签。</summary>
+        /// <returns>各缺失项的人类可读说明。</returns>
         public static IReadOnlyList<string> FindMissingConfiguration()
         {
             var missing = new List<string>();

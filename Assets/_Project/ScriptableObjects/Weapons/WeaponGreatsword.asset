@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: AdaptiveBossArena.Combat::AdaptiveBossArena.Combat.WeaponDefinition
   _id: weapon.weapongreatsword
   _designerNotes: 
-  _displayName: Greatsword
+  _displayName: 巨剑
   _signatureColor: {r: 1, g: 0.75, b: 0.35, a: 0.6}
   _swingCueId: swing.greatsword
   _modelPrefab: {fileID: 2112929037221467861, guid: ba251532e4be7b149905b821912bfc04, type: 3}

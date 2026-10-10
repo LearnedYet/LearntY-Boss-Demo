@@ -4,21 +4,20 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Attaches the swing smear to a combatant's weapon.
+    /// 将挥击拖影挂到战斗角色武器上。
     /// </summary>
     /// <remarks>
-    /// Shared by both prefab builders because the player and the boss want the same effect at different
-    /// lengths and colours. Keeping it in one place means the smear is tuned once rather than drifting
-    /// between the two characters.
+    /// 双方构建器共用，玩家与首领需要同样效果但长度、颜色不同。集中维护让拖影只调一次，
+    /// 避免两角色逐渐不一致。
     /// </remarks>
     public static class WeaponTrailBuilder
     {
-        /// <summary>Adds a smear that sweeps between two distances along a mount's forward.</summary>
-        /// <param name="mount">The transform the blade runs along: a weapon socket, or the body when there is none.</param>
-        /// <param name="localPosition">Where the emitter sits relative to the mount.</param>
-        /// <param name="baseDistance">Distance along the mount's forward where the smear's inner edge runs.</param>
-        /// <param name="tipDistance">Distance along the mount's forward where its outer edge runs.</param>
-        /// <param name="colour">Colour at the head of the smear; dim, because it is added as light.</param>
+        /// <summary>沿挂点前向两个距离之间添加扫过的拖影。</summary>
+        /// <param name="mount">刀刃所沿 Transform：武器挂点，无挂点时为身体。</param>
+        /// <param name="localPosition">发射器相对挂点的位置。</param>
+        /// <param name="baseDistance">沿挂点前向的拖影内缘距离。</param>
+        /// <param name="tipDistance">沿挂点前向的外缘距离。</param>
+        /// <param name="colour">拖影头部颜色；以光叠加，因此保持较暗。</param>
         public static void Attach(Transform mount, Vector3 localPosition, float baseDistance, float tipDistance, Color colour)
         {
             var trailObject = new GameObject("WeaponTrail");

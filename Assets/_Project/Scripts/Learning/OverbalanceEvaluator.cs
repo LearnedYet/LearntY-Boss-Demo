@@ -3,34 +3,29 @@ using UnityEngine;
 namespace AdaptiveBossArena.Learning
 {
     /// <summary>
-    /// Decides whether — and how badly — the boss overbalances when a committed swing of its own
-    /// misses.
+    /// 首领自身投入的挥击落空时，决定是否失衡，以及失衡程度。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This is the mechanical half of "adapting back". The boss reads a habit and leans into pressing
-    /// it (raising the committing tuning parameters — see
-    /// <see cref="BossTuning.CommitmentIntensity"/>). When the player then changes that habit, the
-    /// boss's committed attacks start hitting empty air, and the harder it had leaned in, the more a
-    /// miss costs it: a longer stumble and a stance briefly wide open to a posture break. Out-reading
-    /// the read is what buys the opening.
+    /// 这是“反向适应”的机制部分。首领识破习惯后投入追击，提高投入相关参数，
+    /// 参见<see cref="BossTuning.CommitmentIntensity"/>。玩家改变习惯后，首领投入的攻击开始落空；
+    /// 先前投入越大，空挥代价越高：更长的踉跄，以及短暂暴露、容易崩溃的姿态。识破首领对自身习惯的判断，
+    /// 才能换来破绽。
     /// </para>
     /// <para>
-    /// It is a <see langword="readonly"/> struct of pure functions over its tuning, with no engine or
-    /// player dependencies, so the whole mechanic is exercised in edit-mode tests. It reacts only to
-    /// the boss's own whiff and its own commitment — never to anything about the player — which is why
-    /// it needs no perception delay to stay honest.
+    /// 它是由行为参数驱动纯函数的 <see langword="readonly"/> 结构体，不依赖引擎或玩家，
+    /// 因此整个机制可用编辑模式测试检验。它仅响应首领自身的空挥与投入，不响应玩家状态，
+    /// 所以无需感知延迟也能保持公平。
     /// </para>
     /// <para>
-    /// Crucially it is <em>dormant</em> until the boss has actually adapted: at zero commitment the
-    /// chance is exactly zero, so a fight in which the boss learns nothing plays exactly as before.
+    /// 关键是它在首领真正适应前保持<em>休眠</em>：零投入时概率严格为零，
+    /// 因此未学到任何习惯的战斗与原来一致。
     /// </para>
     /// </remarks>
     public readonly struct OverbalanceEvaluator
     {
         /// <summary>
-        /// Smallest share of the full window a triggered overbalance still lasts, so a stumble that
-        /// fires at the edge of the threshold is still long enough to punish rather than a flicker.
+        /// 失衡触发后至少保留的完整窗口比例，确保刚超过阈值的踉跄也足够长，能够被惩罚，而非一闪而过。
         /// </summary>
         private const float MinRecoveryFraction = 0.4f;
 
@@ -39,16 +34,14 @@ namespace AdaptiveBossArena.Learning
         private readonly float _recoverySecondsAtFull;
         private readonly float _poiseMultiplierAtFull;
 
-        /// <summary>Creates an evaluator from its tuning.</summary>
-        /// <param name="maxChance">Chance a committed whiff overbalances at full commitment (0..1).</param>
+        /// <summary>使用行为配置创建评估器。</summary>
+        /// <param name="maxChance">完全投入时，投入攻击空挥导致失衡的概率（0..1）。</param>
         /// <param name="intensityThreshold">
-        /// Commitment below which nothing overbalances, giving a dead zone so minor adaptation does not
-        /// trigger it.
+        /// 低于此投入强度不会失衡，形成死区，避免微小适应触发失衡。
         /// </param>
-        /// <param name="recoverySecondsAtFull">Stumble length at full commitment, in seconds.</param>
+        /// <param name="recoverySecondsAtFull">完全投入时的踉跄时长，单位为秒。</param>
         /// <param name="poiseMultiplierAtFull">
-        /// How much incoming poise damage is multiplied while fully overbalanced. At least one, since a
-        /// stumble may only ever make the boss more vulnerable, never less.
+        /// 完全失衡时承受的姿态伤害倍率。至少为一，因为踉跄只能让首领更脆弱，不能使其更坚固。
         /// </param>
         public OverbalanceEvaluator(
             float maxChance,
@@ -63,10 +56,10 @@ namespace AdaptiveBossArena.Learning
         }
 
         /// <summary>
-        /// How far past the dead zone the boss's commitment sits, on a 0..1 scale.
+        /// 首领投入强度超过死区的程度，范围为 0..1。
         /// </summary>
-        /// <param name="commitmentIntensity">The boss's current commitment (0..1).</param>
-        /// <returns>Zero at or below the threshold, one at full commitment.</returns>
+        /// <param name="commitmentIntensity">首领当前投入强度（0..1）。</param>
+        /// <returns>达到或低于阈值时为零，完全投入时为一。</returns>
         public float Severity(float commitmentIntensity)
         {
             if (_intensityThreshold >= 1f)
@@ -77,33 +70,32 @@ namespace AdaptiveBossArena.Learning
             return Mathf.Clamp01((commitmentIntensity - _intensityThreshold) / (1f - _intensityThreshold));
         }
 
-        /// <summary>The probability a committed whiff overbalances at this commitment.</summary>
-        /// <param name="commitmentIntensity">The boss's current commitment (0..1).</param>
-        /// <returns>Zero at or below the threshold, rising to the maximum chance at full commitment.</returns>
+        /// <summary>当前投入程度下，投入攻击空挥引发失衡的概率。</summary>
+        /// <param name="commitmentIntensity">首领当前投入强度（0..1）。</param>
+        /// <returns>达到或低于阈值时为零，完全投入时升至最大概率。</returns>
         public float Chance(float commitmentIntensity) => _maxChance * Severity(commitmentIntensity);
 
-        /// <summary>Decides whether a whiff overbalances the boss.</summary>
+        /// <summary>判断空挥是否使首领失衡。</summary>
         /// <param name="wasCommittedAttack">
-        /// Whether the swing that missed was a committed one — a lunge, a combo follow-up or a phase
-        /// signature. A light poke leaves no opening worth punishing and never overbalances.
+        /// 落空的挥击是否属于投入攻击：突进、连段追击或阶段标志性招式。轻微试探不产生值得惩罚的破绽，
+        /// 绝不会失衡。
         /// </param>
-        /// <param name="commitmentIntensity">The boss's current commitment (0..1).</param>
-        /// <param name="roll">A uniform sample in [0, 1), drawn from the injected random provider.</param>
-        /// <returns>True when the boss should stumble into an open stance.</returns>
+        /// <param name="commitmentIntensity">首领当前投入强度（0..1）。</param>
+        /// <param name="roll">从注入的随机源取得的 [0, 1) 均匀样本。</param>
+        /// <returns>首领应踉跄并暴露破绽时为 true。</returns>
         public bool ShouldOverbalance(bool wasCommittedAttack, float commitmentIntensity, float roll) =>
             wasCommittedAttack && roll < Chance(commitmentIntensity);
 
-        /// <summary>How long the resulting stumble lasts.</summary>
-        /// <param name="commitmentIntensity">The boss's current commitment (0..1).</param>
-        /// <returns>A window that grows with commitment, never shorter than a punishable minimum.</returns>
+        /// <summary>产生的踉跄持续时间。</summary>
+        /// <param name="commitmentIntensity">首领当前投入强度（0..1）。</param>
+        /// <returns>随投入增大的窗口，不短于可被惩罚的最小值。</returns>
         public float ExtraRecoverySeconds(float commitmentIntensity) =>
             _recoverySecondsAtFull * Mathf.Lerp(MinRecoveryFraction, 1f, Severity(commitmentIntensity));
 
-        /// <summary>How much incoming poise damage is amplified during the stumble.</summary>
-        /// <param name="commitmentIntensity">The boss's current commitment (0..1).</param>
+        /// <summary>踉跄期间承受的姿态伤害增幅。</summary>
+        /// <param name="commitmentIntensity">首领当前投入强度（0..1）。</param>
         /// <returns>
-        /// One when nothing is at stake, rising toward the full multiplier as commitment grows, so a
-        /// hit landed in the window rushes the posture break that opens the execution.
+        /// 没有投入时为一，投入增加时趋近完整倍率，使窗口内命中的攻击加速姿态崩溃，从而开启处决机会。
         /// </returns>
         public float PoiseVulnerabilityMultiplier(float commitmentIntensity) =>
             Mathf.Lerp(1f, _poiseMultiplierAtFull, Severity(commitmentIntensity));

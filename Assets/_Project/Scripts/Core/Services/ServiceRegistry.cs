@@ -4,18 +4,16 @@ using System.Collections.Generic;
 namespace AdaptiveBossArena.Core.Services
 {
     /// <summary>
-    /// Minimal interface-keyed container that the composition root fills at scene start.
+    /// 按接口作为键的最小容器，由组合根在场景启动时填充。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Deliberately not a full dependency-injection framework. The project has perhaps a dozen
-    /// long-lived services, and a container that resolves constructors and manages lifetimes would
-    /// add far more machinery than that justifies.
+    /// 刻意不使用完整依赖注入框架。项目只有约十余个长期服务，
+    /// 自动解析构造函数和管理生命周期的容器会引入不必要的复杂性。
     /// </para>
     /// <para>
-    /// Prefer constructor or inspector injection wherever a dependency can be handed over directly.
-    /// Reach for the registry only where Unity's object model gets in the way, most commonly a
-    /// component that Unity instantiates and therefore cannot receive constructor arguments.
+    /// 依赖可直接传递时优先使用构造函数或检查器注入。只有 Unity对象模型阻碍直接传递时才使用注册表，
+    /// 常见情况是Unity 实例化的组件无法接收构造函数参数。
     /// </para>
     /// </remarks>
     public sealed class ServiceRegistry
@@ -23,29 +21,28 @@ namespace AdaptiveBossArena.Core.Services
         private readonly Dictionary<Type, object> _services = new Dictionary<Type, object>();
 
         /// <summary>
-        /// The registry the running scene is using.
+        /// 运行场景正在使用的注册表。
         /// </summary>
         /// <remarks>
-        /// The single global access point in the project, and intentionally the only one. Anything
-        /// reaching for it should be doing so because Unity instantiated it and no seam existed to
-        /// pass dependencies through.
+        /// 项目唯一的全局访问点，并刻意保持唯一。访问它的对象应仅因为由 Unity实例化，
+        /// 且没有其他途径传入依赖。
         /// </remarks>
         public static ServiceRegistry Current { get; private set; } = new ServiceRegistry();
 
-        /// <summary>Installs a registry as the current one, replacing any predecessor.</summary>
-        /// <param name="registry">The registry to install.</param>
-        /// <exception cref="ArgumentNullException">Thrown when no registry is supplied.</exception>
+        /// <summary>设置当前注册表，替换此前的注册表。</summary>
+        /// <param name="registry">要安装的注册表。</param>
+        /// <exception cref="ArgumentNullException">未提供注册表时抛出。</exception>
         public static void SetCurrent(ServiceRegistry registry) =>
             Current = registry ?? throw new ArgumentNullException(nameof(registry));
 
-        /// <summary>Number of services currently registered.</summary>
+        /// <summary>当前注册的服务数。</summary>
         public int Count => _services.Count;
 
-        /// <summary>Registers an implementation against a service interface.</summary>
-        /// <typeparam name="TService">The interface consumers will ask for.</typeparam>
-        /// <param name="implementation">The instance to hand out.</param>
-        /// <exception cref="ArgumentNullException">Thrown when no implementation is supplied.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the service is already registered.</exception>
+        /// <summary>按服务接口注册实现。</summary>
+        /// <typeparam name="TService">使用者查询服务时采用的接口。</typeparam>
+        /// <param name="implementation">要提供的实例。</param>
+        /// <exception cref="ArgumentNullException">未提供实现时抛出。</exception>
+        /// <exception cref="InvalidOperationException">服务已经注册时抛出。</exception>
         public void Register<TService>(TService implementation) where TService : class
         {
             if (implementation == null)
@@ -56,8 +53,7 @@ namespace AdaptiveBossArena.Core.Services
             Type key = typeof(TService);
             if (_services.ContainsKey(key))
             {
-                // Silently replacing would let a duplicated manager in a scene mask itself and
-                // produce a bug that only appears after a scene reload.
+                // 静默替换会掩盖场景中重复管理器的问题，产生只有场景重载后才出现的错误。
                 throw new InvalidOperationException(
                     $"Service '{key.Name}' is already registered. Unregister it first if replacement is intended.");
             }
@@ -65,9 +61,9 @@ namespace AdaptiveBossArena.Core.Services
             _services.Add(key, implementation);
         }
 
-        /// <summary>Registers a service, replacing any existing registration.</summary>
-        /// <typeparam name="TService">The interface consumers will ask for.</typeparam>
-        /// <param name="implementation">The instance to hand out.</param>
+        /// <summary>注册服务，替换已有注册。</summary>
+        /// <typeparam name="TService">使用者查询服务时采用的接口。</typeparam>
+        /// <param name="implementation">要提供的实例。</param>
         public void RegisterOrReplace<TService>(TService implementation) where TService : class
         {
             if (implementation == null)
@@ -78,10 +74,10 @@ namespace AdaptiveBossArena.Core.Services
             _services[typeof(TService)] = implementation;
         }
 
-        /// <summary>Resolves a registered service.</summary>
-        /// <typeparam name="TService">The interface to resolve.</typeparam>
-        /// <returns>The registered implementation.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when the service was never registered.</exception>
+        /// <summary>解析已注册的服务。</summary>
+        /// <typeparam name="TService">要解析的接口。</typeparam>
+        /// <returns>已注册的实现。</returns>
+        /// <exception cref="InvalidOperationException">服务从未注册时抛出。</exception>
         public TService Get<TService>() where TService : class
         {
             if (_services.TryGetValue(typeof(TService), out object service))
@@ -94,10 +90,10 @@ namespace AdaptiveBossArena.Core.Services
                 "Check that the composition root runs before the consumer's initialisation.");
         }
 
-        /// <summary>Attempts to resolve a service without throwing when it is absent.</summary>
-        /// <typeparam name="TService">The interface to resolve.</typeparam>
-        /// <param name="service">Receives the implementation, or null.</param>
-        /// <returns>True when the service was registered.</returns>
+        /// <summary>尝试解析服务，服务不存在时不抛出异常。</summary>
+        /// <typeparam name="TService">要解析的接口。</typeparam>
+        /// <param name="service">接收实现，或为 null。</param>
+        /// <returns>服务已注册时为 true。</returns>
         public bool TryGet<TService>(out TService service) where TService : class
         {
             if (_services.TryGetValue(typeof(TService), out object found))
@@ -110,12 +106,12 @@ namespace AdaptiveBossArena.Core.Services
             return false;
         }
 
-        /// <summary>Removes a registration.</summary>
-        /// <typeparam name="TService">The interface to unregister.</typeparam>
-        /// <returns>True when a registration was removed.</returns>
+        /// <summary>移除注册。</summary>
+        /// <typeparam name="TService">要注销的接口。</typeparam>
+        /// <returns>成功移除注册时为 true。</returns>
         public bool Unregister<TService>() where TService : class => _services.Remove(typeof(TService));
 
-        /// <summary>Removes every registration.</summary>
+        /// <summary>移除全部注册。</summary>
         public void Clear() => _services.Clear();
     }
 }

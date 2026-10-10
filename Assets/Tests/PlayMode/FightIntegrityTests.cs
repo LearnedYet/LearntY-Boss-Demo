@@ -17,28 +17,26 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Asserts that the assembled fight actually functions, in the real scene.
+    /// 断言组合完成的战斗在真实场景中确实可运行。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// These exist because of a failure the entire edit-mode suite was blind to: a play-tester
-    /// reported that no bar moved for a whole fight, nobody died and the outcome screen never
-    /// appeared — with a clean console and 237 green tests. Every unit in isolation was correct.
+    /// 这些测试源于整个编辑模式套件都看不见的故障：试玩者报告整场战斗没有任何资源条变化，无人死亡，
+    /// 结算界面也从未出现；控制台无报错，237 个测试全绿。每个模块隔离时都正确。
     /// </para>
     /// <para>
-    /// The gap is that edit-mode tests never load a scene, never instantiate the prefabs, never run
-    /// physics and never touch the interface. Everything between "the pool arithmetic is right" and
-    /// "the player can see their health drop" was untested. That is precisely where the fault lives,
-    /// so this walks the whole path in the shipped scene.
+    /// 缺口在于编辑模式测试从不加载场景、实例化预制体、运行物理或接触界面。
+    /// 从“资源池算术正确”到“玩家能看到生命下降”之间完全未经测试。故障恰在这里，
+    /// 因此此处在发布场景中遍历完整路径。
     /// </para>
     /// </remarks>
     [TestFixture]
     public sealed class FightIntegrityTests
     {
-        /// <summary>Frames to let <c>Awake</c>/<c>Start</c> and the first physics step settle.</summary>
+        /// <summary>等待若干帧，使 <c>Awake</c>/<c>Start</c> 及首次物理步进稳定。</summary>
         private const int WarmUpFrames = 10;
 
-        /// <summary>A hit big enough to be unmistakable, but not lethal.</summary>
+        /// <summary>足够明显但不致命的攻击。</summary>
         private const float TestDamage = 25f;
 
         private PlayerController _player;
@@ -58,7 +56,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             _boss = Object.FindAnyObjectByType<BossController>();
         }
 
-        /// <summary>Waits until the intro releases and the combat clock is actually running.</summary>
+        /// <summary>等待开场动画放行，且战斗时钟确实运行。</summary>
         private static IEnumerator WaitForTheFightToStart()
         {
             const float GiveUpAfterSeconds = 15f;
@@ -81,8 +79,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
             Assert.IsNotNull(_player, "No player in the arena scene.");
             Assert.IsNotNull(_boss, "No boss in the arena scene.");
 
-            // A controller that bailed during setup still answers TakeDamage — it just ignores every
-            // hit — so an uninitialised combatant is indistinguishable from an untouchable one.
+            // 设置时提前退出的控制器仍会响应 TakeDamage，只是忽略全部攻击，
+            // 因此未初始化的战斗者与不可伤害的战斗者无法区分。
             Assert.IsTrue(_player.IsInitialised, "The player failed to initialise, silently.");
             Assert.IsTrue(_boss.IsInitialised, "The boss failed to initialise, silently.");
 
@@ -97,14 +95,12 @@ namespace AdaptiveBossArena.Tests.PlayMode
         {
             Assert.IsNotNull(_player, "No player in the arena scene.");
 
-            // Found rather than injected: they are loaded precisely because the player config
-            // references them, so this also fails if the weapon list itself came up empty.
+            // 通过查找而非注入获得：武器确实因玩家配置引用而加载，因此武器列表为空时此测试也会失败。
             WeaponDefinition[] weapons = Resources.FindObjectsOfTypeAll<WeaponDefinition>();
             Assert.AreEqual(3, weapons.Length, "The three generated weapons are not all loaded.");
 
-            // Equipping is private, and deliberately so - nothing outside the controller should be
-            // choosing the player's weapon. Reflection is the honest way to drive it from a test
-            // rather than widening the API for one assertion.
+            // 装备方法刻意保持私有，控制器外部不应选择玩家武器。测试通过反射驱动才符合设计，
+            // 而非为一个断言扩大 API。
             MethodInfo equip = typeof(PlayerController).GetMethod(
                 "EquipWeapon", BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -114,8 +110,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
             {
                 equip.Invoke(_player, new object[] { weapon });
 
-                // The regression: this property used to read the character config, so all three
-                // weapons deflected for the same posture and the authored values never applied.
+                // 回归案例：该属性曾读取角色配置，因此三把武器弹反都造成相同架势伤害，
+                // 编写的数值从未应用。
                 Assert.AreEqual(
                     weapon.DeflectPostureDamage, _player.DeflectPostureDamage, 0.001f,
                     $"With '{weapon.DisplayName}' drawn, a deflect pays out the wrong posture.");
@@ -124,7 +120,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             yield return null;
         }
 
-        /// <summary>Reads a combatant's private context, which nothing outside it needs publicly.</summary>
+        /// <summary>读取战斗者私有上下文，外部无需公开访问。</summary>
         private static T ContextOf<T>(object controller)
         {
             FieldInfo field = controller.GetType().GetField(
@@ -135,7 +131,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             return (T)field.GetValue(controller);
         }
 
-        /// <summary>A blow with a set knockback and no other side effects worth measuring.</summary>
+        /// <summary>具有固定击退且无其它值得测量副作用的攻击。</summary>
         private static DamageInfo Shove(CombatantTeam source, float knockback) => new DamageInfo
         {
             Amount = 1f,
@@ -150,9 +146,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator KnockbackOnThePlayerIsAShoveTheirOwnMovementCannotErase()
         {
-            // Read during the frozen intro, when no motor ticks, so the value is exactly what the hit
-            // imposed. Knockback used to overwrite the player's velocity, and the next frame of their
-            // own movement input overwrote it back.
+            // 在冻结的开场期间读取，此时移动器不更新，因此数值正是攻击施加的结果。
+            // 击退原先覆盖玩家速度，下一帧自身移动输入又将其覆盖回去。
             Assert.IsNotNull(_player);
             var motor = ContextOf<PlayerContext>(_player).Motor;
 
@@ -191,9 +186,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator AKnightPlacedInsideTheBossIsPushedOutOfIt()
         {
-            // The controllers no longer block each other, so the only thing keeping the bodies apart
-            // is the director's separation. If that wiring broke, fighters would walk through each
-            // other with nothing in any other test to say so.
+            // 控制器已不再互相阻挡，因此唯一维持身体分离的是导演的分离处理。若此连接损坏，
+            // 双方就会互相穿过，其它测试完全无法指出问题。
             Assert.IsNotNull(_player);
             Assert.IsNotNull(_boss);
 
@@ -223,10 +217,9 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator SparksAndHazardsDrawWithMaterialsTheBuildCannotStrip()
         {
-            // Both used to build their materials at runtime from a shader looked up by name. A build
-            // only includes shaders something references, so nothing guaranteed those shaders shipped:
-            // a WebGL build could have dropped them and every spark and scar would silently vanish.
-            // The materials are now generated assets the scene references.
+            // 两者原先运行时按名称查找着色器并创建材质。构建只包含被资源引用的着色器，
+            // 因此无法保证它们随包发布：WebGL构建可能将其剔除，所有火花和裂痕便无声消失。
+            // 材质现在是场景引用的生成资源。
             var effects = Object.FindAnyObjectByType<Game.CombatEffectsDirector>();
             var hazards = Object.FindAnyObjectByType<HazardField>();
 
@@ -251,9 +244,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
 
             Hurtbox[] hurtboxes = _boss.GetComponentsInChildren<Hurtbox>();
 
-            // The weak point lives on the prefab, and the scene is built from the prefab. Every part
-            // of that chain has broken silently at least once in this project, and a weak point that
-            // does not exist looks exactly like one the player keeps failing to hit.
+            // 弱点位于预制体，而场景由预制体构建。这条链路的每个部分在本项目中都至少无声失效过一次；
+            // 不存在的弱点，看起来与玩家总打不中的弱点完全一样。
             Assert.AreEqual(
                 1,
                 System.Array.FindAll(hurtboxes, h => h.DamageMultiplier > 1f).Length,
@@ -308,8 +300,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator ThePlayerHealthBarFollowsTheirHealth()
         {
-            // The reported symptom, end to end: pool → event channel → bar. This is the assertion the
-            // edit-mode suite could never make, because it never builds the interface.
+            // 报告症状的完整链路：资源池 → 事件通道 → 资源条。编辑模式套件从不构建界面，
+            // 因此永远无法进行此断言。
             ResourceBar bar = FindBar("PlayerVitals", "Health");
             Assert.IsNotNull(bar, "No player health bar in the heads-up display.");
 
@@ -344,9 +336,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator TheBossAttacksAPlayerWhoJustStandsThere()
         {
-            // No input at all. If the boss cannot produce a single attack against a stationary target
-            // in this long, the fight is not a fight — and the tester's static bars are explained
-            // without any damage bug existing at all.
+            // 完全没有输入。若首领在这么长时间内都无法向静止目标发起一次攻击，就称不上战斗；
+            // 无需任何伤害故障，也能解释试玩者看到资源条静止。
             Assert.IsTrue(
                 ServiceRegistry.Current.TryGet(out ICombatEventBus events),
                 "No combat event bus, so nothing can be learned from or reacted to.");
@@ -380,11 +371,9 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator ABrokenGuardStillAnnouncesItself()
         {
-            // A regression this nearly shipped. The boss's stagger state used to publish PoiseBroken
-            // on every entry; once the reason travelled with the request, publishing was gated on
-            // the reason being a break - and every poise-break call site still defaulted to an
-            // ordinary hit. The result compiled, passed, and silently removed the loudest beat in
-            // the fight. Nothing had ever asserted it was published.
+            // 一次险些随版本发布的回归。首领硬直状态原先每次进入都发布 PoiseBroken；原因随请求传递后，
+            // 发布只允许原因是破防的情况，而所有架势崩溃调用点却仍默认普通受击。结果可编译、测试通过，
+            // 却无声移除了战斗最响亮的节拍。此前从未断言该事件确实发布。
             Assert.IsNotNull(_boss, "No boss in the arena scene.");
             Assert.IsTrue(ServiceRegistry.Current.TryGet(out ICombatEventBus events), "No event bus.");
 
@@ -397,17 +386,15 @@ namespace AdaptiveBossArena.Tests.PlayMode
                 }
             }
 
-            // The encounter opens with a ready-fight intro that freezes time, so the boss's state
-            // machine is not ticking yet and a stagger requested now would sit unconsumed. Waiting
-            // for the clock rather than for a fixed number of frames keeps this independent of how
-            // long the intro is tuned to run.
+            // 遭遇以冻结时间的准备战斗开场开始，因此首领状态机尚未更新，
+            // 此时请求硬直只会留在未消费状态。等待时钟而非固定帧数，使测试不依赖开场动画调节时长。
             yield return WaitForTheFightToStart();
 
             events.EventRecorded += Listen;
 
             try
             {
-                // Far more posture than the pool holds, so the break is certain rather than tuned.
+                // 远超资源池容量的架势伤害，使破防确定发生，而非依赖调节参数。
                 _boss.ApplyDeflectPosture(_boss.Poise.Maximum * 2f);
 
                 for (int i = 0; i < WarmUpFrames; i++)
@@ -426,11 +413,9 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator ABossParryCostsThePlayerPosture()
         {
-            // The whole chain in one assertion: the channel asset exists, the boss prefab and the
-            // director both point at the same one, the director is subscribed, and the player's
-            // posture pool responds. Every reference in that chain is null-conditional, so a break
-            // anywhere in it fails silently - which is exactly how this project once shipped a
-            // full suite of green tests over a game whose bars never moved.
+            // 用一个断言覆盖完整链路：通道资源存在，首领预制体与导演指向同一通道，导演已订阅，
+            // 玩家架势池作出响应。每个引用均使用空条件访问，因此任何环节断开都会无声失败；
+            // 本项目曾正因如此，在资源条从不变化的游戏上得到全绿测试套件。
             Assert.IsNotNull(_player, "No player in the arena scene.");
 
             VoidEventChannel parried = null;
@@ -462,9 +447,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator TheHealthChannelStillHasItsListener()
         {
-            // Narrows the previous two failures. The bar applies a raise immediately, so a bar that
-            // never moved either has no listener attached or is never raised at. This tells the two
-            // apart, and the channel type keeps a listener count for exactly this purpose.
+            // 进一步区分前两个故障。资源条立即应用事件，因此不变化的资源条要么没有监听者，
+            // 要么从未收到事件。此测试区分两者，而通道类型正为此保留监听者数量。
             FloatEventChannel[] loaded = Resources.FindObjectsOfTypeAll<FloatEventChannel>();
             var names = new System.Text.StringBuilder();
 
@@ -490,7 +474,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
                 channel.ListenerCount, 0,
                 "Nothing is listening to the player health channel, so no bar can ever move.");
 
-            // And prove the listener is the bar: raise the channel by hand.
+            // 再手动触发通道，证明监听者确实是资源条。
             channel.Raise(0.5f);
             yield return null;
 
@@ -502,10 +486,9 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator TheEndScreenTextDoesNotOverlapItself()
         {
-            // The play-tester's screenshot showed the summary drawn straight through the headline.
-            // Every UiBuilder text has a centre pivot, so a rect at y spans y +/- height/2 and a
-            // top-anchored block starts at the rect's top edge — easy to get wrong by eye, and
-            // invisible to every other test.
+            // 试玩截图显示摘要直接穿过标题。每个 UiBuilder 文本均使用中心轴心，
+            // 因此位于 y 的矩形覆盖 y +/- height/2，顶部锚定的文本块从矩形上缘开始；凭肉眼容易弄错，
+            // 其它测试也无法看见。
             RectTransform headline = FindText("Headline");
             RectTransform summary = FindText("Summary");
             RectTransform dossier = FindText("Dossier");
@@ -528,9 +511,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator ThePlayerHoldsAVisibleWeapon()
         {
-            // The socket, the equip call and the model field all existed from the start with nothing
-            // to put in them, so a weapon swap changed a label and a swing colour and nothing the
-            // player could see. This asserts the hand is no longer empty.
+            // 挂点、装备调用和模型字段从一开始就存在，却没有内容可放入，
+            // 因此换武器只改变标签和挥击颜色，玩家看不到实际变化。此断言确保手中不再空无一物。
             var socket = Object.FindAnyObjectByType<Combat.Feel.WeaponSocket>();
             Assert.IsNotNull(socket, "The player has no weapon socket.");
 
@@ -544,9 +526,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator NothingDecorativeCanBeCollidedWith()
         {
-            // The bodies and the arena dressing are made of primitives, and a Unity primitive ships
-            // with a collider. Any that survived would sit inside the character controller or out on
-            // the floor changing the fight, so every one of them has to have been stripped.
+            // 身体和竞技场装饰由基本图形构成，而 Unity基本图形自带碰撞体。
+            // 任何残留碰撞体都会位于角色控制器内部或地面上改变战斗，因此必须全部移除。
             foreach (string rootName in new[] { "Dressing", "Cathedral" })
             {
                 GameObject root = GameObject.Find(rootName);
@@ -565,9 +546,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
             Transform visual = player.transform.Find("Visual");
 
             Assert.IsNotNull(visual, "The player has no visual root.");
-            // The ragdoll's bones are the one exception, and only while dormant and on their own layer:
-            // switched off, they cannot touch anything, and once woken on death that layer collides
-            // with the world and nothing a fighter is made of.
+            // 布娃娃骨骼是唯一例外，但必须休眠且位于独立层：禁用时无法接触任何物体，
+            // 死亡唤醒后该层只与世界碰撞，不与战斗者组成部分碰撞。
             foreach (Collider collider in visual.GetComponentsInChildren<Collider>(true))
             {
                 Assert.IsTrue(
@@ -581,14 +561,13 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator EveryVisibleSurfaceHasAMaterial()
         {
-            // Deleting the generated materials to re-tune them left the weapon models pointing at
-            // assets that no longer existed, and the whole suite stayed green because nothing
-            // asserted that a renderer's material actually resolves. A missing material renders as
-            // Unity's magenta error shader, which is unmissable when playing and invisible to tests.
+            // 删除生成材质以重新调节后，武器模型仍指向已不存在的资源，整个套件仍全绿，
+            // 因为没有测试断言渲染器材质引用确实有效。材质缺失会显示 Unity洋红错误着色器，
+            // 游玩时极其明显，测试却看不见。
             foreach (Renderer renderer in
                      Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
             {
-                // Trails and particles bring their own materials and are allowed to differ.
+                // 拖尾和粒子自带材质，允许与其它材质不同。
                 if (renderer is TrailRenderer || renderer is ParticleSystemRenderer)
                 {
                     continue;
@@ -612,14 +591,14 @@ namespace AdaptiveBossArena.Tests.PlayMode
         private static float BottomOf(RectTransform rect) =>
             rect.anchoredPosition.y - (rect.sizeDelta.y * 0.5f);
 
-        /// <summary>Finds a named text element anywhere in the interface, including inactive panels.</summary>
+        /// <summary>在界面任意位置查找命名文本元素，包括未激活面板。</summary>
         private static RectTransform FindText(string objectName)
         {
             foreach (UnityEngine.UI.Text text in
                      Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>())
             {
-                // Inactive because the end panel is hidden until the fight resolves; scene-only
-                // because FindObjectsOfTypeAll also returns the prefab assets behind them.
+                // 包括未激活对象，因为结算面板在战斗结束前隐藏；仅取场景对象，
+                // 因为 FindObjectsOfTypeAll也返回其对应预制体资源。
                 if (text.name == objectName && text.gameObject.scene.IsValid())
                 {
                     return text.rectTransform;
@@ -629,7 +608,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             return null;
         }
 
-        /// <summary>Finds a loaded channel asset by name.</summary>
+        /// <summary>按名称查找已加载通道资源。</summary>
         private static FloatEventChannel FindChannel(string assetName)
         {
             foreach (FloatEventChannel candidate in
@@ -644,11 +623,10 @@ namespace AdaptiveBossArena.Tests.PlayMode
             return null;
         }
 
-        /// <summary>Builds a plain, unavoidable hit from one side.</summary>
+        /// <summary>从一侧构建简单且不可避免的攻击。</summary>
         /// <remarks>
-        /// Ignores invulnerability deliberately: this is testing whether the damage pipeline works at
-        /// all, not whether the defensive guards work, and a dash i-frame that happened to be active
-        /// would otherwise make the result depend on timing.
+        /// 刻意忽略无敌：此处测试伤害管线是否可用，而非防御保护是否生效；
+        /// 否则恰好开启的闪避无敌帧会使结果依赖时机。
         /// </remarks>
         private static DamageInfo DamageFrom(CombatantTeam source) => new DamageInfo
         {
@@ -665,7 +643,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             IgnoresInvulnerability = true
         };
 
-        /// <summary>Finds a named bar inside a named heads-up display group.</summary>
+        /// <summary>在命名的 HUD 分组内查找命名资源条。</summary>
         private static ResourceBar FindBar(string groupName, string barName)
         {
             foreach (ResourceBar bar in Object.FindObjectsByType<ResourceBar>(FindObjectsSortMode.None))

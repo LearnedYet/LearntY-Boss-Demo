@@ -5,12 +5,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the rule that decides when two swings met each other rather than their targets.
+    /// 测试决定两次挥击相碰而非分别命中目标的规则。
     /// </summary>
     /// <remarks>
-    /// A clash refuses two hits that would otherwise have landed, so every one of these is a
-    /// fairness contract: too loose and a fighter loses a hit they had already earned; too tight and
-    /// simultaneous attacks stay the damage race the rule exists to replace.
+    /// 拼刀拒绝原本会命中的两击，每项测试都是公平契约：过宽会剥夺已赢得的命中，
+    /// 过窄则同时攻击仍成为伤害竞赛。
     /// </remarks>
     [TestFixture]
     public sealed class ClashResolverTests
@@ -38,8 +37,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void SwingsWhoseRangesMerelyOverlapDoNotClash()
         {
-            // Both reach far enough that their ranges cross somewhere, but the fighters are not in
-            // the same place. Blades that never met must not refuse each other.
+            // 两者范围在某处交叉，但角色并不同位。未真正相遇的刀刃不应互相拒绝命中。
             Assert.IsFalse(ClashResolver.ShouldClash(
                 firstIsSwinging: true, secondIsSwinging: true,
                 separation: 4f, combinedReach: 6f, facingDot: 1f));
@@ -48,8 +46,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void AFighterStruckFromTheSideIsNotClashing()
         {
-            // Being caught out is not being matched. Turning this into a clash would take away a hit
-            // the attacker had already won by getting round the side.
+            // 被绕侧抓到破绽不等于正面对拼；判拼刀会夺走攻击者通过侧绕赢得的命中。
             Assert.IsFalse(ClashResolver.ShouldClash(
                 firstIsSwinging: true, secondIsSwinging: true,
                 separation: 1f, combinedReach: 5f, facingDot: 0.2f));
@@ -58,8 +55,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void FacingIsTheWorseOfTheTwoFighters()
         {
-            // One looking straight at the other, the other looking away. Taking the smaller of the
-            // pair is what makes one fighter's inattention enough to settle it as a hit.
+            // 一方面向另一方，另一方背离。取双方较小朝向值，确保一方未注意就足以判为命中。
             float dot = ClashResolver.FacingDot(
                 Vector3.zero, Vector3.forward,
                 Vector3.forward * 2f, Vector3.forward);
@@ -80,8 +76,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void HeightDoesNotChangeWhoIsFacingWhom()
         {
-            // Measured on the horizontal plane, matching how the hit arcs are measured. A fighter
-            // standing higher is not facing any less squarely.
+            // 在水平面测量，与攻击弧一致。角色站得更高不意味着更不正对。
             float level = ClashResolver.FacingDot(
                 Vector3.zero, Vector3.forward,
                 Vector3.forward * 2f, Vector3.back);

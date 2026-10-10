@@ -6,19 +6,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.AI
 {
     /// <summary>
-    /// Turns the boss's movement intent into motion.
+    /// 将 Boss 移动意图转为运动。
     /// </summary>
     /// <remarks>
-    /// A near-twin of the player's motor but deliberately a separate type. The boss turns slowly and
-    /// accelerates bluntly, and those are combat properties rather than incidental differences: a
-    /// slow turn rate is precisely what makes circling the boss a viable tactic, and therefore what
-    /// its dodge-prediction adaptation exists to answer. Sharing one motor would put both characters'
-    /// handling behind the same tuning values and quietly couple two things that should be tuned
-    /// against each other.
+    /// 与玩家 Motor 几乎相同，却刻意保留独立类型。Boss 转向慢、加速沉重，这些是战斗特性而非偶然差异：
+    /// 慢转向让绕行成为可行战术，也是闪避预测适应要应对的压力。共享 Motor 会让双方操控依赖相同调参值，
+    /// 悄悄耦合本应相互平衡的两套参数。
     /// </remarks>
     public sealed class BossMotor
     {
-        /// <summary>Below this speed the boss is treated as stationary.</summary>
+        /// <summary>低于此速度时视为静止。</summary>
         private const float StationarySpeedThreshold = 0.05f;
 
         private readonly CharacterController _controller;
@@ -28,14 +25,14 @@ namespace AdaptiveBossArena.AI
         private Vector3 _planarVelocity;
         private float _speedMultiplier = 1f;
 
-        /// <summary>Carries imposed motion separately from steering. See the player's motor.</summary>
+        /// <summary>外加运动与自主转向分开保存，参见玩家 Motor。</summary>
         private readonly MotionIntegrator _motion =
             new MotionIntegrator(GameplayConstants.Gravity, GameplayConstants.GroundedSpeed);
 
-        /// <summary>Creates a motor bound to a character controller.</summary>
-        /// <param name="controller">The controller performing movement and collision.</param>
-        /// <param name="config">Boss movement values.</param>
-        /// <exception cref="ArgumentNullException">Thrown when the controller or config is missing.</exception>
+        /// <summary>创建绑定 CharacterController 的 Motor。</summary>
+        /// <param name="controller">执行移动和碰撞的控制器。</param>
+        /// <param name="config">Boss 移动参数。</param>
+        /// <exception cref="ArgumentNullException">控制器或配置缺失时抛出。</exception>
         public BossMotor(CharacterController controller, BossConfig config)
         {
             _controller = controller != null
@@ -46,42 +43,41 @@ namespace AdaptiveBossArena.AI
             _transform = controller.transform;
         }
 
-        /// <summary>Current horizontal velocity.</summary>
+        /// <summary>当前水平速度。</summary>
         public Vector3 PlanarVelocity => _planarVelocity;
 
-        /// <summary>The imposed shove, such as knockback, still playing out on top of the character's own movement.</summary>
+        /// <summary>击退等外力推动，叠加在角色自主移动之上并持续生效。</summary>
         public Vector3 ImpulseVelocity => _motion.Impulse;
 
-        /// <summary>Angular speed of the eased turn, carried between frames.</summary>
+        /// <summary>平滑转向的角速度，跨帧保留。</summary>
         private float _yawVelocity;
 
-        /// <summary>Current horizontal speed.</summary>
+        /// <summary>当前水平速率。</summary>
         public float Speed => _planarVelocity.magnitude;
 
-        /// <summary>True while the boss is effectively stationary.</summary>
+        /// <summary>Boss 实际静止时为 true。</summary>
         public bool IsStationary => Speed < StationarySpeedThreshold;
 
-        /// <summary>World position of the boss.</summary>
+        /// <summary>Boss 世界坐标。</summary>
         public Vector3 Position => _transform.position;
 
-        /// <summary>Unit vector the boss is facing.</summary>
+        /// <summary>Boss 面向的单位向量。</summary>
         public Vector3 Facing => _transform.forward;
 
-        /// <summary>Top speed after the current phase's multiplier.</summary>
+        /// <summary>应用当前阶段倍率后的最高速度。</summary>
         public float CurrentTopSpeed => _config.MoveSpeed * _speedMultiplier;
 
-        /// <summary>Applies the movement multiplier for the phase now in effect.</summary>
-        /// <param name="multiplier">Multiplier on base movement speed.</param>
+        /// <summary>应用当前生效阶段的移动倍率。</summary>
+        /// <param name="multiplier">基础移动速度倍率。</param>
         public void SetSpeedMultiplier(float multiplier) => _speedMultiplier = Mathf.Max(0f, multiplier);
 
-        /// <summary>Accelerates toward a velocity: a direction whose length is the fraction of top speed to move at.</summary>
+        /// <summary>向目标速度加速：方向向量长度表示最高速度的比例。</summary>
         /// <remarks>
-        /// The length used to be thrown away - every direction was normalised to full speed - so the brute ran
-        /// everywhere, including the slow circling that is meant to show its weight. A length of one is full
-        /// speed; anything longer is capped there.
+        /// 以前丢弃长度并将所有方向归一化到全速，导致巨兽处处奔跑，包括本应展示重量感的缓慢绕行。
+        /// 一表示全速，更长向量也限制为全速。
         /// </remarks>
-        /// <param name="direction">World direction to travel, its length the fraction of top speed.</param>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <param name="direction">要移动的世界方向，长度表示最高速度的比例。</param>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void MoveInDirection(Vector3 direction, float deltaTime)
         {
             direction.y = 0f;
@@ -97,35 +93,34 @@ namespace AdaptiveBossArena.AI
             _planarVelocity = Vector3.MoveTowards(_planarVelocity, target, rate * deltaTime);
         }
 
-        /// <summary>Sheds speed at a fixed rate, for stopping a lunge that has outrun normal movement.</summary>
+        /// <summary>按固定速率减速，用于停止超过普通移动速度的突进。</summary>
         /// <remarks>
-        /// Normal deceleration is scaled to walking speed, so a lunge travelling three times faster than
-        /// the boss walks slid metres through its own strike before it stopped.
+        /// 普通减速按行走速度缩放，因此以三倍行走速度突进时，Boss 会在自己的攻击期间滑行数米才停下。
         /// </remarks>
-        /// <param name="deceleration">Speed lost per second.</param>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <param name="deceleration">每秒损失的速度。</param>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void Brake(float deceleration, float deltaTime) =>
             _planarVelocity = Vector3.MoveTowards(
                 _planarVelocity, Vector3.zero, Mathf.Max(0f, deceleration) * deltaTime);
 
-        /// <summary>Brings the boss to rest.</summary>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <summary>使 Boss 停下。</summary>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void Decelerate(float deltaTime) => MoveInDirection(Vector3.zero, deltaTime);
 
-        /// <summary>Overrides the boss's own velocity outright, used by lunging attacks.</summary>
-        /// <param name="velocity">Horizontal velocity to adopt.</param>
+        /// <summary>直接覆盖 Boss 自主速度，用于突进攻击。</summary>
+        /// <param name="velocity">要采用的水平速度。</param>
         public void SetPlanarVelocity(Vector3 velocity) =>
             _planarVelocity = new Vector3(velocity.x, 0f, velocity.z);
 
-        /// <summary>Stops the boss's own movement immediately. Imposed shoves still play out.</summary>
+        /// <summary>立即停止 Boss 自主移动，外加推动仍会继续。</summary>
         public void Halt() => _planarVelocity = Vector3.zero;
 
-        /// <summary>Imposes a shove, such as knockback, that steering cannot overwrite.</summary>
-        /// <param name="velocity">Horizontal velocity to add.</param>
+        /// <summary>施加转向输入无法覆盖的击退等外加推动。</summary>
+        /// <param name="velocity">要增加的水平速度。</param>
         public void AddImpulse(Vector3 velocity) => _motion.AddImpulse(velocity);
 
-        /// <summary>Integrates velocity and resolves collisions.</summary>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <summary>积分速度并解析碰撞。</summary>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void Tick(float deltaTime)
         {
             if (deltaTime <= 0f)
@@ -141,8 +136,7 @@ namespace AdaptiveBossArena.AI
 
             CollisionFlags flags = _controller.Move(velocity * deltaTime);
 
-            // Speed into a wall is read before the wall takes it away, so an impact can be judged by
-            // how hard it was rather than by the zero speed left afterwards.
+            // 撞墙速度在墙壁消除它之前读取，使碰撞按原始强度判断，而非停止后的零速度。
             WallImpactSpeed = (flags & CollisionFlags.Sides) != 0 ? horizontal.magnitude : 0f;
 
             if (WallImpactSpeed > 0f)
@@ -152,30 +146,27 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Horizontal speed of everything the body was carrying when the last step ran into a wall, or zero.
+        /// 上次移动撞墙时身体全部水平运动的速度，否则为零。
         /// </summary>
         /// <remarks>
-        /// Reported rather than acted on. What a hard wall impact means - a stagger, lost poise - is a
-        /// combat decision, and the motor only moves bodies.
+        /// 仅报告，不执行反应。猛烈撞墙导致硬直或架势损失属于战斗决策，Motor 只负责移动身体。
         /// </remarks>
         public float WallImpactSpeed { get; private set; }
 
-        /// <summary>Whether the body was standing on something after its last step.</summary>
+        /// <summary>上次移动后身体是否站在某个表面上。</summary>
         public bool IsGrounded => _controller.isGrounded;
 
-        /// <summary>Upward or downward speed, in metres per second.</summary>
+        /// <summary>向上或向下速度，单位米每秒。</summary>
         public float VerticalVelocity => _motion.VerticalVelocity;
 
         /// <summary>
-        /// Rotates toward a direction at the configured turn rate.
+        /// 按配置转向速率旋向指定方向。
         /// </summary>
         /// <remarks>
-        /// The rate is capped low on purpose. It is what lets a player who keeps moving get behind
-        /// the boss, which is the pressure the dodge-prediction counter-strategy is designed to
-        /// relieve.
+        /// 刻意设置较低上限，让持续移动的玩家能绕到 Boss 背后；闪避预测反制正是用于缓解该压力。
         /// </remarks>
-        /// <param name="direction">World direction to face.</param>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <param name="direction">要面向的世界方向。</param>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void FaceDirection(Vector3 direction, float deltaTime)
         {
             direction.y = 0f;
@@ -185,9 +176,8 @@ namespace AdaptiveBossArena.AI
                 return;
             }
 
-            // Eased rather than turned at a constant rate: the brute winds into a turn and settles out of it, which
-            // is most of what makes it read as heavy. The same top rate caps it, so it is no easier to face down
-            // and no harder to circle than before.
+            // 采用平滑加速而非恒速转向：巨兽逐渐开始和结束转身，这构成其重量感的重要部分。
+            // 最高速率不变，因此正面应对和绕行难度与以前相同。
             float target = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
             float yaw = Mathf.SmoothDampAngle(
                 _transform.eulerAngles.y, target, ref _yawVelocity,
@@ -197,13 +187,12 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Moves the body by an offset imposed from outside, such as being pushed by another body.
+        /// 根据外部施加的偏移移动身体，例如被另一身体推动。
         /// </summary>
         /// <remarks>
-        /// Goes through the controller rather than setting the position, so a body shoved toward a
-        /// wall stops at the wall instead of being pushed through it.
+        /// 经过控制器而非直接设置位置，使推向墙的身体停在墙前，而非穿过墙壁。
         /// </remarks>
-        /// <param name="offset">Displacement to apply. The vertical component is ignored.</param>
+        /// <param name="offset">要应用的位移，忽略垂直分量。</param>
         public void Displace(Vector3 offset)
         {
             offset.y = 0f;
@@ -214,8 +203,8 @@ namespace AdaptiveBossArena.AI
             }
         }
 
-        /// <summary>Teleports the boss, for use when a fight restarts.</summary>
-        /// <param name="position">Destination.</param>
+        /// <summary>传送 Boss，在战斗重启时使用。</summary>
+        /// <param name="position">目标位置。</param>
         public void Teleport(Vector3 position)
         {
             _controller.enabled = false;

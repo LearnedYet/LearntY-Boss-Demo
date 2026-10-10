@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.Learning
 {
-    /// <summary>One adjustment a counter-strategy makes to the boss's behaviour.</summary>
+    /// <summary>反制策略对首领行为的一项调整。</summary>
     [Serializable]
     public struct TuningAdjustment
     {
@@ -17,31 +17,27 @@ namespace AdaptiveBossArena.Learning
         [Tooltip("Value the parameter is eased toward while this strategy is active.")]
         private float _targetValue;
 
-        /// <summary>Behaviour being adjusted.</summary>
+        /// <summary>被调整的行为。</summary>
         public BossTuningParameter Parameter => _parameter;
 
-        /// <summary>Value the parameter is eased toward.</summary>
+        /// <summary>参数平滑趋近的目标值。</summary>
         public float TargetValue => _targetValue;
     }
 
     /// <summary>
-    /// A single answer the boss can develop to a habit it has observed.
+    /// 首领针对一项已观察习惯形成的应对。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Strategies are authored as assets, which keeps the boss's repertoire a design surface rather
-    /// than a code branch. Adding "starts feinting against players who dodge on a fixed rhythm" is a
-    /// new asset, not a new <c>if</c> in the AI.
+    /// 策略以资源形式编写，使首领招式库成为设计配置，而非代码分支。
+    /// 增加“针对固定节奏闪避的玩家开始佯攻”，只需新增资源，无需在 AI 中增加 <c>if</c>。
     /// </para>
     /// <para>
-    /// Selection is weighted and probabilistic rather than deterministic. If the strongest habit
-    /// always produced the same counter, the player would learn the boss's lookup table and the
-    /// fight would collapse into memorisation, which is the exact failure this design exists to
-    /// avoid.
+    /// 选择采用加权概率，而非确定映射。若最强习惯总是对应相同反制，玩家就会学会首领的查找表，
+    /// 战斗退化成记忆流程，而这正是此设计要避免的问题。
     /// </para>
     /// <para>
-    /// The player-facing tell is not decoration. An adaptation the player cannot perceive is
-    /// indistinguishable from the boss cheating, so every strategy is required to announce itself.
+    /// 面向玩家的提示并非装饰。玩家察觉不到的适应与首领作弊难以区分，因此每项策略都必须宣告自身。
     /// </para>
     /// </remarks>
     [CreateAssetMenu(
@@ -107,46 +103,46 @@ namespace AdaptiveBossArena.Learning
         [Tooltip("Audio cue identifier played alongside the tell.")]
         private string _tellAudioCueId = string.Empty;
 
-        /// <summary>Player habit this strategy answers.</summary>
+        /// <summary>此策略应对的玩家习惯。</summary>
         public BehaviorFeature TriggerFeature => _triggerFeature;
 
-        /// <summary>Direction of the threshold comparison.</summary>
+        /// <summary>阈值比较的方向。</summary>
         public FeatureComparison Comparison => _comparison;
 
-        /// <summary>Feature value at which this strategy becomes eligible.</summary>
+        /// <summary>策略获得选择资格所需的特征值。</summary>
         public float Threshold => _threshold;
 
-        /// <summary>Confidence required before this strategy may be chosen.</summary>
+        /// <summary>选择此策略所需的可信度。</summary>
         public float MinimumConfidence => _minimumConfidence;
 
-        /// <summary>Relative likelihood of selection among eligible strategies.</summary>
+        /// <summary>在合格策略中被选中的相对概率。</summary>
         public float SelectionWeight => _selectionWeight;
 
-        /// <summary>Earliest boss phase in which this strategy may be adopted.</summary>
+        /// <summary>最早可以采纳此策略的首领阶段。</summary>
         public int MinimumPhase => _minimumPhase;
 
-        /// <summary>Whether this strategy may be adopted more than once per fight.</summary>
+        /// <summary>是否允许每场战斗多次采纳此策略。</summary>
         public bool IsRepeatable => _repeatable;
 
-        /// <summary>Behaviour adjustments applied while this strategy is active.</summary>
+        /// <summary>此策略生效时应用的行为调整。</summary>
         public TuningAdjustment[] Adjustments => _adjustments;
 
-        /// <summary>Time over which adjustments are eased in.</summary>
+        /// <summary>调整平滑生效的时间。</summary>
         public float EaseInSeconds => _easeInSeconds;
 
-        /// <summary>Line shown to the player when this strategy is adopted.</summary>
+        /// <summary>采纳此策略时向玩家展示的文字。</summary>
         public string TellMessage => _tellMessage;
 
-        /// <summary>Audio cue played when this strategy is adopted.</summary>
+        /// <summary>采纳此策略时播放的音效提示。</summary>
         public string TellAudioCueId => _tellAudioCueId;
 
         /// <summary>
-        /// Tests whether an observed feature satisfies this strategy's trigger.
+        /// 检查观察特征是否满足此策略的触发条件。
         /// </summary>
-        /// <param name="featureValue">Observed value of the trigger feature, from zero to one.</param>
-        /// <param name="confidence">Confidence in that observation, from zero to one.</param>
-        /// <param name="currentPhase">Boss phase currently in effect.</param>
-        /// <returns>True when this strategy is eligible for selection.</returns>
+        /// <param name="featureValue">触发特征的观察值，范围为零至一。</param>
+        /// <param name="confidence">该观察的可信度，范围为零至一。</param>
+        /// <param name="currentPhase">当前首领阶段。</param>
+        /// <returns>策略具有选择资格时为 true。</returns>
         public bool IsEligible(float featureValue, float confidence, int currentPhase)
         {
             if (currentPhase < _minimumPhase || confidence < _minimumConfidence)

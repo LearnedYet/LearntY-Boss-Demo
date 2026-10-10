@@ -1,136 +1,128 @@
 namespace AdaptiveBossArena.Learning
 {
     /// <summary>
-    /// The measurable habits the boss builds its picture of the player from.
+    /// 首领据以构建玩家画像的可量化习惯。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Every value here is derived from events the boss could legitimately witness: attacks it saw
-    /// thrown, dashes it saw performed, distances it could measure by looking. None is read from
-    /// player input or internal state.
+    /// 这里的每个数值都来自首领能够合理观察到的事件：它目睹的攻击、闪避，以及能通过观察估量的距离。
+    /// 这些数值都不读取玩家输入或内部状态。
     /// </para>
     /// <para>
-    /// Each feature is normalised to the range zero to one and carries a confidence, so a
-    /// counter-strategy can require both that a habit is strong and that it has been seen often
-    /// enough to be believed.
+    /// 每项特征都归一化到零至一，并附带可信度，因此反制策略可同时要求习惯足够明显，
+    /// 且已经被观察足够多次，值得采信。
     /// </para>
     /// </remarks>
     public enum BehaviorFeature
     {
-        /// <summary>How often the player attacks, relative to a sustainable maximum.</summary>
+        /// <summary>相对于可持续攻击上限的玩家攻击频率。</summary>
         AttackFrequency = 0,
 
-        /// <summary>Share of the player's attacks that are heavy. High values invite parrying.</summary>
+        /// <summary>玩家攻击中重攻击的比例。较高时会引发招架反制。</summary>
         HeavyAttackRatio = 1,
 
         /// <summary>
-        /// Probability the player attacks immediately after a dodge.
+        /// 玩家在闪避后立即攻击的概率。
         /// </summary>
-        /// <remarks>The habit the design calls out by name: the boss answers it by delaying its attacks.</remarks>
+        /// <remarks>设计明确指出的习惯：首领通过延迟攻击来应对。</remarks>
         PostDodgeAggression = 2,
 
-        /// <summary>How lopsided the player's dash directions are. High values make movement predictable.</summary>
+        /// <summary>玩家闪避方向的偏斜程度。较高时移动更容易预测。</summary>
         DashDirectionBias = 3,
 
         /// <summary>
-        /// Preferred engagement distance, normalised across the arena's usable range.
+        /// 按竞技场有效范围归一化的偏好交战距离。
         /// </summary>
-        /// <remarks>High values indicate a player who keeps away, which the boss answers with gap-closers.</remarks>
+        /// <remarks>较高时表示玩家倾向保持距离，首领会用突进攻击应对。</remarks>
         PreferredDistance = 4,
 
-        /// <summary>Balance between closing and retreating. High values indicate a pressuring player.</summary>
+        /// <summary>逼近与后退之间的倾向。较高时表示玩家积极施压。</summary>
         Aggression = 5,
 
-        /// <summary>Share of the player's attacks that whiff. High values indicate panicked swinging.</summary>
+        /// <summary>玩家攻击中空挥的比例。较高时表示慌乱出手。</summary>
         WhiffRatio = 6,
 
-        /// <summary>How readily the player commits to healing rather than continuing to fight.</summary>
+        /// <summary>玩家选择治疗而非继续战斗的倾向。</summary>
         HealFrequency = 7,
 
-        /// <summary>How reliably the player dodges at the same moment within an attack's wind-up.</summary>
+        /// <summary>玩家在攻击前摇中同一时刻闪避的稳定程度。</summary>
         DodgeTimingConsistency = 8,
 
-        /// <summary>Share of the boss's attacks the player avoids cleanly. The overall read on player skill.</summary>
+        /// <summary>玩家成功躲开首领攻击的比例，体现整体操作水平。</summary>
         EvasionSuccess = 9,
 
         /// <summary>
-        /// How much the player answers attacks with the guard rather than by moving.
+        /// 玩家依靠防御而非移动来应对攻击的程度。
         /// </summary>
         /// <remarks>
-        /// A turtle stands their ground and lets the guard do the work. The honest answer is not a
-        /// harder attack but an unblockable one, which has to be dodged — a capability the boss
-        /// already has and merely reaches for more often.
+        /// 龟缩型玩家守住原地，依靠防御抵挡。合理的应对方式并非更高伤害，而是必须闪避的不可格挡攻击；
+        /// 这本来就是首领已经拥有的能力，只是使用得更频繁。
         /// </remarks>
         GuardReliance = 10,
 
         /// <summary>
-        /// Of the attacks the player meets with the guard, the share turned aside on the exact beat.
+        /// 玩家用防御接下的攻击中，精准弹反的比例。
         /// </summary>
         /// <remarks>
-        /// The read on a parry master, as distinct from someone merely holding block:
-        /// <see cref="GuardReliance"/> says how often they guard, this says how well. It is the habit
-        /// feints exist to punish, since a player this precise is reading a rhythm.
+        /// 用于辨别招架高手，而非只是一直格挡的玩家：<see cref="GuardReliance"/> 表示防御频率，
+        /// 这里表示防御水平。这种习惯正适合用佯攻惩罚，因为如此精准的玩家是在辨认节奏。
         /// </remarks>
         DeflectSkill = 11
     }
 
     /// <summary>
-    /// The boss behaviours a counter-strategy is allowed to adjust.
+    /// 反制策略可以调整的首领行为。
     /// </summary>
     /// <remarks>
-    /// Adaptation changes numbers, never rules. The boss cannot gain a new capability it did not
-    /// already possess, only lean harder on one it had. That constraint is what keeps the fight
-    /// readable: everything the boss does in its final phase was visible, in weaker form, in its
-    /// first.
+    /// 适应只改变数值，不改变规则。首领不能获得原本没有的能力，只能更充分地利用已有能力。
+    /// 这个约束让战斗保持可读：首领在最终阶段的所有行为，都曾以较弱的形式出现在第一阶段。
     /// </remarks>
     public enum BossTuningParameter
     {
-        /// <summary>Extra delay inserted before attacking, to beat players who pre-empt.</summary>
+        /// <summary>攻击前增加的延迟，用来应对提前行动的玩家。</summary>
         AttackDelay = 0,
 
-        /// <summary>Distance the boss tries to hold from the player.</summary>
+        /// <summary>首领试图与玩家保持的距离。</summary>
         PreferredRange = 1,
 
-        /// <summary>Likelihood of answering an incoming heavy attack with a parry.</summary>
+        /// <summary>以招架应对来袭重攻击的概率。</summary>
         ParryChance = 2,
 
-        /// <summary>Weighting applied to gap-closing attacks when choosing what to throw.</summary>
+        /// <summary>选择攻击时施加给突进攻击的权重。</summary>
         GapCloserWeight = 3,
 
-        /// <summary>How strongly the boss leads its attacks toward the player's favoured dodge direction.</summary>
+        /// <summary>首领朝玩家偏好闪避方向提前瞄准的强度。</summary>
         DodgePredictionStrength = 4,
 
-        /// <summary>Overall willingness to press the attack rather than reposition.</summary>
+        /// <summary>持续进攻而非重新站位的总体意愿。</summary>
         Aggression = 5,
 
-        /// <summary>Likelihood of extending a single attack into a longer combo.</summary>
+        /// <summary>将单次攻击延伸为更长连段的概率。</summary>
         ComboExtensionChance = 6,
 
-        /// <summary>Likelihood of feinting: showing a telegraph and cancelling it.</summary>
+        /// <summary>佯攻概率：展示攻击预警后取消攻击。</summary>
         FeintChance = 7,
 
-        /// <summary>Weighting applied to attacks that cover a wide area, against evasive players.</summary>
+        /// <summary>针对善于闪避的玩家，施加给大范围攻击的权重。</summary>
         AreaDenialWeight = 8,
 
         /// <summary>
-        /// Weighting applied to perilous, unblockable attacks, against players who hide behind the
-        /// guard.
+        /// 针对躲在防御后的玩家，施加给危险、不可格挡攻击的权重。
         /// </summary>
         /// <remarks>
-        /// The honest answer to a turtle: an attack that has to be dodged rather than met. It is a
-        /// capability the boss already had and merely reaches for more often, which is the line every
-        /// adaptation here stays on — numbers, never new rules.
+        /// 合理应对龟缩玩家：使用必须闪避、不能硬接的攻击。这是首领原本已有的能力，只是使用得更频繁；
+        /// 所有适应都遵守这条边界：改变数值，绝不增加新规则。
         /// </remarks>
         UnblockableWeight = 9
     }
 
-    /// <summary>How a feature's value is compared against a strategy's threshold.</summary>
+    /// <summary>特征值与策略阈值的比较方式。</summary>
     public enum FeatureComparison
     {
-        /// <summary>The strategy applies when the feature is at or above the threshold.</summary>
+        /// <summary>特征值达到或超过阈值时，策略可用。</summary>
         AtOrAbove = 0,
 
-        /// <summary>The strategy applies when the feature is at or below the threshold.</summary>
+        /// <summary>特征值达到或低于阈值时，策略可用。</summary>
         AtOrBelow = 1
     }
 }

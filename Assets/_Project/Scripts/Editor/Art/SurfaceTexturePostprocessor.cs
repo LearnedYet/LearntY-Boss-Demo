@@ -3,30 +3,28 @@ using UnityEditor;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Decides how the third-party stone and brick textures import.
+    /// 决定第三方石材和砖材纹理的导入方式。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A texture's import type lives in its .meta file, and the defaults are wrong for two of the three
-    /// maps in every set. A normal map imported as colour lights every surface as if it were bent the
-    /// wrong way; a mask imported as sRGB crushes its occlusion and smoothness toward black, which reads
-    /// as stone that is inexplicably wet and dark. Neither fails a test. Setting the import here keeps
-    /// it correct however the .meta is lost or regenerated.
+    /// 纹理导入类型保存在 .meta 中，每套三张贴图中有两张的默认设置不正确。
+    /// 法线作为颜色导入会让表面仿佛弯向错误方向；遮罩作为 sRGB 导入会将遮蔽和平滑度压暗，
+    /// 让石材莫名湿黑。这两种问题都不会让测试失败。在此定义导入设置，
+    /// 可确保 . meta 丢失或重建后仍然正确。
     /// </para>
     /// <para>
-    /// Capped at 1K on every platform. The arena is seen from a few metres away at most, and the WebGL
-    /// download is the budget that matters.
+    /// 所有平台都限制为 1K。竞技场最远也只从数米外观察，而 WebGL下载体积才是关键预算。
     /// </para>
     /// </remarks>
     public sealed class SurfaceTexturePostprocessor : AssetPostprocessor
     {
-        /// <summary>Folder whose textures this postprocessor owns.</summary>
+        /// <summary>此后处理器负责的纹理文件夹。</summary>
         public const string SurfaceFolder = "Assets/_Project/Art/ThirdParty/PolyHaven/";
 
         private const int MaximumSize = 1024;
 
-        /// <summary>Bumped whenever the import rules change, so textures already imported pick them up.</summary>
-        /// <returns>The version of these import rules.</returns>
+        /// <summary>导入规则变化时增加版本号，让已导入纹理也应用新规则。</summary>
+        /// <returns>这些导入规则的版本。</returns>
         public override uint GetVersion() => 1;
 
         private void OnPreprocessTexture()
@@ -45,14 +43,14 @@ namespace AdaptiveBossArena.Editor.Art
 
             if (assetPath.Contains("_nor_gl"))
             {
-                // Poly Haven's _gl maps are the OpenGL convention, which is the one Unity expects.
+                // Poly Haven 的 _gl 贴图使用 OpenGL 约定，与 Unity 预期一致。
                 importer.textureType = TextureImporterType.NormalMap;
                 return;
             }
 
             importer.textureType = TextureImporterType.Default;
 
-            // Colour is sRGB; the mask holds data - metallic, occlusion, smoothness - and must stay linear.
+            // 颜色使用 sRGB；遮罩承载金属度、遮蔽和平滑度数据，必须保持线性。
             importer.sRGBTexture = !assetPath.Contains("_mask");
             importer.alphaIsTransparency = false;
         }

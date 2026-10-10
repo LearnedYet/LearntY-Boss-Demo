@@ -2,91 +2,89 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.Player.Controls
 {
-    /// <summary>Discrete actions the player can trigger.</summary>
+    /// <summary>玩家可触发的离散动作。</summary>
     /// <remarks>
-    /// Values are contiguous from zero so they can index the buffer's timestamp array directly,
-    /// which keeps input buffering allocation-free and constant-time.
+    /// 值从零连续排列，可以直接作为缓存时间戳数组索引，使输入缓存无分配且为常数时间。
     /// </remarks>
     public enum PlayerInputAction
     {
-        /// <summary>Evasive dash.</summary>
+        /// <summary>用于回避攻击的闪避。</summary>
         Dash = 0,
 
-        /// <summary>Fast primary attack.</summary>
+        /// <summary>快速普通攻击。</summary>
         LightAttack = 1,
 
-        /// <summary>Slow committed attack.</summary>
+        /// <summary>缓慢、投入风险较高的攻击。</summary>
         HeavyAttack = 2,
 
-        /// <summary>Special ability.</summary>
+        /// <summary>特殊技能。</summary>
         Special = 3,
 
-        /// <summary>Restore health.</summary>
+        /// <summary>恢复生命值。</summary>
         Heal = 4,
 
-        /// <summary>Raise the guard. Pressed at the right instant this becomes a deflect.</summary>
+        /// <summary>举起防御。在恰当瞬间按下时成为弹反。</summary>
         Guard = 5,
 
-        /// <summary>Cycle to the next weapon.</summary>
+        /// <summary>切换到下一武器。</summary>
         SwapWeapon = 6,
 
-        /// <summary>Strike a blow aside with the blade. Appended, never inserted.</summary>
+        /// <summary>用刀刃拨开攻击。只能追加，不能插入。</summary>
         Parry = 7
     }
 
-    /// <summary>Names the runtime looks up in the generated input actions asset.</summary>
+    /// <summary>运行时在生成的输入动作资源中查询的名称。</summary>
     /// <remarks>
-    /// A mistyped action name fails at runtime with a null action rather than at compile time, and
-    /// the symptom is a control that silently does nothing. Both the generator and the reader use
-    /// these constants, so the two cannot drift apart.
+    /// 动作名称拼写错误会在运行时取得 null 而非编译时报错，表现为按键静默失效。
+    /// 生成器和读取器均使用这些常量，确保两者不会逐渐不一致。
     /// </remarks>
     public static class InputActionNames
     {
-        /// <summary>Action map containing all in-combat controls.</summary>
+        /// <summary>包含全部战斗控制的动作映射。</summary>
         public const string GameplayMap = "Gameplay";
 
-        /// <summary>Camera orbit: mouse movement or the right stick. Read by the camera, not the character.</summary>
+        /// <summary>相机绕行：鼠标移动或右摇杆。由相机读取，而非角色。</summary>
         public const string Look = "Look";
 
-        /// <summary>Toggles the camera's lock onto the boss. Read by the camera.</summary>
+        /// <summary>切换相机对 Boss 的锁定。由相机读取。</summary>
         public const string LockOn = "LockOn";
 
-        /// <summary>Cycles the camera between third person, top-down and first person. Read by the camera.</summary>
+        /// <summary>在第三人称、俯视和第一人称相机之间循环。由相机读取。</summary>
         public const string CycleCamera = "CycleCamera";
 
-        /// <summary>Two-dimensional movement axis.</summary>
+        /// <summary>二维移动轴。</summary>
         public const string Move = "Move";
 
-        /// <summary>Evasive dash.</summary>
+        /// <summary>用于回避攻击的闪避。</summary>
         public const string Dash = "Dash";
 
-        /// <summary>Fast primary attack.</summary>
+        /// <summary>快速普通攻击。</summary>
         public const string LightAttack = "LightAttack";
 
-        /// <summary>Slow committed attack.</summary>
+        /// <summary>缓慢、投入风险较高的攻击。</summary>
         public const string HeavyAttack = "HeavyAttack";
 
-        /// <summary>Special ability.</summary>
+        /// <summary>特殊技能。</summary>
         public const string Special = "Special";
 
-        /// <summary>Restore health.</summary>
+        /// <summary>恢复生命值。</summary>
         public const string Heal = "Heal";
 
-        /// <summary>Raise the guard, and with the right timing, deflect.</summary>
+        /// <summary>举起防御，并在恰当时机弹反。</summary>
         public const string Guard = "Guard";
 
-        /// <summary>Cycle to the next weapon.</summary>
+        /// <summary>切换到下一武器。</summary>
         public const string SwapWeapon = "SwapWeapon";
 
-        /// <summary>The dedicated parry, distinct from raising the guard.</summary>
+        /// <summary>独立主动招架，区别于举起防御。</summary>
         public const string Parry = "Parry";
 
-        /// <summary>Open the pause menu.</summary>
+        /// <summary>打开暂停菜单。</summary>
         public const string Pause = "Pause";
 
-        /// <summary>Resolves the asset action name for a buffered action.</summary>
-        /// <param name="action">The action to resolve.</param>
-        /// <returns>The name used in the input actions asset.</returns>
+        /// <summary>解析缓存动作在资源中的动作名称。</summary>
+        /// <param name="action">要解析的动作。</param>
+        /// <returns>输入动作资源使用的名称。</returns>
         public static string For(PlayerInputAction action)
         {
             switch (action)
@@ -105,37 +103,35 @@ namespace AdaptiveBossArena.Player.Controls
     }
 
     /// <summary>
-    /// The player character's view of the controls.
+    /// 玩家角色看到的控制接口。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Interposed between the Input System and the character so that gameplay code never talks to
-    /// the input package directly. That buys two things: play-mode tests can drive the character
-    /// from a scripted fake, and swapping input backends touches one class.
+    /// 置于 Input System 与角色之间，使玩法代码不直接访问输入包。
+    /// 这样运行模式测试可用脚本伪输入驱动角色，切换输入后端也只需改一个类。
     /// </para>
     /// <para>
-    /// This interface lives in the Player assembly and must stay there. Moving it into Core would
-    /// place player intent within reach of the boss's assemblies and defeat the project's central
-    /// design constraint.
+    /// 此接口必须留在 Player 程序集。移到 Core 会让 Boss 程序集触及玩家意图，
+    /// 破坏项目最核心的设计限制。
     /// </para>
     /// </remarks>
     public interface IPlayerInput
     {
-        /// <summary>Movement axis, normalised to at most unit length.</summary>
+        /// <summary>移动轴，归一化后长度最多为一。</summary>
         Vector2 MoveDirection { get; }
 
-        /// <summary>True on the single frame an action was triggered.</summary>
-        /// <param name="action">The action to test.</param>
-        /// <returns>Whether the action began this frame.</returns>
+        /// <summary>动作被触发的单帧内为 true。</summary>
+        /// <param name="action">要检查的动作。</param>
+        /// <returns>动作是否在本帧开始。</returns>
         bool WasPressedThisFrame(PlayerInputAction action);
 
-        /// <summary>True while an action's control is held down.</summary>
-        /// <param name="action">The action to test.</param>
-        /// <returns>Whether the control is currently held.</returns>
+        /// <summary>动作对应按键持续按住时为 true。</summary>
+        /// <param name="action">要检查的动作。</param>
+        /// <returns>当前是否按住控制键。</returns>
         bool IsHeld(PlayerInputAction action);
 
-        /// <summary>Enables or suspends input, used when pausing or on death.</summary>
-        /// <param name="enabled">True to accept input.</param>
+        /// <summary>启用或暂停输入，在暂停或死亡时使用。</summary>
+        /// <param name="enabled">为 true 时接收输入。</param>
         void SetEnabled(bool enabled);
     }
 }

@@ -5,13 +5,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the arithmetic that lets a blow move someone who is trying to move somewhere else.
+    /// 测试攻击如何推动试图向另一方向移动的目标。
     /// </summary>
     /// <remarks>
-    /// Knockback used to be a velocity overwrite that the victim's own movement replaced on the next
-    /// frame, and the boss never applied it at all. These pin the three properties that make a shove
-    /// real: it survives steering, it fades at a rate independent of frame rate, and gravity grounds
-    /// rather than accumulates.
+    /// 击退原先覆盖速度，随后在下一帧被受击者自身移动替换，首领则根本没有应用击退。
+    /// 这里固定真实推力的三项属性：转向后仍存在，按独立于帧率的速率衰减，重力用于贴地而非持续积累。
     /// </remarks>
     [TestFixture]
     public sealed class MotionIntegratorTests
@@ -35,8 +33,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void AShoveSurvivesTheVictimSteeringTheOtherWay()
         {
-            // The bug, exactly: steering writes its own velocity every frame. The shove must add to it,
-            // not be replaced by it.
+            // 确切的故障：转向每帧都写入自身速度。推力必须叠加，而非被其替换。
             var motion = new MotionIntegrator(Gravity, Grounded);
             motion.AddImpulse(new Vector3(8f, 0f, 0f));
 
@@ -64,8 +61,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheSameShoveTravelsTheSameDistanceAtAnyFrameRate()
         {
-            // A knockback that carried further at 144 Hz than at 30 Hz would make the same hit land a
-            // different fight on different machines.
+            // 若 144 Hz 下的击退比 30 Hz 更远，同一击就会在不同机器上产生不同战斗结果。
             float distanceAt30 = DistanceTravelled(1f / 30f);
             float distanceAt144 = DistanceTravelled(1f / 144f);
 
@@ -99,8 +95,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void StandingStillNeverBuildsUpFallingSpeed()
         {
-            // Grounded characters hold the contact speed. Accumulated gravity would throw a character
-            // that stepped off an edge after a minute standing at a speed it never fell to.
+            // 在地面的角色保持接触速度。若重力持续积累，站立一分钟后走出边缘的角色会以从未实际下落至
+            // 的速度被抛出。
             var motion = new MotionIntegrator(Gravity, Grounded);
 
             for (int i = 0; i < 600; i++)
@@ -157,7 +153,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             float height = 0f, peak = 0f, airtime = 0f;
 
-            // Airborne from the first step: the ground the body left must not cancel the launch.
+            // 第一步即在空中：身体离开的原地面不能取消挑飞。
             do
             {
                 height += motion.Step(Vector3.zero, HalfLife, height <= 0f && airtime > 0f, Frame).y * Frame;
@@ -166,7 +162,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             }
             while (height > 0f && airtime < 5f);
 
-            // v^2 / 2g and 2v / g, within a frame's worth of integration error.
+            // v^2 / 2g 与 2v / g，允许一帧积分误差。
             Assert.AreEqual(9f * 9f / (2f * Gravity), peak, 0.1f);
             Assert.AreEqual(2f * 9f / Gravity, airtime, 0.05f);
         }

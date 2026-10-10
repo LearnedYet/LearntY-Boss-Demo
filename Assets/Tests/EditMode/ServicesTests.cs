@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.Tests.EditMode
 {
-    /// <summary>Tests for the interface-keyed service container.</summary>
+    /// <summary>测试以接口为键的服务容器。</summary>
     [TestFixture]
     public sealed class ServiceRegistryTests
     {
@@ -40,8 +40,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             var registry = new ServiceRegistry();
             registry.Register<IExampleService>(new ExampleService(1));
 
-            // Silent replacement would let a duplicated manager in a scene mask itself, producing a
-            // bug that only surfaces after a scene reload.
+            // 无声替换会掩盖场景中重复的管理器，造成只有重新加载场景后才出现的故障。
             Assert.Throws<InvalidOperationException>(
                 () => registry.Register<IExampleService>(new ExampleService(2)));
         }
@@ -97,12 +96,11 @@ namespace AdaptiveBossArena.Tests.EditMode
     }
 
     /// <summary>
-    /// Tests for the deterministic random source.
+    /// 测试确定性随机源。
     /// </summary>
     /// <remarks>
-    /// Reproducibility is the entire reason this type exists in place of Unity's own generator. The
-    /// boss's counter-strategy selection is probabilistic, and without a pinnable seed neither its
-    /// behaviour nor a player's bug report could be reproduced.
+    /// 可复现性是使用此类型替代 Unity 自身随机生成器的全部理由。首领反制策略选择基于概率，
+    /// 没有固定种子就无法复现其行为或玩家报告的故障。
     /// </remarks>
     [TestFixture]
     public sealed class XorShiftRandomProviderTests
@@ -156,7 +154,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ZeroSeed_IsRemappedToAUsableState()
         {
-            // Xorshift cannot escape an all-zero state, so a zero seed must be substituted.
+            // Xorshift 无法离开全零状态，因此必须替换零种子。
             var random = new XorShiftRandomProvider(0u);
 
             Assert.AreNotEqual(0u, random.Seed);

@@ -7,30 +7,28 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Sets each of the brute's struck blows' reach to how far its striking parts actually get.
+    /// 将巨兽每次直接打击的攻击范围设为实际攻击部位能够到达的距离。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Once hits were decided by the blade rather than by a wedge, the authored ranges became promises the body
-    /// could not keep: the sweep was authored at four metres and the great sword reaches about three. The boss
-    /// plans every swing from that range, so it would stand out of reach and cut air - and a whiff builds its
-    /// resolve, so it would also be rewarded for it.
+    /// 命中从扇形判定改为刀刃判定后，手工设置的攻击距离成了身体无法兑现的承诺：横扫设为四米，
+    /// 而巨剑只能伸到约三米。首领按该距离规划每次挥击，结果会站在够不到的地方挥空；挥空又会增加决心，
+    /// 反而因此得到奖励。
     /// </para>
     /// <para>
-    /// So the reach is measured instead. The generated brute - with its real cleaver and striking parts - is
-    /// posed through each attack's clip around the moment the blow lands, and the furthest the parts get from
-    /// its centre, plus the knight's own thickness, becomes the range. Measured data, so it is written on every
-    /// setup, after the prefab exists. Nothing is learned from the player: this is the brute's own body.
+    /// 因此改为测量范围。让带真实砍刀和攻击部位的生成巨兽在每段攻击片段的接触时刻附近摆姿，
+    /// 取攻击部位距离中心的最远距离，再加上骑士自身厚度作为范围。测量数据在每次设置时、
+    /// 预制体已生成后写入。这里不读取玩家信息，只测量巨兽自己的身体。
     /// </para>
     /// </remarks>
     public static class AttackReachMeasure
     {
-        /// <summary>How much of the clip either side of the contact moment counts as the blow.</summary>
+        /// <summary>接触时刻前后有多少片段区间算作此次打击。</summary>
         private const float ContactHalfWindow = 0.1f;
 
         private const int Samples = 12;
 
-        /// <summary>Measures every struck boss attack and writes its range.</summary>
+        /// <summary>测量每个首领直接攻击并写入其范围。</summary>
         [MenuItem(EditorMenus.Setup + "Measure Boss Reach", priority = EditorMenus.SetupPriorityBuildScene - 1)]
         public static void MeasureBossReach()
         {
@@ -87,11 +85,10 @@ namespace AdaptiveBossArena.Editor.Art
             AssetDatabase.SaveAssets();
         }
 
-        /// <summary>The furthest, across the ground, the attack's parts get from the body's centre around contact.</summary>
+        /// <summary>接触时刻附近，攻击部位在地面平面内距离身体中心的最远距离。</summary>
         /// <remarks>
-        /// Posed through the Animator exactly as play poses it - the attack state, scrubbed by its time parameter,
-        /// with root motion discarded - rather than by sampling the clip directly. A direct sample keeps the
-        /// clip's travel across the floor, which play throws away, and measured a slide attack at over six metres.
+        /// 通过 Animator 按实际游戏方式摆姿：进入攻击状态、用时间参数定位，并丢弃根运动；
+        /// 而不是直接采样片段。直接采样保留游戏中会丢弃的地面位移，曾把滑步攻击测成六米以上。
         /// </remarks>
         private static float Reach(
             Transform root, Animator animator, string state, float contact, StrikerParts parts, StrikeVolume[] strikers)

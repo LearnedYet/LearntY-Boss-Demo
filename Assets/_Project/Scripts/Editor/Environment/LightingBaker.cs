@@ -9,48 +9,45 @@ using UnityEngine.Rendering;
 namespace AdaptiveBossArena.Editor.Environment
 {
     /// <summary>
-    /// Bakes the cathedral's reflections and bounce light, and re-links what was baked whenever the scene is rebuilt.
+    /// 烘焙教堂反射和反弹光，并在重建场景时重新关联已有烘焙数据。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Two things are baked. The reflection probe, so the knight's plate and the brute's shoulders reflect
-    /// the stone and the sky rather than nothing. And a grid of light probes, so a fighter standing on a
-    /// sunlit floor picks up the warm light bouncing off it - the difference between a body lit and a body
-    /// placed in a room.
+    /// 烘焙两类内容：反射探针让骑士甲胄和巨兽肩部反射石材与天空；
+    /// 光照探针网格让站在日照地板上的角色接收暖色反弹光，区别于仅被照亮而未融入房间的身体。
     /// </para>
     /// <para>
-    /// Baking needs a GPU, and the setup runs headless without one, so it is its own step:
-    /// <see cref="BakeArenaLighting"/>, run from the menu or from a batch editor started without
-    /// <c>-nographics</c>. The scene itself is rebuilt from code on every setup, which would drop the baked
-    /// data each time, so <see cref="PrepareScene"/> lays out the probes identically and re-links whatever
-    /// has already been baked. A setup on a machine with no GPU therefore keeps the last bake.
+    /// 烘焙需要 GPU，而设置流程无 GPU、无界面运行，因此烘焙单独执行：<see cref="BakeArenaLighting"/>，
+    /// 可从菜单或未使用以下参数的批处理编辑器运行：<c>-nographics</c>。每次设置都从代码重建场景，
+    /// 原本会丢失烘焙数据，因此 <see cref="PrepareScene"/> 以相同方式布置探针并重新关联已有烘焙。
+    /// 在没有 GPU 的机器上设置仍保留上次结果。
     /// </para>
     /// <para>
-    /// Lights are Mixed in Baked Indirect mode: direct light and shadows stay realtime, so the phase
-    /// colours still reach every surface directly, and only the bounce is baked.
+    /// 灯光使用 Baked Indirect 模式的 Mixed：直接光和阴影保持实时，让阶段颜色直接作用于每个表面，
+    /// 仅反弹光烘焙。
     /// </para>
     /// </remarks>
     public static class LightingBaker
     {
-        /// <summary>Folder the lighting settings and baked reflection live in.</summary>
+        /// <summary>照明设置和烘焙反射所在文件夹。</summary>
         public const string LightingFolder = "Assets/_Project/Lighting";
 
-        /// <summary>The baked reflection cubemap.</summary>
+        /// <summary>烘焙反射立方体贴图。</summary>
         public const string ReflectionPath = LightingFolder + "/ArenaReflection.exr";
 
         private const string SettingsPath = LightingFolder + "/ArenaLighting.lighting";
 
-        /// <summary>The lighting data Unity writes beside the scene when it bakes.</summary>
+        /// <summary>Unity 烘焙时写在场景旁边的照明数据。</summary>
         private const string LightingDataPath = EditorMenus.GeneratedSceneFolder + "/Arena/LightingData.asset";
 
-        /// <summary>Spacing of the probe grid over the fighting floor, in metres.</summary>
+        /// <summary>战斗地板上探针网格间距，单位为米。</summary>
         private const float ProbeSpacing = 4f;
 
-        /// <summary>Probe heights: at a fighter's knees and at head height, which is where bodies sample.</summary>
+        /// <summary>探针高度位于角色膝部和头部，符合身体采样位置。</summary>
         private static readonly float[] ProbeHeights = { 0.6f, 2.4f };
 
-        /// <summary>Lays the probe grid out, sets the lights and re-links any earlier bake. Called by the scene builder.</summary>
-        /// <param name="config">Arena dimensions.</param>
+        /// <summary>布置探针网格、配置灯光、重连先前烘焙；由场景构建器调用。</summary>
+        /// <param name="config">竞技场尺寸。</param>
         public static void PrepareScene(ArenaConfig config)
         {
             Lightmapping.lightingSettings = LoadOrCreateSettings();
@@ -60,10 +57,9 @@ namespace AdaptiveBossArena.Editor.Environment
                 light.lightmapBakeType = LightmapBakeType.Mixed;
             }
 
-            // Stone contributes bounce light to the bake, but is not lit by the probes afterwards. The floor lies
-            // below the probe grid and the walls and columns beyond it, where the interpolated probes are about
-            // two and a half times darker than the room's ambient light - measured - and letting the stone sample
-            // them turned the whole ruin dark. Probes are for the fighters, who stand inside the grid.
+            // 石材为烘焙贡献反弹光，但之后不接受探针照明。地板低于网格，墙柱在网格外；
+            // 实测这些位置插值探针亮度约只有环境光的五分之二，让石材采样会使整座废墟变暗。
+            // 探针用于站在网格内部的战斗角色。
             GameObject cathedral = GameObject.Find(CathedralBuilder.RootName);
 
             if (cathedral != null)
@@ -96,7 +92,7 @@ namespace AdaptiveBossArena.Editor.Environment
             }
         }
 
-        /// <summary>Bakes the arena's light probes and reflection probe. Needs a GPU.</summary>
+        /// <summary>烘焙竞技场光照探针和反射探针，需要 GPU。</summary>
         [MenuItem(EditorMenus.Setup + "4. Bake Arena Lighting", priority = EditorMenus.SetupPriorityBuildScene + 1)]
         public static void BakeArenaLighting()
         {
@@ -144,9 +140,9 @@ namespace AdaptiveBossArena.Editor.Environment
             Debug.Log($"[Adaptive Boss Arena] Arena lighting baked: {probeCount} light probes, reflection at '{ReflectionPath}'.");
         }
 
-        /// <summary>The probe positions: a square grid clipped to the fighting floor, at each sampling height.</summary>
-        /// <param name="radius">Radius of the fighting floor.</param>
-        /// <returns>World positions, identical on every call.</returns>
+        /// <summary>探针位置：按各采样高度布置方格网，并裁剪到战斗地板内。</summary>
+        /// <param name="radius">战斗地板半径。</param>
+        /// <returns>每次调用相同的世界位置。</returns>
         public static IEnumerable<Vector3> ProbeGrid(float radius)
         {
             int steps = Mathf.CeilToInt(radius / ProbeSpacing);
@@ -168,7 +164,7 @@ namespace AdaptiveBossArena.Editor.Environment
             }
         }
 
-        /// <summary>Points the reflection probe at the baked cubemap, if one exists.</summary>
+        /// <summary>若存在烘焙立方体贴图，则将反射探针指向它。</summary>
         private static void RelinkReflection()
         {
             var cubemap = AssetDatabase.LoadAssetAtPath<Texture>(ReflectionPath);
@@ -179,8 +175,8 @@ namespace AdaptiveBossArena.Editor.Environment
                 return;
             }
 
-            // Custom rather than Baked: a Baked probe's texture lives in the scene's lighting data, which the
-            // scene rebuild discards. A custom texture is an ordinary asset reference and survives it.
+            // 使用 Custom 而非 Baked：Baked 探针纹理保存在重建场景会丢弃的照明数据中；
+            // 自定义纹理是普通资产引用，可以保留。
             probe.mode = ReflectionProbeMode.Custom;
             probe.customBakedTexture = cubemap;
         }

@@ -15,21 +15,18 @@ using UnityEngine;
 namespace AdaptiveBossArena.AI
 {
     /// <summary>
-    /// Assembles the boss and drives its decision making.
+    /// 组装 Boss 并驱动决策。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Worth stating plainly, because it is the point of the whole project: this class has no
-    /// reference to the player and cannot obtain one. Its assembly does not reference the player's
-    /// assembly or the input package. It resolves an <see cref="IObservablePlayer"/> — an interface
-    /// declared in Core that exposes only what is visible on screen — and then wraps even that in a
-    /// <see cref="DelayedPerceptionSource"/> so it is reading a snapshot from a fraction of a second
-    /// ago.
+    /// 这是整个项目的重点，值得明确说明：此类没有玩家引用，也无法获取。
+    /// 其程序集不引用玩家程序集或输入包。它解析仅暴露屏幕可见信息、
+    /// 声明于 Core 的 <see cref="IObservablePlayer"/>接口，
+    /// 再包装为 <see cref="DelayedPerceptionSource"/>，因此读取的仍是零点几秒前的快照。
     /// </para>
     /// <para>
-    /// Sampling is pushed from here on a fixed cadence rather than pulled by the states, so no
-    /// amount of eagerness deeper in the AI can obtain fresher information than the boss is
-    /// entitled to.
+    /// 采样由这里按固定节奏推送，而非状态主动拉取，因此 AI 深层无论多急于行动，
+    /// 都无法取得比允许范围更新的信息。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -39,28 +36,27 @@ namespace AdaptiveBossArena.AI
         private const int DeathTransitionPriority = 1000;
         private const int StaggerTransitionPriority = 500;
 
-        /// <summary>Above a normal attack so the set-piece takes over, below stagger/death so those interrupt it.</summary>
+        /// <summary>高于普通攻击，使阶段演出能够接管；低于硬直和死亡，使二者可打断它。</summary>
         private const int SetPieceTransitionPriority = 300;
 
         private const int ParryTransitionPriority = 200;
 
-        /// <summary>Stagger applied to the boss when its poise breaks.</summary>
+        /// <summary>Boss 架势崩溃时施加的硬直。</summary>
         /// <remarks>
-        /// Long enough to walk in and take the punish: the riposte is now the player pressing attack inside this
-        /// window rather than something that fires itself the instant the guard breaks.
+        /// 足够长以便走近并惩罚：反击现在要求玩家在此窗口内按攻击，而非防线崩溃后自动触发。
         /// </remarks>
         private const float PoiseBreakStaggerSeconds = 1.6f;
 
         /// <summary>
-        /// How far two observed swing start times may differ and still count as the same swing.
+        /// 两次观察到的挥击开始时间仍可视为同次挥击的最大差值。
         /// </summary>
         /// <remarks>
-        /// The start time is derived by subtraction from a delayed observation, so it carries a
-        /// little float noise across frames. Well under the shortest gap between two real swings.
+        /// 开始时间通过延迟观察做减法得出，因此跨帧有少量浮点误差。
+        /// 此容差远小于两次真实挥击的最短间隔。
         /// </remarks>
         private const float SameSwingToleranceSeconds = 0.01f;
 
-        /// <summary>Camera trauma accompanying an adaptation, as a physical cue that something changed.</summary>
+        /// <summary>适应时伴随的相机震动强度，作为发生变化的身体感提示。</summary>
         private const float AdaptationTellTrauma = 0.25f;
 
         [Header("Configuration")]
@@ -104,56 +100,53 @@ namespace AdaptiveBossArena.AI
         private HitFlash _hitFlash;
         private CharacterAnimator _animator;
 
-        /// <summary>Drives the rigged skeleton, and swaps it to the frenzy's bare-handed form.</summary>
+        /// <summary>驱动骨骼角色，并切换为狂暴徒手形态。</summary>
         private CharacterAnimationBridge _bridge;
 
-        /// <summary>The rig's physical body, woken on death. Null for a primitive body.</summary>
+        /// <summary>角色的物理身体，死亡时唤醒。基础几何体身体没有此项。</summary>
         private RagdollActivator _ragdoll;
         private PhaseAura _phaseAura;
 
         /// <summary>
-        /// How long the boss shrugs off hits while transforming into a new phase.
+        /// Boss 转入新阶段时忽略伤害的时长。
         /// </summary>
         /// <remarks>
-        /// Heavily telegraphed — the roar clip, a flare of the aura — so it reads as the boss powering up
-        /// rather than as a hit that failed to register. It stops the player from simply bursting through
-        /// the escalation the moment it begins. 1.3 s rather than 0.6: long enough for the roar to be
-        /// seen as a roar, which at 0.6 s was a twitch. The boss throws nothing else while it lasts.
+        /// 通过咆哮动画和光环爆发明显预警，使其表现为强化而非漏判命中。
+        /// 防止玩家在升级刚开始时直接爆发跳过该过程。使用1.3 秒而非 0.6 秒，让咆哮足够完整；
+        /// 0.6秒看起来只像抽动。期间 Boss 不执行其他攻击。
         /// </remarks>
         private const float PhaseTransitionInvulnSeconds = 1.3f;
 
-        /// <summary>The phase in which the brute throws its sword away and fights bare-handed.</summary>
+        /// <summary>巨兽丢弃剑并改为徒手战斗的阶段。</summary>
         /// <remarks>
-        /// The last phase of the configured list, whichever that is, so a config with three phases frenzies
-        /// in its third rather than never frenzying at all.
+        /// 始终使用配置列表的最后阶段，因此三阶段配置会在第三阶段狂暴，而不是永不狂暴。
         /// </remarks>
         private int FrenzyPhaseIndex =>
             _config != null && _config.Phases != null && _config.Phases.Length > 0
                 ? _config.Phases.Length - 1
                 : int.MaxValue;
 
-        /// <summary>How long the death clip plays before physics takes the body.</summary>
+        /// <summary>物理接管身体前，死亡动画播放的时长。</summary>
         /// <remarks>
-        /// Long enough to see the brute go down on its own terms, short enough that the corpse still falls
-        /// while the outcome screen is fading in.
+        /// 足够长以看到巨兽完整倒下，又足够短，使结算界面淡入时尸体仍在下落。
         /// </remarks>
         private const float DeathClipSeconds = 0.9f;
 
         private float _phaseTransitionInvulnRemaining;
 
-        /// <summary>Seconds of death animation left before the ragdoll takes over, or zero when not dying.</summary>
+        /// <summary>布娃娃接管前剩余的死亡动画秒数，未死亡时为零。</summary>
         private float _deathClipRemaining;
 
-        /// <summary>The killing blow, held until the death clip has played.</summary>
+        /// <summary>致命一击的信息，保留到死亡动画播完。</summary>
         private Vector3 _pendingDeathThrow;
 
-        /// <summary>Set when a phase escalation should erupt into the set-piece shockwave, once free.</summary>
+        /// <summary>阶段升级应在可行动后引发演出冲击波时设置。</summary>
         private bool _phaseAttackQueued;
 
-        /// <summary>Set once an outcome has been decided, standing the boss down.</summary>
+        /// <summary>结局确定后设置，使 Boss 停止战斗。</summary>
         private bool _fightConcluded;
 
-        /// <summary>Run-modifier multiplier on the adaptation rate. One is the ordinary fight.</summary>
+        /// <summary>挑战修正对适应速度的倍率，一表示普通战斗。</summary>
         private float _adaptationRateScale = 1f;
 
         private ITimeService _time;
@@ -178,10 +171,10 @@ namespace AdaptiveBossArena.AI
         private BossRecoverState _recoverState;
         private BossParryState _parryState;
 
-        /// <summary>When the swing the boss last made a parry decision about began.</summary>
+        /// <summary>Boss 最近一次作出招架决策的挥击开始时间。</summary>
         private float _lastConsideredSwingStart = float.NegativeInfinity;
 
-        /// <summary>The decision made about that swing, held so it is not re-rolled every frame.</summary>
+        /// <summary>针对该挥击作出的决策，保留它以免每帧重新抽取。</summary>
         private bool _parryThisSwing;
         private BossStaggerState _staggerState;
         private BossDeadState _deadState;
@@ -194,32 +187,31 @@ namespace AdaptiveBossArena.AI
         /// <inheritdoc />
         public bool IsAlive => _health != null && _health.IsAlive;
 
-        /// <summary>Health pool, exposed read-only for the heads-up display.</summary>
+        /// <summary>生命值池，以只读方式暴露给 HUD。</summary>
         public IHealth Health => _health;
 
-        /// <summary>Poise pool, exposed read-only for debug tooling.</summary>
+        /// <summary>架势池，以只读方式暴露给调试工具。</summary>
         public IPoise Poise => _poise;
 
-        /// <summary>Behaviour numbers the learning system adjusts. Exposed for the debug overlay.</summary>
+        /// <summary>学习系统调整的行为数值，供调试面板读取。</summary>
         public BossTuning Tuning => _context?.Tuning;
 
-        /// <summary>Zero-based index of the phase currently in effect.</summary>
+        /// <summary>当前阶段从零开始的索引。</summary>
         public int PhaseIndex => _context?.PhaseIndex ?? 0;
 
-        /// <summary>Name of the state the boss currently occupies. For debug tooling.</summary>
+        /// <summary>Boss 当前状态名称，供调试工具使用。</summary>
         public string CurrentStateName => _machine?.CurrentState?.Name ?? "Uninitialised";
 
         /// <summary>
-        /// Whether construction finished. Exposed because the failure is otherwise silent.
+        /// 构建是否完成。暴露此项，因为否则失败会被静默掩盖。
         /// </summary>
         /// <remarks>
-        /// The last three checks in <c>ValidateSetup</c> return false without logging, so a missing
-        /// service disables the boss quietly: it stops attacking and ignores every hit, which reads
-        /// from the outside like a passive boss rather than a broken one.
+        /// <c>ValidateSetup</c> 最后三项检查返回false 而不记录日志，因此缺失服务会静默禁用 Boss：
+        /// 停止攻击并忽略命中，外部看来像被动 Boss 而非损坏对象。
         /// </remarks>
         public bool IsInitialised => _isInitialised;
 
-        /// <summary>Seconds of phase-transition invulnerability remaining. For debug tooling.</summary>
+        /// <summary>阶段变化无敌剩余秒数，供调试工具使用。</summary>
         public float PhaseTransitionInvulnRemaining => _phaseTransitionInvulnRemaining;
 
         private void Awake()
@@ -254,17 +246,15 @@ namespace AdaptiveBossArena.AI
             _health = new HealthPool(_config.MaxHealth, CombatantTeam.Boss);
             _poise = new PoisePool(_config.MaxPoise, _config.PoiseRegenPerSecond, PoiseBreakStaggerSeconds);
 
-            // The hazard field is optional and lives in the scene, so a boss in a test scene without
-            // one simply leaves no scars. Only the boss is handed it, which is what keeps ground
-            // hazards to the boss's side of the fight.
+            // 危险区域场可选且属于场景，因此无此对象的测试场景中 Boss 不会留下危险痕迹。
+            // 只将其传给 Boss，使地面危险区域始终属于 Boss 一方。
             var hazardField = FindAnyObjectByType<Combat.HazardField>();
 
             var attacks = new AttackExecutor(
                 transform, CombatantTeam.Boss, Layers.BossAttackMask, _time, _events, _screenShake,
                 GetComponentInChildren<Combat.Feel.AttackVisualizer>(), hazardField);
 
-            // The blade, fists, foot and body its blows land with. Inactive ones included: the cleaver is
-            // hidden in the frenzy and returns on a retry.
+            // 造成命中的刀刃、拳头、脚和身体。也包含未激活对象：砍刀狂暴时隐藏，重试后恢复。
             attacks.SetStrikers(GetComponentsInChildren<StrikeVolume>(includeInactive: true));
 
             var tuning = new BossTuning(
@@ -288,11 +278,10 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Assembles the learning loop and subscribes it to the fight.
+        /// 组装学习循环，并订阅战斗事件。
         /// </summary>
         /// <remarks>
-        /// The subscription is to the combat event bus, not to the player. The boss finds out what
-        /// happened the same way a spectator would, from occurrences that have already taken place.
+        /// 订阅的是战斗事件总线而非玩家。Boss像观众一样从已发生的事件获知战斗进展。
         /// </remarks>
         private void BuildLearning(IRandomProvider random)
         {
@@ -325,15 +314,14 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Feeds a witnessed occurrence into the learning loop, and into Resolve when it is one of the
-        /// boss's own attacks being dodged.
+        /// 把可观察事件送入学习循环；若是 Boss自己的攻击被避开，也送入决心系统。
         /// </summary>
         private void OnCombatEventRecorded(CombatEvent combatEvent)
         {
             _adaptation.OnCombatEvent(combatEvent);
 
-            // A whiffed boss attack means the player slipped it; that frustration winds up the gambit.
-            // Only the boss's own whiffs count, and only as a statistic — never as a reaction.
+            // Boss 挥空意味着玩家避开攻击，这份挫败会积累孤注一掷。只有 Boss 自己挥空计入，
+            // 且仅用于统计，绝不直接驱动反应。
             if (combatEvent.Kind == CombatEventKind.AttackWhiffed && combatEvent.Actor == CombatantTeam.Boss)
             {
                 _resolve?.RegisterBossWhiff();
@@ -342,15 +330,12 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Considers whether the committed swing that just missed overbalances the boss into an open
-        /// stumble.
+        /// 判断刚挥空的高投入攻击是否使Boss 失衡并暴露踉跄空当。
         /// </summary>
         /// <remarks>
-        /// This is a reaction to the boss's <em>own</em> action and its <em>own</em> commitment — never
-        /// to anything about the player — so it needs no perception delay to stay honest: the boss is
-        /// paying for how hard it leaned into a read, exactly when the player stops feeding that read.
-        /// The chance and severity scale with commitment, and are zero when the boss has adapted
-        /// nothing, so a fight it learns nothing in is untouched.
+        /// 这是对 Boss <em>自己</em>动作及其<em>自己</em>投入的反应，从不读取玩家，
+        /// 因此无需感知延迟也公平：玩家不再符合预测时，Boss 为过度信任该判断付出代价。
+        /// 概率和强度随投入提升，尚未适应时为零，因此完全没有学习的战斗不受影响。
         /// </remarks>
         private void TryOverbalance()
         {
@@ -370,22 +355,20 @@ namespace AdaptiveBossArena.AI
             _context.OverbalanceSeconds = _overbalance.ExtraRecoverySeconds(commitment);
             _context.OverbalancePoiseMultiplier = _overbalance.PoiseVulnerabilityMultiplier(commitment);
 
-            // A lurch forward in the direction it overcommitted, so the miss reads on the body as an
-            // overextension rather than the boss simply pausing. Same presentation channel the aura
-            // pulse uses on an adaptation, kept here beside the mechanic it accompanies.
+            // 沿过度投入方向前倾，使挥空在身体上表现为过度伸展，而非单纯暂停。
+            // 与适应时光环脉冲使用相同表现通道，放在所伴随机制旁边。
             _animator?.Recoil(_context.Motor.Facing);
 
-            // Announced so the directors can dust, sound and mark the opening; the mechanic itself is
-            // already live in the context. Nothing here reads or reacts to the player.
+            // 发出通知供导演添加尘土、音效和空当标记；机制已在上下文中生效。这里不读取玩家，
+            // 也不对其作出反应。
             _overbalanceChannel?.Raise();
         }
 
         /// <summary>
-        /// Announces a newly developed answer so the player can perceive that the boss has changed.
+        /// 提示新形成的应对，让玩家察觉 Boss 已改变。
         /// </summary>
         /// <remarks>
-        /// Required, not optional. An adaptation the player cannot notice is one they will read as
-        /// the boss cheating, which defeats the point of the entire encounter.
+        /// 必须提供，不能省略。玩家看不到的适应会被理解为 Boss 作弊，使整个战斗设计失去意义。
         /// </remarks>
         private void OnStrategyAdopted(CounterStrategy strategy)
         {
@@ -401,21 +384,19 @@ namespace AdaptiveBossArena.AI
 
             _screenShake?.AddTrauma(AdaptationTellTrauma);
 
-            // A flare on the boss itself the instant it adapts, so the change is felt on the
-            // character and not only read in the banner at the top of the screen.
+            // 适应瞬间在 Boss 身上闪光，使变化既能从角色身体感受到，也能从屏幕顶端横幅读到。
             _phaseAura?.Pulse();
         }
 
         /// <summary>
-        /// Stands the boss down once the fight has been decided.
+        /// 战斗结局确定后使 Boss 停止战斗。
         /// </summary>
         /// <remarks>
-        /// Without this the boss keeps swinging at a corpse. Its own death routes through the dead
-        /// state, but the player's death is invisible to it — the firewall means the boss is never
-        /// told anything about the player directly — so the director has to call it off. Animation
-        /// keeps running, so the outcome beat and the loser's topple still play out.
+        /// 否则 Boss 会继续挥砍尸体。自身死亡经过死亡状态，但玩家死亡对其不可见：
+        /// 隔离屏障禁止直接告知玩家信息，因此导演必须叫停 Boss。动画继续运行，
+        /// 保留结局节奏和败者倒下过程。
         /// </remarks>
-        /// <param name="concluded">True once an outcome has been decided.</param>
+        /// <param name="concluded">结局已经确定时为 true。</param>
         public void SetFightConcluded(bool concluded) => _fightConcluded = concluded;
 
         private void Update()
@@ -427,8 +408,8 @@ namespace AdaptiveBossArena.AI
 
             float deltaTime = _time.DeltaTime;
 
-            // Dying: the clip plays, then the body is handed to physics carrying the killing blow. On game
-            // time, so an execution's slow motion draws the fall out with everything else.
+            // 死亡中：先播放动画，再将携带致命一击的身体交给物理。使用游戏时间，
+            // 使处决慢动作同时拉长倒下过程。
             if (_deathClipRemaining > 0f)
             {
                 _deathClipRemaining -= deltaTime;
@@ -439,8 +420,8 @@ namespace AdaptiveBossArena.AI
                 }
             }
 
-            // The fight is over: stop swinging, stop deciding, and coast to a halt. Animation still
-            // runs below so the boss settles visibly instead of freezing mid-pose.
+            // 战斗结束：停止攻击和决策，逐渐停下。下方动画仍运行，使 Boss 可见地归于稳定，
+            // 而非冻结在半途姿势。
             if (_fightConcluded)
             {
                 _context.Attacks.Cancel();
@@ -453,8 +434,7 @@ namespace AdaptiveBossArena.AI
             _phaseTransitionInvulnRemaining = Mathf.Max(0f, _phaseTransitionInvulnRemaining - deltaTime);
             _context.OverbalanceSeconds = Mathf.Max(0f, _context.OverbalanceSeconds - deltaTime);
 
-            // The boss's only window onto the player, refreshed once per frame and served back
-            // delayed. Nothing downstream can ask for anything fresher.
+            // Boss 观察玩家的唯一窗口，每帧刷新并延迟提供。下游无法请求更新数据。
             _perception.Sample(_time.CombatTime);
 
             _context.TickCooldowns(deltaTime);
@@ -462,29 +442,25 @@ namespace AdaptiveBossArena.AI
             _machine.Tick(deltaTime);
             ResolveWallImpact();
 
-            // Learning is advanced after the state machine, so the habits it derives describe a
-            // frame that has already been played rather than one in progress.
+            // 学习在状态机之后推进，使得出的习惯描述已经完成的一帧，而非正在进行的一帧。
             _adaptation.Tick(
                 deltaTime, _time.CombatTime, _context.DistanceToPlayer, _context.PhaseIndex + 1);
 
             UpdatePhase();
             UpdateResolve(deltaTime);
 
-            // Driven every frame rather than from the parry state's entry and exit, so the light can
-            // never be left on by a state torn down mid-stance.
+            // 每帧驱动，而非依赖招架状态进入和退出，避免站姿中途被销毁后灯光残留。
             _phaseAura?.SetParryWindow(_context.ParryWindowOpen);
 
             DriveAnimation();
         }
 
         /// <summary>
-        /// Builds Resolve, shows it charging, and queues the gambit once it is full.
+        /// 积累决心，显示蓄力，充满后排入孤注一掷。
         /// </summary>
         /// <remarks>
-        /// The gambit is delivered through the same path as a phase transition — the queued set-piece
-        /// shockwave — so the two dangerous set-pieces share one telegraphed, dodgeable attack. Resolve
-        /// is spent the instant it is queued, so a single fill cannot fire twice while the boss waits
-        /// for an opening to throw it.
+        /// 孤注一掷使用与阶段变化相同的排队演出冲击波路径，使两个危险演出共享一项有预警、
+        /// 可闪避的攻击。排队瞬间消耗决心，避免等待攻击空当时一次充满触发两次。
         /// </remarks>
         private void UpdateResolve(float deltaTime)
         {
@@ -503,11 +479,10 @@ namespace AdaptiveBossArena.AI
             }
         }
 
-        /// <summary>Pushes the frame's visible state to the procedural animator.</summary>
+        /// <summary>将本帧可见状态传递给程序化动画器。</summary>
         /// <remarks>
-        /// The boss keeps no observable-state field of its own — the player is the one the firewall
-        /// forces to publish that — so its animation state is derived here, on the presentation side,
-        /// from signals the boss already acts on. Nothing about this flows back into the AI.
+        /// Boss 不维护自身可观察状态字段，隔离屏障要求发布该字段的是玩家。
+        /// 因此这里从 Boss 本已使用的信号在表现层推导动画状态，这些信息不会回流到 AI。
         /// </remarks>
         private void DriveAnimation()
         {
@@ -526,7 +501,7 @@ namespace AdaptiveBossArena.AI
                 _context.Attacks.CurrentAttack, _context.Attacks.ElapsedSeconds);
         }
 
-        /// <summary>Maps the boss's current situation onto a presentation state for the animator.</summary>
+        /// <summary>将 Boss 当前情况映射为动画器的表现状态。</summary>
         private ObservableActionState ResolveAnimationState()
         {
             if (!_health.IsAlive)
@@ -539,16 +514,14 @@ namespace AdaptiveBossArena.AI
                 return ObservableActionState.Staggered;
             }
 
-            // The window, not the whole stance. Holding the guard pose through the tail would show
-            // the player a raised guard at the exact moment the guard has already been spent, which
-            // is the one frame where the pose has to be honest.
+            // 仅使用窗口，而非整个站姿。尾段保持防御姿势会在防御能力已耗尽的关键瞬间仍向玩家显示举起
+            // 防御，而此帧的姿势必须诚实。
             if (_context.ParryWindowOpen)
             {
                 return ObservableActionState.Guarding;
             }
 
-            // Boss swings are weighty, so they always read as the heavy pose — bigger anticipation
-            // and a longer lunge than the player's light chain.
+            // Boss 挥击有分量，因此始终采用重击姿势，比玩家轻击连招有更大蓄势和更长突进。
             if (_context.Attacks.IsRunning)
             {
                 return ObservableActionState.HeavyAttacking;
@@ -567,18 +540,15 @@ namespace AdaptiveBossArena.AI
                 return DamageResult.NoDamage(DamageOutcome.Ignored);
             }
 
-            // A successful parry refuses the hit and hands the punish window back to the boss. It is
-            // only reachable inside the window the stance opens with - a moment later the same
-            // stance is the boss standing still with its guard already spent, and the hit lands in
-            // full. CanBlock is false because the boss has no guard to fall back on: there is no
-            // chip, no cost, and no half-answer. It either timed it or it did not.
+            // 成功招架拒绝命中，并给 Boss 惩罚机会。仅在站姿开头窗口可触发；
+            // 稍后同一站姿只是防御能力已耗尽的静止身体，会受到完整伤害。CanBlock 为 false，
+            // 因为 Boss 没有备用格挡：没有擦伤伤害，没有消耗，也没有折中结果。要么时机准确，要么失败。
             if (DescribeDefence(damage) == DefenceOutcome.Deflected)
             {
                 return ResolveParry();
             }
 
-            // Mid-transformation the boss is briefly untouchable. The window is short and unmistakably
-            // telegraphed, so it reads as the escalation rather than as a swallowed hit.
+            // 阶段变形期间 Boss 短暂无敌。窗口短且预警明确，因此表现为升级，而非命中被吞掉。
             if (_phaseTransitionInvulnRemaining > 0f && !damage.IgnoresInvulnerability)
             {
                 return DamageResult.NoDamage(DamageOutcome.Invulnerable);
@@ -588,21 +558,20 @@ namespace AdaptiveBossArena.AI
             _hitFlash?.Play();
             _animator?.Recoil(damage.HitDirection);
 
-            // While overbalanced the boss's stance is wide open, so a hit landed in the stumble rushes
-            // the posture break that opens the execution — the concrete reward for baiting the read.
+            // 失衡时 Boss 防线敞开，因此踉跄期间命中会加速架势击破并打开处决机会，
+            // 这是诱骗预测成功后的实际奖励。
             if (_poise.ApplyPoiseDamage(damage.PoiseDamage * _context.IncomingPoiseMultiplier))
             {
                 _context.RequestStagger(PoiseBreakStaggerSeconds, StaggerReason.PoiseBreak);
             }
 
-            // After the poise damage, so the blow that breaks the stance is also the one that throws
-            // the boss. The boss used to ignore knockback entirely.
+            // 在架势伤害之后处理，使击破站姿的那一击也能推动 Boss。Boss 以前完全忽略击退。
             ApplyKnockback(damage);
 
             return DamageResult.Applied(applied, !_health.IsAlive);
         }
 
-        /// <summary>Pushes the boss along a blow, by as much as its stance lets through.</summary>
+        /// <summary>沿攻击方向推动 Boss，幅度由其站姿允许的冲量决定。</summary>
         private void ApplyKnockback(in DamageInfo damage)
         {
             Vector3 direction = damage.HitDirection;
@@ -623,14 +592,12 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Recoils from a swing the player deflected.
+        /// 从被玩家弹反的挥击中反震。
         /// </summary>
         /// <remarks>
-        /// The boss's half of the same exchange, and deferred for the same reason as the player's:
-        /// this runs inside the attack executor's phase-stepping loop, so the swing is torn down by
-        /// the stagger it requests rather than cancelled here. Until now a deflect only moved the
-        /// boss's posture; the swing itself carried on through the guard as though nothing had
-        /// happened, which is most of why deflecting never felt like winning an exchange.
+        /// 这是同一交锋的 Boss 侧处理，与玩家一样延迟执行：这里位于攻击执行器阶段推进循环内，
+        /// 因此由请求的硬直状态清理挥击，而非当场取消。此前弹反只改变 Boss 架势，
+        /// 挥击仍像无事发生般穿过防御继续，这正是弹反缺乏赢下交锋感觉的重要原因。
         /// </remarks>
         private void OnOwnAttackParried() =>
             _context.RequestStagger(
@@ -638,19 +605,18 @@ namespace AdaptiveBossArena.AI
                 StaggerReason.Parried);
 
         /// <summary>
-        /// How long the boss reels from a deliberate parry, against the shorter recoil a deflect causes.
+        /// Boss 被主动招架后踉跄的时长，比普通弹反反震更长。
         /// </summary>
         /// <remarks>
-        /// Long enough to swing at, which is what makes the parry worth its commitment; short enough that it is
-        /// not a free riposte on its own.
+        /// 足够长以便攻击，才值得承担招架投入；又足够短，使招架本身并非免费反击机会。
         /// </remarks>
         private const float ParriedByStrikeStaggerSeconds = 0.6f;
 
         /// <summary>
-        /// Asks the shared resolver how the boss's stance meets an incoming hit.
+        /// 向共享裁决器询问 Boss 站姿如何应对传入攻击。
         /// </summary>
-        /// <param name="damage">The incoming hit.</param>
-        /// <returns>How the hit resolves against the stance.</returns>
+        /// <param name="damage">传入的攻击。</param>
+        /// <returns>攻击对该站姿的裁决结果。</returns>
         private DefenceOutcome DescribeDefence(in DamageInfo damage) =>
             DefenceResolver.ResolveDefence(new DefenceQuery
             {
@@ -664,16 +630,14 @@ namespace AdaptiveBossArena.AI
             });
 
         /// <summary>
-        /// Refuses a hit the boss met on the beat.
+        /// 拒绝 Boss 精准迎击的攻击。
         /// </summary>
         /// <remarks>
-        /// Clearing the attack cooldown is the reward: having guessed right, the boss may answer
-        /// immediately. Nothing is published from here on purpose - returning Deflected is what
-        /// makes the player's own executor raise <see cref="CombatEventKind.Parried"/> with the boss
-        /// named as the defender, and publishing a second event for the same instant would burst and
-        /// ring twice on one exchange.
+        /// 奖励是清除攻击冷却：判断正确后 Boss 可以立即回应。此处刻意不发布事件；
+        /// 返回 Deflected 会使玩家攻击执行器发布 <see cref="CombatEventKind.Parried"/>，
+        /// 并将 Boss 标为防御者。若同一瞬间重复发布事件，同次交锋会出现两次特效和音效。
         /// </remarks>
-        /// <returns>A result carrying no damage.</returns>
+        /// <returns>不含伤害的结果。</returns>
         private DamageResult ResolveParry()
         {
             _context.AttackCooldownRemaining = 0f;
@@ -682,8 +646,8 @@ namespace AdaptiveBossArena.AI
             return DamageResult.NoDamage(DamageOutcome.Deflected);
         }
 
-        /// <summary>Restores the boss to its starting condition for a retry.</summary>
-        /// <param name="spawnPosition">Where to place the boss.</param>
+        /// <summary>重试时恢复 Boss 初始状态。</summary>
+        /// <param name="spawnPosition">Boss 的放置位置。</param>
         public void ResetForNewAttempt(Vector3 spawnPosition)
         {
             if (!_isInitialised)
@@ -717,15 +681,14 @@ namespace AdaptiveBossArena.AI
 
             ApplyPhase(0);
             _machine.ForceState(_idleState);
-            // The body goes back to the Animator before the pose is reset, or the reset would pose bones
-            // that physics still owns.
+            // 先把身体交回 Animator，再重置姿势，否则会修改仍归物理管理的骨骼。
             _ragdoll?.Restore();
             _animator?.ResetPose();
             _phaseAura?.ResetAura();
             _healthChannel?.Raise(_health.Normalized);
         }
 
-        /// <summary>Wires the states and the conditions that move between them.</summary>
+        /// <summary>连接各状态和状态间转移条件。</summary>
         private void BuildStateMachine()
         {
             _idleState = new BossIdleState();
@@ -741,7 +704,7 @@ namespace AdaptiveBossArena.AI
 
             _machine.AddTransition(_idleState, _observeState, HasPerceivedPlayer);
 
-            // Committing to an attack picks one first, so the approach knows what reach to close to.
+            // 决定攻击投入前先选择攻击，使接近状态知道应靠近到何种距离。
             _machine.AddTransition(_observeState, _attackState, WantsToAttackNow, priority: 100);
             _machine.AddTransition(_observeState, _approachState, WantsToApproach, priority: 90);
 
@@ -769,25 +732,23 @@ namespace AdaptiveBossArena.AI
         private static bool IsStaggerRequested(BossContext context) => context.StaggerRequested;
 
         /// <summary>
-        /// Decides whether to attack, choosing which attack as a side effect.
+        /// 决定是否攻击，并在判断过程中选择攻击。
         /// </summary>
         /// <remarks>
-        /// The reaction gate is checked before anything else. However obvious an opening is, the boss
-        /// cannot take it faster than its reaction profile permits, and it will sometimes decline it
-        /// outright because a human would.
+        /// 首先检查反应门控。无论空当多明显，Boss都不能快于反应配置允许的速度利用它；
+        /// 它有时也会像人类一样完全错过空当。
         /// </remarks>
         private bool WantsToAttackNow(BossContext context)
         {
-            // Not while transforming: the roar is the beat, and a swing out of it would be thrown by a body
-            // that is visibly still roaring. Checked before selection, so no random draw is spent on it.
+            // 变形期间不攻击：咆哮是此时节奏，仍在明显咆哮的身体不应同时挥击。选择前检查，
+            // 避免无谓消耗随机抽取。
             if (_phaseTransitionInvulnRemaining > 0f)
             {
                 return false;
             }
 
-            // Selection happens here and only here. The approach transition, evaluated immediately
-            // afterwards, reads the result rather than choosing again, so one decision draws from
-            // the random stream once and a seeded fight stays reproducible.
+            // 只在这里选择一次。紧接着评估的接近转移读取结果而不重新选择，使单次决策只消耗一次随机值，
+            // 并保持种子战斗可复现。
             if (!TryCommitToAttack(context))
             {
                 return false;
@@ -800,13 +761,11 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Fires the queued phase-transition set-piece once the boss is free to throw it.
+        /// Boss 可以出招后，执行排队中的阶段转换演出。
         /// </summary>
         /// <remarks>
-        /// Waits out the rear-up's invulnerability so the shockwave lands <em>after</em> the
-        /// transformation beat, and holds off while any ordinary attack is still committed, so the
-        /// set-piece interrupts nothing mid-swing. It selects the attack as it commits, exactly like
-        /// the ordinary attack path, so a seeded fight stays reproducible.
+        /// 等待挺身咆哮的无敌结束，使冲击波在变形节奏<em>之后</em>出现；普通攻击仍处于投入期时也等待，
+        /// 避免演出打断半途挥击。与普通攻击路径一样，在投入时选择攻击，使种子战斗可复现。
         /// </remarks>
         private bool WantsPhaseAttack(BossContext context)
         {
@@ -824,18 +783,16 @@ namespace AdaptiveBossArena.AI
             return true;
         }
 
-        /// <summary>Closes the distance toward an attack the boss has already committed to.</summary>
+        /// <summary>向已经确定使用的攻击范围靠近。</summary>
         private static bool WantsToApproach(BossContext context) => context.PendingAttack != null;
 
         /// <summary>
-        /// Decides whether to commit to an attack, and picks one if so.
+        /// 决定是否投入攻击，是则选择具体攻击。
         /// </summary>
         /// <remarks>
-        /// A failed opportunity roll starts a fresh reaction delay rather than simply returning
-        /// false. Without that the boss would re-roll every frame and clear even a high miss chance
-        /// almost immediately, which would quietly reduce its designed fallibility to nothing. Making
-        /// a miss cost a full reaction window is also the more faithful model: a human who fails to
-        /// take an opening does not get to reconsider it a sixtieth of a second later.
+        /// 错过机会的随机结果会启动新的完整反应延迟，而非仅返回 false。否则 Boss 每帧重抽，
+        /// 即使高失误概率也几乎立即通过，设计中的失误性便被无声抹去。
+        /// 错过时付出完整反应窗口也更符合人类：漏掉空当的人不会在六十分之一秒后重新判断。
         /// </remarks>
         private bool TryCommitToAttack(BossContext context)
         {
@@ -870,12 +827,11 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Decides whether to attempt a parry against a heavy attack the boss has seen begin.
+        /// 决定是否招架已经观察到前摇的重击。
         /// </summary>
         /// <remarks>
-        /// Gated on the perceived, and therefore stale, action state. The boss is reacting to a
-        /// wind-up it watched start, not to a decision the player has just made. Its willingness to
-        /// try is the learned parry chance, which is zero until the player gives it a reason.
+        /// 根据已感知、因此滞后的动作状态门控。Boss 响应的是看见已开始的前摇，而非玩家刚作出的决定。
+        /// 尝试意愿来自学习后的招架概率，玩家提供理由前为零。
         /// </remarks>
         private bool WantsToParry(BossContext context)
         {
@@ -898,18 +854,15 @@ namespace AdaptiveBossArena.AI
                 return false;
             }
 
-            // Only worth attempting if the player is close enough to actually be swinging at the boss.
+            // 只有玩家近到确实可能挥到 Boss 时才值得尝试。
             if (context.DistanceToPlayer > context.PreferredRange + 2f)
             {
                 return false;
             }
 
-            // Decided once per swing, not once per frame. This predicate is evaluated by the state
-            // machine every frame the boss is eligible, so rolling here made the chance compound:
-            // across the ~fifty frames a heavy swing is visible for, even a modest per-frame chance
-            // becomes a near-certainty, and the boss would parry essentially every heavy thrown at
-            // it. Identifying the swing by when the observed action state began - not by the
-            // observation's own timestamp, which advances every frame - keeps one swing to one roll.
+            // 每次挥击只决定一次，而非每帧一次。Boss具备资格时状态机每帧评估此谓词，若在这里反复抽取，
+            // 概率会叠加：重击可见约五十帧，即使单帧概率很小也几乎必然，Boss 会招架所有重击。
+            // 用观察到的动作开始时间而非每帧增加的观察时间戳识别挥击，确保一次挥击只抽一次。
             if (Mathf.Abs(observation.ActionStartedAt - _lastConsideredSwingStart) >
                 SameSwingToleranceSeconds)
             {
@@ -930,7 +883,7 @@ namespace AdaptiveBossArena.AI
 
         private bool StaggerFinished(BossContext context) => _staggerState.IsComplete(context);
 
-        /// <summary>Escalates the boss when its health crosses a phase threshold.</summary>
+        /// <summary>生命值越过阶段阈值时升级 Boss。</summary>
         private void UpdatePhase()
         {
             int resolved = _config.ResolvePhaseIndex(_health.Normalized);
@@ -941,54 +894,50 @@ namespace AdaptiveBossArena.AI
             }
         }
 
-        /// <summary>Applies a phase's movement multiplier and adaptation rate, then announces it.</summary>
+        /// <summary>应用阶段移动倍率与适应速度，然后发出提示。</summary>
         private void ApplyPhase(int phaseIndex)
         {
-            // Captured before the assignment so a genuine escalation can be told apart from the
-            // opening phase and from a reset back to phase zero, neither of which should erupt.
+            // 赋值前捕获旧值，以区分真正升级、初始阶段以及重置为零阶段，后两者不应触发爆发。
             bool isEscalation = phaseIndex > _context.PhaseIndex;
 
             _context.PhaseIndex = phaseIndex;
             _context.Motor.SetSpeedMultiplier(_context.CurrentPhase.MoveSpeedMultiplier);
 
-            // Later phases learn faster. This is how the encounter escalates without the boss ever
-            // gaining information it did not already have. The run-modifier scale (Fast Learner) folds
-            // in here so it survives every phase transition rather than being overwritten by one.
+            // 后期阶段学习更快，使战斗升级而不赋予 Boss额外信息。快速学习挑战倍率在此合入，
+            // 确保每次阶段变化后仍保留，而不被覆盖。
             _adaptation?.SetAdaptationRateMultiplier(
                 _context.CurrentPhase.AdaptationRateMultiplier * _adaptationRateScale);
 
             _phaseAura?.SetPhase(phaseIndex);
 
-            // The last phase is fought bare-handed: a different body, not only faster numbers.
+            // 最后阶段徒手战斗：改变身体表现，而非仅提升数值。
             _bridge?.SetFrenzy(phaseIndex >= FrenzyPhaseIndex);
 
             if (isEscalation)
             {
-                // The transformation beat: rear up, flare the aura, and shrug off hits briefly while
-                // it happens. The roar and the arena-clearing shockwave are raised by the phase
-                // channel's listeners; here we own only what belongs to the boss itself.
+                // 变形节奏：挺身、光环爆发，并短暂忽略攻击。咆哮和清场冲击波由阶段通道监听者触发；
+                // 这里只管理属于 Boss 自身的内容。
                 _animator?.Flourish(PhaseTransitionInvulnSeconds);
                 _phaseAura?.Pulse();
                 _phaseTransitionInvulnRemaining = PhaseTransitionInvulnSeconds;
 
-                // The transformation is now a threat, not just a light show: once the rear-up ends the
-                // boss erupts into its set-piece shockwave, so entering a phase is a "survive this".
+                // 变形现在是威胁，而非单纯灯光演出：挺身结束后 Boss爆发演出冲击波，
+                // 使阶段进入成为需要生存的考验。
                 _phaseAttackQueued = _config.PhaseShockwave != null;
             }
 
             _phaseChannel?.Raise(phaseIndex);
         }
 
-        /// <summary>Relays pool changes onto the event channels the interface listens to.</summary>
+        /// <summary>将资源池变化转发到界面监听的事件通道。</summary>
         private void SubscribeToVitals()
         {
             _health.Changed += args => _healthChannel?.Raise(args.Normalized);
             _poise.Changed += args => _postureChannel?.Raise(args.Normalized);
             _health.Died += _ => _defeatChannel?.Raise();
 
-            // The clip first, then the body. Handing the corpse to physics on the frame it died meant the
-            // brute's death animation was never seen: it simply folded. The throw is remembered and applied
-            // when the clip has played, so the fall still reads as caused by the killing blow.
+            // 先动画，后物理身体。死亡当帧交给物理会让巨兽死亡动画完全不可见，只是直接折倒。
+            // 保留击飞信息，动画播放后再应用，使倒下仍表现为致命一击造成。
             _health.Died += args =>
             {
                 _pendingDeathThrow = args.FinalBlow.HitDirection.normalized * args.FinalBlow.KnockbackSpeed;
@@ -996,7 +945,7 @@ namespace AdaptiveBossArena.AI
             };
         }
 
-        /// <summary>Reports missing dependencies clearly rather than failing with a null reference.</summary>
+        /// <summary>清晰报告依赖缺失，而非通过空引用失败。</summary>
         private bool ValidateSetup()
         {
             if (_config == null)
@@ -1009,8 +958,8 @@ namespace AdaptiveBossArena.AI
 
             if (_config.ReactionProfile == null)
             {
-                // Without a reaction profile the boss would act on the frame it perceived something,
-                // which is the behaviour this project exists to prevent. Refusing to run is correct.
+                // 没有反应配置时，Boss 会在感知到事件的同帧行动，这正是项目要避免的行为，
+                // 因此拒绝运行是正确处理。
                 Debug.LogError(
                     "[Adaptive Boss Arena] BossConfig has no ReactionProfile. The boss has been " +
                     "disabled rather than allowed to react instantly.", this);
@@ -1030,20 +979,18 @@ namespace AdaptiveBossArena.AI
                    ServiceRegistry.Current.TryGet(out IRandomProvider _);
         }
 
-        /// <summary>Assigns the configuration. Used by the prefab generator.</summary>
-        /// <param name="config">Boss tuning values.</param>
+        /// <summary>设置配置，供预制体生成器使用。</summary>
+        /// <param name="config">Boss 调参值。</param>
         public void SetConfig(BossConfig config) => _config = config;
 
         /// <summary>
-        /// Scales how fast the boss adapts, on top of its per-phase rate, for the Fast Learner run
-        /// modifier.
+        /// 在每阶段适应速度基础上进一步缩放，用于快速学习挑战修正。
         /// </summary>
         /// <remarks>
-        /// A scale on the existing rate rather than a new capability: the boss reaches the same
-        /// conclusions from the same evidence, only sooner. Reapplied on the next phase transition, so
-        /// it holds for the whole fight.
+        /// 只缩放现有速度，不增加能力：Boss 从相同证据得到相同结论，只是更早。在下一次阶段变化重新应用，
+        /// 因此贯穿整场战斗。
         /// </remarks>
-        /// <param name="scale">Multiplier on the adaptation rate. One leaves the fight unchanged.</param>
+        /// <param name="scale">适应速度倍率，一保持战斗不变。</param>
         public void SetAdaptationRateScale(float scale)
         {
             _adaptationRateScale = Mathf.Max(0.1f, scale);
@@ -1055,12 +1002,12 @@ namespace AdaptiveBossArena.AI
             }
         }
 
-        /// <summary>Assigns the event channels. Used by the prefab generator.</summary>
-        /// <param name="health">Normalised boss health channel.</param>
-        /// <param name="phase">Phase index channel.</param>
-        /// <param name="defeat">Boss defeat channel.</param>
-        /// <param name="adaptation">Adaptation tell channel.</param>
-        /// <param name="posture">Normalised posture channel.</param>
+        /// <summary>设置事件通道，供预制体生成器使用。</summary>
+        /// <param name="health">归一化 Boss 生命通道。</param>
+        /// <param name="phase">阶段索引通道。</param>
+        /// <param name="defeat">Boss 被击败通道。</param>
+        /// <param name="adaptation">适应提示通道。</param>
+        /// <param name="posture">归一化架势通道。</param>
         public void SetChannels(
             FloatEventChannel health,
             IntEventChannel phase,
@@ -1080,14 +1027,13 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Applies posture damage from a deflected blow.
+        /// 施加被弹反攻击造成的架势伤害。
         /// </summary>
         /// <remarks>
-        /// Called by the encounter director when the player deflects cleanly. This is the entire
-        /// deflect economy in one method: every well-timed guard moves the boss closer to a break,
-        /// which is what makes standing your ground feel like progress rather than mere survival.
+        /// 玩家精准弹反时由战斗导演调用。此方法集中表达整个弹反收益：
+        /// 每次及时举防御都会让 Boss 更接近架势崩溃，使坚守位置成为进展而非只是存活。
         /// </remarks>
-        /// <param name="postureDamage">Posture to remove.</param>
+        /// <param name="postureDamage">要扣除的架势。</param>
         public void ApplyDeflectPosture(float postureDamage)
         {
             if (!_isInitialised || _poise == null)
@@ -1101,20 +1047,17 @@ namespace AdaptiveBossArena.AI
             }
         }
 
-        /// <summary>Posture a successful boss parry deals to the player.</summary>
+        /// <summary>Boss 成功招架对玩家造成的架势伤害。</summary>
         /// <remarks>
-        /// The exact mirror of <c>PlayerController.DeflectPostureDamage</c>, read by the encounter
-        /// director for the same reason: neither combatant may hold a reference to the other, so the
-        /// one that acted reports what it did and the director decides what that means for the other.
+        /// 与 <c>PlayerController.DeflectPostureDamage</c> 完全镜像，战斗导演读取它的原因相同：
+        /// 双方不能持有彼此引用，因此行动者报告所做事情，导演决定对另一方的意义。
         /// </remarks>
         public float ParryPostureDamage => _config != null ? _config.ParryPostureDamage : 0f;
 
-        /// <summary>The reach of a swing whose hitbox is open right now, or zero if none is.</summary>
+        /// <summary>当前判定窗口打开的挥击范围，无则为零。</summary>
         /// <remarks>
-        /// Deliberately narrower than exposing the attack executor. The encounter director needs to
-        /// know whether a live blade is out and how far it reaches in order to detect a clash, and
-        /// nothing more; handing it the executor would hand it Cancel as well, and cancelling a swing
-        /// from outside is exactly the thing Stage D's constraint exists to control.
+        /// 刻意比暴露攻击执行器更窄。战斗导演检测刀刃相撞仅需知道刀刃是否有效以及范围；
+        /// 传入执行器还会暴露 Cancel，而外部取消攻击正是 Stage D 约束要控制的操作。
         /// </remarks>
         public float LiveSwingReach =>
             _isInitialised &&
@@ -1125,14 +1068,12 @@ namespace AdaptiveBossArena.AI
                 : 0f;
 
         /// <summary>
-        /// Refuses the swing in progress because it met another blade.
+        /// 正在进行的挥击与另一刀刃相撞时拒绝它。
         /// </summary>
         /// <remarks>
-        /// Routed through the same stagger request a parry uses, and for the same reason: it defers
-        /// to the next tick, where the attack state's exit tears the swing down. Called from the
-        /// director's LateUpdate, which is outside any executor's phase-stepping loop, so a
-        /// synchronous cancel would in fact be safe here - but there is no reason to have two ways of
-        /// stopping a swing when the existing one already reads correctly on both fighters.
+        /// 沿招架使用的相同硬直请求路径，理由也相同：延迟到下次更新，由攻击状态退出清理挥击。
+        /// 导演LateUpdate 位于所有执行器阶段循环之外，实际上同步取消也安全，
+        /// 但现有路径已对双方表现正确，无需保留两种停止挥击的方法。
         /// </remarks>
         public void RecoilFromClash()
         {
@@ -1145,12 +1086,11 @@ namespace AdaptiveBossArena.AI
         }
 
         /// <summary>
-        /// Punishes a lunge that ended in a wall.
+        /// 惩罚撞墙结束的突进。
         /// </summary>
         /// <remarks>
-        /// Only a lunge counts. The boss walking into a pillar is not a mistake anyone could exploit,
-        /// but a charge the player sidestepped into the wall is exactly the read the fight rewards. The
-        /// interruption goes through the deferred stagger request, as every other one does.
+        /// 只处理突进。Boss 走进柱子不算玩家可利用的失误，但玩家侧移诱使冲锋撞墙正是战斗奖励的判断。
+        /// 与其他中断一样，通过延迟硬直请求处理。
         /// </remarks>
         private void ResolveWallImpact()
         {
@@ -1197,8 +1137,8 @@ namespace AdaptiveBossArena.AI
             }
         }
 
-        /// <summary>Exposes the learning loop so the debug overlay can show what the boss believes.</summary>
-        /// <returns>The adaptation manager, or null before initialisation.</returns>
+        /// <summary>暴露学习循环，使调试面板能显示 Boss 的判断。</summary>
+        /// <returns>适应管理器，初始化前为 null。</returns>
         public AdaptationManager GetAdaptation() => _adaptation;
 
         private void OnDestroy()
@@ -1209,12 +1149,12 @@ namespace AdaptiveBossArena.AI
             }
         }
 
-        /// <summary>Exposes the perception source so the learning system can share it.</summary>
-        /// <returns>The boss's delayed view of the player.</returns>
+        /// <summary>暴露感知源供学习系统共享。</summary>
+        /// <returns>Boss 的延迟玩家视图。</returns>
         public IPerceptionSource GetPerceptionSource() => _perception;
 
-        /// <summary>Exposes the context so the learning system can adjust tuning.</summary>
-        /// <returns>The boss's context, or null before initialisation.</returns>
+        /// <summary>暴露上下文供学习系统调整数值。</summary>
+        /// <returns>Boss 上下文，初始化前为 null。</returns>
         public BossContext GetContext() => _context;
     }
 }

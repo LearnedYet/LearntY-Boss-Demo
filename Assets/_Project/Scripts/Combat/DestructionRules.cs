@@ -4,24 +4,24 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// What breaks, and which way the pieces fly - the decisions behind breaking stone.
+    /// 决定破坏什么以及碎片飞向何方的石材破坏规则。
     /// </summary>
     /// <remarks>
-    /// Pure, so a slam that should crack the parapet beside it and a slam that should not are both
-    /// tests. Every random choice takes an <see cref="IRandomProvider"/>, never <c>UnityEngine.Random</c>,
-    /// so a seeded run breaks the same stone the same way.
+    /// 保持纯逻辑，使应该和不应该打碎旁边矮墙的砸击都能测试。
+    /// 每个随机选择都使用 <see cref="IRandomProvider"/>，绝不使用 <c>UnityEngine.Random</c>，
+    /// 确保相同种子的运行以相同方式破坏相同石材。
     /// </remarks>
     public static class DestructionRules
     {
-        /// <summary>Whether an impact reaches something breakable, measured across the floor.</summary>
+        /// <summary>沿地面测量冲击是否到达可破坏对象。</summary>
         /// <remarks>
-        /// Horizontal only. A slam lands on the floor and the stone it breaks stands a metre above it; a
-        /// straight-line distance would make the same slam break less the taller the thing beside it.
+        /// 只计算水平面。砸击落在地面，而石材位于其上一米；直线距离会导致旁边物体越高，
+        /// 同一砸击能破坏的范围越小。
         /// </remarks>
-        /// <param name="impact">Where the blow landed.</param>
-        /// <param name="reach">How far from that point it breaks things.</param>
-        /// <param name="target">The breakable's centre.</param>
-        /// <returns>True when the target is within reach.</returns>
+        /// <param name="impact">攻击落点。</param>
+        /// <param name="reach">从落点向外的破坏距离。</param>
+        /// <param name="target">可破坏对象中心。</param>
+        /// <returns>目标在范围内时为 true。</returns>
         public static bool Reaches(Vector3 impact, float reach, Vector3 target)
         {
             float dx = target.x - impact.x;
@@ -30,16 +30,16 @@ namespace AdaptiveBossArena.Combat
             return dx * dx + dz * dz <= reach * reach;
         }
 
-        /// <summary>The velocity one broken piece leaves with.</summary>
+        /// <summary>单块碎片离开时的速度。</summary>
         /// <remarks>
-        /// Away from the impact across the floor and upward, then scattered, so stone struck on one side
-        /// sprays away from the blow instead of popping straight up like a firework.
+        /// 先沿地面远离冲击点并向上，再加入散射，使单侧被击中的石材沿攻击方向喷散，
+        /// 而非像烟花一样垂直弹起。
         /// </remarks>
-        /// <param name="random">The seeded source of the scatter.</param>
-        /// <param name="impact">Where the blow landed.</param>
-        /// <param name="piece">Where the piece starts.</param>
-        /// <param name="speed">Typical launch speed, in metres per second.</param>
-        /// <returns>The piece's initial velocity.</returns>
+        /// <param name="random">散射所用的带种子随机源。</param>
+        /// <param name="impact">攻击落点。</param>
+        /// <param name="piece">碎片初始位置。</param>
+        /// <param name="speed">典型发射速度，单位为米每秒。</param>
+        /// <returns>碎片初速度。</returns>
         public static Vector3 PieceVelocity(IRandomProvider random, Vector3 impact, Vector3 piece, float speed)
         {
             Vector3 away = piece - impact;
@@ -59,11 +59,11 @@ namespace AdaptiveBossArena.Combat
             return horizontal * (speed * random.NextFloat(0.6f, 1f)) + Vector3.up * (speed * random.NextFloat(0.4f, 0.9f));
         }
 
-        /// <summary>How many pieces are live at most, by platform tier.</summary>
-        /// <param name="isWeb">Whether this is the WebGL build.</param>
-        /// <param name="webCapacity">The WebGL ceiling.</param>
-        /// <param name="desktopCapacity">The desktop ceiling.</param>
-        /// <returns>The ceiling, never below one.</returns>
+        /// <summary>按平台级别确定最多同时存在的碎片数量。</summary>
+        /// <param name="isWeb">是否为 WebGL 构建。</param>
+        /// <param name="webCapacity">WebGL 上限。</param>
+        /// <param name="desktopCapacity">桌面上限。</param>
+        /// <returns>不小于一的上限。</returns>
         public static int Capacity(bool isWeb, int webCapacity, int desktopCapacity) =>
             Mathf.Max(1, isWeb ? webCapacity : desktopCapacity);
     }

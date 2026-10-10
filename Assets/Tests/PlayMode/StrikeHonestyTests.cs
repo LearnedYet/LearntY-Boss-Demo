@@ -12,24 +12,22 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Asserts a blow lands only where the striking part actually went.
+    /// 断言攻击只命中打击部位实际经过的位置。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The player reported being hurt by swings that visibly passed beside them. Damage came from a wedge in
-    /// front of the attacker - up to four metres and 120 degrees - whatever the body did inside it. These tests
-    /// swing a blade by hand, exactly as a clip would carry it, against a real trigger collider through the real
-    /// executor, so the seam between what is seen and what hurts is the thing under test.
+    /// 玩家报告明显从身旁掠过的挥击仍造成伤害。伤害来自攻击者前方最大四米、120 度的扇形，
+    /// 无论身体实际在其中做什么。测试手动挥动刀刃，模拟动画带动它的方式，
+    /// 通过真实执行器攻击真实触发碰撞体，使可见表现与伤害之间的连接成为测试对象。
     /// </para>
     /// <para>
-    /// One case keeps the old wedge on purpose, to prove the scenario is the one reported: the same swing that
-    /// now misses would have hurt.
+    /// 刻意保留一个旧扇形案例，证明场景正是玩家报告的问题：如今挥空的同次挥击原先会造成伤害。
     /// </para>
     /// </remarks>
     [TestFixture]
     public sealed class StrikeHonestyTests
     {
-        /// <summary>Records what it was hit with, standing in for a combatant.</summary>
+        /// <summary>记录受到的攻击，充当战斗者。</summary>
         private sealed class RecordingTarget : MonoBehaviour, IDamageable
         {
             public readonly List<DamageInfo> Hits = new List<DamageInfo>();
@@ -45,7 +43,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             }
         }
 
-        /// <summary>A clock the test drives by hand.</summary>
+        /// <summary>由测试手动驱动的时钟。</summary>
         private sealed class ScriptedTime : ITimeService
         {
             public float DeltaTime { get; set; }
@@ -75,7 +73,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
 
         private const float Step = 0.01f;
 
-        /// <summary>Where the blade pivots: the attacker's shoulder.</summary>
+        /// <summary>刀刃的旋转支点：攻击者肩部。</summary>
         private static readonly Vector3 Shoulder = Vector3.up;
 
         private readonly List<GameObject> _spawned = new List<GameObject>();
@@ -101,7 +99,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator ASwingThatPassesBesideTheTargetDealsNothing()
         {
-            // 3.2 m away: well inside the old four-metre wedge, well beyond a two-metre blade.
+            // 距离 3.2 米，明显在旧四米扇形内，且远超两米刀刃范围。
             RecordingTarget target = SpawnTarget(new Vector3(0f, 1f, 3.2f));
             StrikeVolume blade = SpawnBlade();
             yield return null;
@@ -139,8 +137,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator AFastSwingCannotPassThroughUnseen()
         {
-            // 60 degrees a frame: the blade is sampled only at -30 and +30, both clear of the target. Only the
-            // sweep between the two frames finds it.
+            // 每帧 60 度：只在 -30 与 +30 度采样刀刃，两处均避开目标。只有两帧间的扫掠能发现目标。
             RecordingTarget target = SpawnTarget(new Vector3(0f, 1f, 1.6f));
             StrikeVolume blade = SpawnBlade();
             yield return null;
@@ -151,7 +148,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
         }
 
         /// <summary>
-        /// Runs one attack while carrying the blade from the left of the attacker to its right.
+        /// 执行一次攻击，同时将刀刃从攻击者左侧移至右侧。
         /// </summary>
         private void Swing(StrikerParts strikers, StrikeVolume blade, float degreesPerTick)
         {
@@ -177,7 +174,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             }
         }
 
-        /// <summary>A blade from half a metre to two metres out from the shoulder.</summary>
+        /// <summary>从肩部外半米延伸至两米的刀刃。</summary>
         private StrikeVolume SpawnBlade()
         {
             GameObject bladeObject = Spawn("Blade");
@@ -207,12 +204,12 @@ namespace AdaptiveBossArena.Tests.PlayMode
             return target;
         }
 
-        /// <summary>A wide, long wedge, so the old volume would reach where the blade does not.</summary>
+        /// <summary>宽且长的扇形，使旧体积检测能触及刀刃够不到的地方。</summary>
         private AttackDefinition MakeAttack(StrikerParts strikers)
         {
             _attack = ScriptableObject.CreateInstance<AttackDefinition>();
 
-            // By reflection: this assembly is built for every platform, so it has no access to UnityEditor.
+            // 通过反射：此程序集为所有平台构建，因此无法访问 UnityEditor。
             Set("_startupSeconds", Step);
             Set("_activeSeconds", 0.3f);
             Set("_recoverySeconds", 0.05f);

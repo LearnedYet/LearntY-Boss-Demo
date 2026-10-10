@@ -5,13 +5,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts the third-person camera's orientation keeps the horizon level whichever way it looks.
+    /// 断言第三人称摄像机无论朝向哪里都保持地平线水平。
     /// </summary>
     /// <remarks>
-    /// The pitch used to be applied about the world's X axis after the look rotation. Looking along Z that
-    /// is a pitch; looking along X the same rotation is a roll, so the horizon tipped over as the
-    /// fighters circled - rarely seen while they stayed on one axis, constantly once knockback, launches
-    /// and charges moved them around the whole arena.
+    /// 俯仰以前在朝向旋转后绕世界 X 施加。看向 Z时是俯仰，看向 X 时变成滚转，绕圈时地平线倾斜；
+    /// 双方沿一轴时少见，击退、抛起和冲锋使其遍及全场后不断出现。
     /// </remarks>
     [TestFixture]
     public sealed class CameraOrbitTests
@@ -42,9 +40,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheCameraLooksPastTheShoulderRatherThanThroughTheKnight([NUnit.Framework.Range(0, 315, 45)] int headingDegrees)
         {
-            // Over the shoulder: the pivot at the knight's shoulders sits to the left of the view's centre line, at
-            // exactly the shoulder offset, and the full boom ahead of the lens. Looking straight at the knight
-            // from close behind would put the knight's back over the brute.
+            // 越肩视角：骑士肩部 pivot 位于画面中心线左侧，距离正好为肩偏移，完整 boom 位于镜头前。
+            // 近距离从后方直看骑士，会让背部遮住巨兽。
             var pivot = new Vector3(3f, 1.55f, -2f);
             Quaternion view = ArenaCameraRig.OrbitRotation(
                 Quaternion.Euler(0f, headingDegrees, 0f) * Vector3.forward, Pitch);

@@ -3,23 +3,22 @@ using System;
 namespace AdaptiveBossArena.Core.StateMachine
 {
     /// <summary>
-    /// Transition whose condition is supplied as a delegate.
+    /// 由委托提供条件的状态转移。
     /// </summary>
     /// <remarks>
-    /// Covers the majority of cases, where a condition is a single expression over the context and
-    /// does not deserve a named type. Conditions that carry tuning data or need to be authored as
-    /// assets should implement <see cref="ITransition{TContext}"/> directly instead.
+    /// 适用于多数条件只需对上下文计算一个表达式、无需独立命名类型的情况。
+    /// 携带调参数据或需要编辑为资源的条件应直接实现 <see cref="ITransition{TContext}"/>。
     /// </remarks>
-    /// <typeparam name="TContext">Data and services the condition inspects.</typeparam>
+    /// <typeparam name="TContext">条件检查的数据和服务。</typeparam>
     public sealed class FuncTransition<TContext> : ITransition<TContext>
     {
         private readonly Func<TContext, bool> _condition;
 
-        /// <summary>Creates a delegate-backed transition.</summary>
-        /// <param name="target">State to move into.</param>
-        /// <param name="condition">Predicate deciding whether to fire.</param>
-        /// <param name="priority">Evaluation order; higher is tested first.</param>
-        /// <exception cref="ArgumentNullException">Thrown when the target or condition is missing.</exception>
+        /// <summary>创建由委托驱动的转移。</summary>
+        /// <param name="target">要进入的状态。</param>
+        /// <param name="condition">决定是否触发的谓词。</param>
+        /// <param name="priority">评估顺序，值越大越先检查。</param>
+        /// <exception cref="ArgumentNullException">缺少目标或条件时抛出。</exception>
         public FuncTransition(IState<TContext> target, Func<TContext, bool> condition, int priority = 0)
         {
             Target = target ?? throw new ArgumentNullException(nameof(target));

@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the pointed arch the cathedral's windows are cut with.
+    /// 测试教堂窗户使用的尖拱几何。
     /// </summary>
     [TestFixture]
     public sealed class PointedArchTests

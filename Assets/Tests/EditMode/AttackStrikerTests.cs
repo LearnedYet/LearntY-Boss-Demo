@@ -5,13 +5,11 @@ using UnityEditor;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts each generated attack strikes with the part of the body its clip swings.
+    /// 断言生成攻击使用动画实际挥动的身体部位打击。
     /// </summary>
     /// <remarks>
-    /// An attack left with no striking part silently falls back to the invisible wedge in front of the attacker,
-    /// which is exactly the "it hurt me but never touched me" the player reported - and nothing else would notice.
-    /// The first version of this table lost every combined or non-first flag to an asset writer that stored an
-    /// enum's position rather than its value, and only the plain weapon attacks came through.
+    /// 未指定部位会悄然回退为攻击者前方隐形扇区，正是玩家反馈的“没碰到却伤害了我”，其他检查发现不了。
+    /// 首版表中的组合标志和非首标志被按枚举位置而非数值写入的工具丢失，只保留普通武器攻击。
     /// </remarks>
     [TestFixture]
     public sealed class AttackStrikerTests
@@ -46,10 +44,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [TestCase("BossLeapSmash")]
         public void TheBossPlansEachBlowFromAReachItsBodyHas(string attackName)
         {
-            // The boss plans every swing from this range. Measured from a direct clip sample it kept each clip's
-            // travel across the floor, which play discards, and planned a slide attack from over six metres - it
-            // would have opened from out of reach and cut air. A great sword on this body covers under four and
-            // a half metres, knight included.
+            // 首领按此范围规划每次挥击。直接采样片段保留游戏丢弃的地面位移，曾把滑步攻击规划在六米外，
+            // 导致够不到就挥空。此身体巨剑含骑士厚度在内仍不到四米半。
             var attack = AssetDatabase.LoadAssetAtPath<AttackDefinition>($"{AttackFolder}/{attackName}.asset");
 
             Assert.IsNotNull(attack, attackName + " was not generated.");

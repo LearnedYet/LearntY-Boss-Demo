@@ -7,20 +7,18 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Breaks the arena's stone where the fight's heaviest blows land.
+    /// 在战斗最重攻击落地的位置破坏竞技场石材。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Two things break stone: a ground impact that leaves a scar - the slam, the shockwave and the
-    /// Cataclysmic Wave - and a body driven into the wall. Both are already announced, by the hazard field
-    /// and by the combat event bus, so this only listens. It lives in the composition root because it
-    /// needs both, and neither the combat code nor the arena should know about the other.
+    /// 两类事件破坏石材：留下痕迹的地面冲击，例如砸击、冲击波和灾变波；以及身体撞墙。
+    /// 它们已分别由危险区域和战斗事件总线报告，因此这里只监听。它位于组合根，因为需要两者，
+    /// 而战斗代码与竞技场本身不应知道对方。
     /// </para>
     /// <para>
-    /// Presentation only. Listening to the immediate event bus is fine here for the reason it is forbidden
-    /// on the AI side: nothing the boss decides can depend on it. Its random stream is its own, seeded
-    /// once, rather than the fight's shared provider - debris drawing numbers from the boss's stream would
-    /// make its choices depend on how much stone happened to break.
+    /// 仅负责表现。这里可以监听即时总线，理由正是 AI 端禁止这样做的原因：首领决策不依赖它。它使用独立、
+    /// 一次设置种子的随机流，而非战斗共享随机源；碎片若从首领随机流取数，
+    /// 首领选择就会取决于恰好破坏了多少石材。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -28,7 +26,7 @@ namespace AdaptiveBossArena.Game
     {
         private const uint DebrisSeed = 772026u;
 
-        /// <summary>Shake for the first stone a blow breaks, and for each one after it, capped.</summary>
+        /// <summary>攻击打碎首块石材及后续每块的震动，带上限。</summary>
         private const float FirstBreakTrauma = 0.12f;
 
         private const float ExtraBreakTrauma = 0.04f;
@@ -60,11 +58,11 @@ namespace AdaptiveBossArena.Game
         private ICombatEventBus _events;
         private HazardField _hazards;
 
-        /// <summary>Every breakable in the arena.</summary>
+        /// <summary>竞技场中的全部可破坏物。</summary>
         public Destructible[] Destructibles => _destructibles;
 
-        /// <summary>Assigns the pool. Used by the scene generator.</summary>
-        /// <param name="pool">Where broken pieces come from.</param>
+        /// <summary>分配对象池，供场景生成器使用。</summary>
+        /// <param name="pool">破碎碎片的来源。</param>
         public void Bind(DebrisPool pool) => _pool = pool;
 
         private void Start()
@@ -99,10 +97,10 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Breaks every intact stone within reach of an impact.</summary>
-        /// <param name="impact">Where the blow landed.</param>
-        /// <param name="reach">How far across the floor it breaks things.</param>
-        /// <returns>How many stones broke.</returns>
+        /// <summary>破坏冲击范围内的全部完整石材。</summary>
+        /// <param name="impact">攻击落点。</param>
+        /// <param name="reach">沿地面的破坏范围。</param>
+        /// <returns>被打碎的石材数量。</returns>
         public int BreakWithin(Vector3 impact, float reach)
         {
             int broken = 0;
@@ -117,8 +115,8 @@ namespace AdaptiveBossArena.Game
                 }
             }
 
-            // Stone coming down is felt as well as seen, more for more of it - but capped, so a Cataclysmic
-            // Wave breaking half the parapet does not shake harder than the wave itself.
+            // 石材坍塌不仅可见，也可通过震动感到；数量越多震动越强，但有上限，
+            // 避免灾变波打碎半圈矮墙时震动超过攻击本身。
             if (broken > 0)
             {
                 _shake?.AddTrauma(Mathf.Min(MaximumBreakTrauma, FirstBreakTrauma + ExtraBreakTrauma * (broken - 1)));
@@ -127,7 +125,7 @@ namespace AdaptiveBossArena.Game
             return broken;
         }
 
-        /// <summary>Makes the room whole again and clears its debris, for a retry.</summary>
+        /// <summary>为重试恢复房间完整状态并清除碎片。</summary>
         public void RestoreAll()
         {
             foreach (Destructible destructible in _destructibles)
@@ -143,7 +141,7 @@ namespace AdaptiveBossArena.Game
                 _pool.Clear();
             }
 
-            // Reseeded, so every attempt breaks stone the same way.
+            // 重新设置种子，使每次尝试的石材破坏方式一致。
             _random.Reseed(DebrisSeed);
         }
 

@@ -1,28 +1,27 @@
 namespace AdaptiveBossArena.Core.Services
 {
     /// <summary>
-    /// The player's own camera settings: how fast the view turns, and which way.
+    /// 玩家自己的相机设置：视野转动的速度和方向。
     /// </summary>
     /// <remarks>
-    /// In Core for the same reason as <see cref="FeedbackSettings"/>: the settings menu writes it and the camera
-    /// reads it, and neither may depend on the other. The menu applies the saved values on load, so a domain
-    /// reload resetting these to their defaults is harmless.
+    /// 与 <see cref="FeedbackSettings"/>一样位于 Core：设置菜单写入，相机读取，双方不能互相依赖。
+    /// 菜单在加载时应用存档值，因此域重载恢复默认值不会造成问题。
     /// </remarks>
     public static class LookSettings
     {
-        /// <summary>The sensitivity a fresh save starts with.</summary>
+        /// <summary>新存档的初始灵敏度。</summary>
         public const float DefaultSensitivity = 1f;
 
-        /// <summary>Lowest sensitivity the menu offers.</summary>
+        /// <summary>菜单提供的最低灵敏度。</summary>
         public const float MinimumSensitivity = 0.25f;
 
-        /// <summary>Highest sensitivity the menu offers.</summary>
+        /// <summary>菜单提供的最高灵敏度。</summary>
         public const float MaximumSensitivity = 2.5f;
 
-        /// <summary>Multiplier on how far the view turns per unit of mouse or stick movement.</summary>
+        /// <summary>每单位鼠标或摇杆移动对应的视野转动倍率。</summary>
         public static float Sensitivity { get; set; } = DefaultSensitivity;
 
-        /// <summary>Whether moving the mouse up looks down.</summary>
+        /// <summary>鼠标向上移动时是否向下看。</summary>
         public static bool InvertY { get; set; }
     }
 }

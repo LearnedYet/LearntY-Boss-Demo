@@ -10,7 +10,7 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that a fighter's body falls physically on death and stands up again for a retry.
+    /// 测试战斗者死亡时身体会按物理倒下，重试时重新站起。
     /// </summary>
     [TestFixture]
     public sealed class RagdollTests
@@ -74,10 +74,9 @@ namespace AdaptiveBossArena.Tests.PlayMode
             Rigidbody hips = _ragdoll.Bodies[0];
             Rigidbody head = _ragdoll.Bodies[2];
 
-            // Down means the head or the hips came down a long way, not a particular one of them: how a body rests
-            // depends on how it lands. Observed so far: face-down and kneeling (head at 0.14 m, hips still 0.58 m
-            // up) and sitting slumped (hips at 0.29 m, head still 0.77 m up). Both are plainly on the floor; a
-            // standing body has neither.
+            // 倒下意味着头部或髋部大幅下降，而非要求其中指定一处下降；身体最终姿势取决于落地方式。
+            // 目前观察到俯卧与跪倒（头高 0.14 米，髋仍高 0.58 米），以及瘫坐（髋高 0.29 米，
+            // 头仍高 0.77 米）。两者明显在地面，而站立身体两者均不会如此。
             float standingHead = head.position.y;
             float standingHips = hips.position.y;
 
@@ -85,8 +84,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
 
             Assert.IsTrue(_ragdoll.IsActive, "The killing blow did not wake the ragdoll.");
 
-            // Game time, not real time: a death plays in slow motion, so a fixed real-time window catches the
-            // body part-way down and passes or fails depending on how the slow motion happened to fall.
+            // 按游戏时间而非真实时间：死亡以慢动作播放，固定真实时间窗口会在身体尚未完全倒下时测量，
+            // 测试通过或失败便取决于慢动作恰好怎样发生。
             float waited = 0f, realWaited = 0f;
 
             while (waited < 2f && realWaited < 12f)
@@ -99,8 +98,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
                 yield return null;
             }
 
-            // As a share of standing height, not a fixed drop: the body can come to rest kneeling, which lowers
-            // the head by about a third - far past any stagger or sway, but short of a fixed half metre.
+            // 按站立高度比例而非固定下降距离：身体可能最终跪倒，使头下降约三分之一，
+            // 远超任何硬直或晃动，却小于固定半米。
             bool headDown = head.position.y < standingHead * 0.75f;
             bool hipsDown = hips.position.y < standingHips * 0.7f;
 

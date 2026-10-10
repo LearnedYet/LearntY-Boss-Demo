@@ -27,5 +27,5 @@ MonoBehaviour:
   - _parameter: 0
     _targetValue: 0.2
   _easeInSeconds: 6
-  _tellMessage: It fakes the blow you time so well.
+  _tellMessage: 它开始用佯攻扰乱你熟悉的节奏。
   _tellAudioCueId: 

@@ -10,11 +10,10 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that a landed blow visibly moves the body without taking the fighter's footing.
+    /// 测试命中的攻击会明显移动身体，却不使战斗者失去站姿。
     /// </summary>
     /// <remarks>
-    /// Before this a hit that did not stagger only nudged the character's whole visual root, which read as the
-    /// model twitching rather than a body taking a blow.
+    /// 此前不会造成硬直的命中仅微移角色整个视觉根节点，看起来像模型抽动，而非身体挨打。
     /// </remarks>
     [TestFixture]
     public sealed class HitReactionTests
@@ -41,7 +40,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             var bridge = player.GetComponentInChildren<CharacterAnimationBridge>();
             Assume.That(bridge != null && bridge.HasSkeleton, "The player is not rigged.");
 
-            // The boss would keep landing blows of its own through the wait, each starting a fresh flinch.
+            // 等待期间首领会持续攻击，每次命中都会重新开始受击动作。
             Object.FindAnyObjectByType<AI.BossController>().gameObject.SetActive(false);
 
             player.TakeDamage(new DamageInfo
@@ -54,7 +53,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
                 Stagger = StaggerStrength.None
             });
 
-            // Over time, not frames: a headless frame lasts about a millisecond, far shorter than the flinch's rise.
+            // 按时间而非帧数等待：无界面模式下一帧约一毫秒，远短于受击动作的上升阶段。
             float peak = 0f, watched = 0f;
 
             while (watched < 0.4f)

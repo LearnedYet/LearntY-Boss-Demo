@@ -3,31 +3,31 @@ using System;
 namespace AdaptiveBossArena.Core.Services
 {
     /// <summary>
-    /// The graphics quality in effect, and whether the player chose it or the game did.
+    /// 当前生效的画质，以及由玩家还是游戏选择。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// In Core, like <see cref="LookSettings"/>, because the settings menu writes it and systems in several
-    /// assemblies obey it - the lighting, the effect pools - and none of them may depend on each other.
+    /// 与 <see cref="LookSettings"/> 一样放在 Core，因为设置菜单写入，
+    /// 照明和特效池等多个程序集中的系统读取，而它们不能互相依赖。
     /// </para>
     /// <para>
-    /// A change is announced, because quality can change mid-fight: the settings menu applies a choice the moment
-    /// it is made, and the browser steps itself up or down once it has measured what the machine can hold.
+    /// 变化会发出通知，因为画质可在战斗中改变：菜单立即应用选择，
+    /// 浏览器也会根据机器性能测量自动提高或降低等级。
     /// </para>
     /// </remarks>
     public static class GraphicsTier
     {
-        /// <summary>The quality in effect.</summary>
+        /// <summary>当前生效的画质。</summary>
         public static GraphicsQuality Current { get; private set; } = GraphicsQuality.Medium;
 
-        /// <summary>True until the player picks a quality; the game may adjust it itself only while this holds.</summary>
+        /// <summary>玩家选择画质前为 true；游戏仅在此期间可自行调整。</summary>
         public static bool IsAutomatic { get; private set; } = true;
 
-        /// <summary>Raised whenever the quality in effect changes.</summary>
+        /// <summary>生效画质变化时触发。</summary>
         public static event Action<GraphicsQuality> Changed;
 
-        /// <summary>Sets the quality the game chose for itself. Ignored once the player has chosen.</summary>
-        /// <param name="quality">The quality to use.</param>
+        /// <summary>设置游戏自动选择的画质。玩家已选择后忽略。</summary>
+        /// <param name="quality">要使用的画质。</param>
         public static void SetAutomatic(GraphicsQuality quality)
         {
             if (IsAutomatic)
@@ -36,8 +36,8 @@ namespace AdaptiveBossArena.Core.Services
             }
         }
 
-        /// <summary>Sets the quality the player chose, which the game never overrides.</summary>
-        /// <param name="quality">The quality to use.</param>
+        /// <summary>设置玩家选择的画质，游戏永不覆盖该选择。</summary>
+        /// <param name="quality">要使用的画质。</param>
         public static void SetChosen(GraphicsQuality quality)
         {
             IsAutomatic = false;

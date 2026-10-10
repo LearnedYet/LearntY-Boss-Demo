@@ -4,21 +4,21 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Mounts the parts of a rigged body its blows land with.
+    /// 安装蒙皮身体实际打击所用部位。
     /// </summary>
     /// <remarks>
-    /// Only on a rig: a primitive body has no limbs that move with a swing, so its attacks stay on their authored
-    /// volumes, which is also what every test that builds a bare combatant expects.
+    /// 仅用于骨架：基础身体没有随挥击移动的肢体，其攻击保留设定体积，
+    /// 也符合所有构建裸战斗角色的测试预期。
     /// </remarks>
     public static class StrikeVolumeBuilder
     {
-        /// <summary>Mounts one striking part on a transform, along its forward.</summary>
-        /// <param name="mount">The bone or weapon it rides on.</param>
-        /// <param name="part">Which part it is.</param>
-        /// <param name="baseDistance">Where it begins along the mount's forward.</param>
-        /// <param name="tipDistance">Where it ends.</param>
-        /// <param name="radius">Its thickness.</param>
-        /// <returns>The mounted part.</returns>
+        /// <summary>沿 Transform 前向安装一个攻击部位。</summary>
+        /// <param name="mount">其所依附的骨骼或武器。</param>
+        /// <param name="part">部位类型。</param>
+        /// <param name="baseDistance">沿挂点前向的起点。</param>
+        /// <param name="tipDistance">终点。</param>
+        /// <param name="radius">厚度。</param>
+        /// <returns>已安装部位。</returns>
         public static StrikeVolume Attach(
             Transform mount, StrikerParts part, float baseDistance, float tipDistance, float radius)
         {
@@ -32,16 +32,16 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Mounts the fists, the right foot and the body on a rig.
+        /// 在骨架上安装拳、右脚和身体部位。
         /// </summary>
         /// <remarks>
-        /// Short capsules standing off each bone: a bone's own axes point in no useful direction, so the span is
-        /// kept small enough that it reads as the fist or foot whichever way it faces, and the radius does the work.
+        /// 各骨骼外放短胶囊。骨骼自身轴向无通用意义，因此跨度足够短，使任意朝向都像拳或脚，
+        /// 主要由半径决定范围。
         /// </remarks>
-        /// <param name="rig">The rigged body.</param>
-        /// <param name="fistRadius">Thickness of a fist.</param>
-        /// <param name="footRadius">Thickness of the foot.</param>
-        /// <param name="bodyRadius">Thickness of the body, for a leap or charge landing with its weight.</param>
+        /// <param name="rig">蒙皮身体。</param>
+        /// <param name="fistRadius">拳头厚度。</param>
+        /// <param name="footRadius">脚部厚度。</param>
+        /// <param name="bodyRadius">身体厚度，用于承载体重的跃击或冲锋。</param>
         public static void AttachLimbs(Animator rig, float fistRadius, float footRadius, float bodyRadius)
         {
             if (rig == null || !rig.isHuman)

@@ -6,17 +6,14 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.UI
 {
     /// <summary>
-    /// Shows how far through its phases the boss has been driven.
+    /// 显示Boss已经推进到哪个阶段。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Pips rather than a number, because the useful information is not "phase two" but "one of
-    /// three done, two to go". A boss health bar alone does not convey that, since the phases are
-    /// where the fight actually changes character.
+    /// 使用标记点，让玩家看见已完成和剩余阶段数量；生命条无法传达阶段变化带来的战斗差异。
     /// </para>
     /// <para>
-    /// It also gives the escalation a moment of acknowledgement. Crossing into a new phase is the
-    /// clearest beat in the encounter and deserves to be marked.
+    /// 进入新阶段是遭遇战最明确的节点，应给出视觉确认。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -62,9 +59,9 @@ namespace AdaptiveBossArena.UI
             }
         }
 
-        /// <summary>Assigns the channel and pip images. Used by the interface generator.</summary>
-        /// <param name="channel">Channel carrying the phase index.</param>
-        /// <param name="pips">Pip images in phase order.</param>
+        /// <summary>指定通道和阶段标记图片，供界面生成器使用。</summary>
+        /// <param name="channel">传递阶段索引的通道。</param>
+        /// <param name="pips">按阶段顺序排列的标记图片。</param>
         public void Bind(IntEventChannel channel, Image[] pips)
         {
             _phaseChannel = channel;
@@ -94,7 +91,7 @@ namespace AdaptiveBossArena.UI
             return pipIndex == phaseIndex ? _activeColor : _pendingColor;
         }
 
-        /// <summary>Number of pips the indicator expects, matching the configured phase count.</summary>
+        /// <summary>预期标记数量，与配置的阶段数一致。</summary>
         public static int ExpectedPipCount => GameplayConstants.BossPhaseCount;
     }
 }

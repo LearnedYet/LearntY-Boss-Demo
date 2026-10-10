@@ -5,19 +5,18 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the input buffer that carries a press across a moment the character could not act.
+    /// 测试让按键跨过角色暂时无法行动时段的输入缓存。
     /// </summary>
     /// <remarks>
-    /// Buffering is invisible when correct and unmistakable when broken: the player concludes the
-    /// game dropped their input. These tests pin the two properties that make it feel right — a
-    /// press survives a short lockout, and a press is spent exactly once.
+    /// 正确缓存时玩家毫无察觉，缓存损坏则立即明显：玩家会认为游戏丢失了输入。
+    /// 这些测试固定两项良好手感所需的属性：按键能保留短暂动作锁定期，且每次按键恰好消费一次。
     /// </remarks>
     [TestFixture]
     public sealed class InputBufferTests
     {
         private const float Window = 0.15f;
 
-        /// <summary>Scripted input source so the buffer can be exercised without a device.</summary>
+        /// <summary>脚本化输入源，使缓存无需真实设备即可测试。</summary>
         private sealed class FakePlayerInput : IPlayerInput
         {
             private PlayerInputAction? _pressedThisFrame;
@@ -61,8 +60,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             var buffer = new InputBuffer(Window);
             buffer.Record(PlayerInputAction.Dash, 10f);
 
-            // An off-by-one at the boundary is the difference between a forgiving buffer and one
-            // that drops a press the player believes they made in time.
+            // 边界上的差一错误会把宽容的缓存变成丢失输入的缓存，而玩家会认为自己明明按得及时。
             Assert.IsTrue(buffer.TryConsume(PlayerInputAction.Dash, 10f + Window));
         }
 
@@ -83,7 +81,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             Assert.IsTrue(buffer.TryConsume(PlayerInputAction.Dash, 10f));
 
-            // Two states acting on one press would let a single tap fire a dash and an attack.
+            // 两个状态若都响应一次按键，轻点一下就会同时触发闪避和攻击。
             Assert.IsFalse(buffer.TryConsume(PlayerInputAction.Dash, 10f));
         }
 
@@ -118,8 +116,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             Assert.IsTrue(buffer.TryConsume(PlayerInputAction.LightAttack, 10.05f));
 
-            // Queuing presses would let a mashed button drive the character on its own after a long
-            // animation. Only one press is ever held per action.
+            // 排队保存多次按键会让长动画结束后角色自行执行乱按输入。每个动作始终只保留一次按键。
             Assert.IsFalse(buffer.TryConsume(PlayerInputAction.LightAttack, 10.05f));
         }
 

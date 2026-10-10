@@ -10,17 +10,16 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that the arena camera stays steady through a real fight.
+    /// 测试竞技场相机在真实战斗中保持稳定。
     /// </summary>
     /// <remarks>
-    /// Knockdowns, launches, wall shoves and charges move the fighters around the whole arena and through
-    /// each other's space, which the framing was never exercised against. A camera that whips a large angle
-    /// in a single frame reads as a glitch however good each individual frame looks.
+    /// 击倒、挑飞、墙边推挤与冲锋使双方遍布竞技场并穿过彼此空间，这些场景从未验证过构图。
+    /// 单帧大幅甩动的相机，无论各帧单独看多好，都像故障。
     /// </remarks>
     [TestFixture]
     public sealed class CameraStabilityTests
     {
-        /// <summary>The most the camera's heading may turn in one frame at 60 Hz before it reads as a cut.</summary>
+        /// <summary>60 Hz 下相机朝向单帧允许转动的最大角度，超过便像镜头切换。</summary>
         private const float MaximumTurnPerFrameDegrees = 12f;
 
         [UnitySetUp]
@@ -57,7 +56,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
                 yield return null;
                 elapsed += Time.unscaledDeltaTime;
 
-                // Normalised to 60 Hz, so a slow frame is not mistaken for a fast turn.
+                // 归一化至 60 Hz，避免将慢帧误认为快速转动。
                 float frames = Mathf.Max(1f, Time.unscaledDeltaTime * 60f);
                 Vector3 heading = Flat(rig.transform.forward);
                 float turn = Vector3.Angle(previous, heading) / frames;
@@ -84,8 +83,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator TheCameraCanSeeThePlayerPinnedAgainstTheWall()
         {
-            // The situation knockback and wall shoves now create constantly: the player against the ring,
-            // the boss in the middle, and the camera placed behind the player - which is outside the wall.
+            // 击退和墙边推挤如今经常制造的情况：玩家靠着墙环，首领在中间，相机位于玩家身后，也就是墙外。
             var rig = Object.FindAnyObjectByType<ArenaCameraRig>();
             var player = Object.FindAnyObjectByType<PlayerController>();
             var boss = Object.FindAnyObjectByType<BossController>();
@@ -131,9 +129,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator LockOnKeepsTheBruteInViewThroughACircleStrafe()
         {
-            // The player reported lock-on as wrong. Its whole job is that the brute never leaves the screen however
-            // the knight moves around it, so the knight is carried in a full circle around the brute, faster than
-            // any real strafe, and the brute's chest is checked on screen every frame.
+            // 玩家反馈锁定有问题。锁定的职责是无论骑士如何绕行，巨兽都不离开屏幕，
+            // 因此让骑士以快于任何真实横移的速度绕巨兽完整一圈，并逐帧检查巨兽胸口是否在屏幕内。
             var rig = Object.FindAnyObjectByType<ArenaCameraRig>();
             var player = Object.FindAnyObjectByType<PlayerController>();
             var boss = Object.FindAnyObjectByType<BossController>();
@@ -142,7 +139,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             var context = (PlayerContext)typeof(PlayerController).GetField("_context", flags).GetValue(player);
             typeof(ArenaCameraRig).GetField("_isLockedOn", flags).SetValue(rig, true);
 
-            // Nothing else moves the brute while the knight circles it.
+            // 骑士绕行期间，没有其它模块移动巨兽。
             boss.enabled = false;
             Vector3 centre = new Vector3(0f, boss.transform.position.y, 0f);
             boss.transform.position = centre;
@@ -161,7 +158,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
                 yield return null;
                 elapsed += Time.unscaledDeltaTime;
 
-                // A moment to settle on the first frame, then every frame counts.
+                // 第一帧留出稳定时间，之后逐帧计入。
                 if (elapsed < 0.4f)
                 {
                     continue;

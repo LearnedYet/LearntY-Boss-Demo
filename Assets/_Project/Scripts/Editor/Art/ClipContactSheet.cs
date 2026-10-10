@@ -8,19 +8,18 @@ using UnityEngine.Rendering;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Renders every licensed clip as a strip of poses, so clips are chosen by looking at them.
+    /// 把每个许可动画片段渲染为一条姿势图，便于通过观察选择片段。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A pack's file names say almost nothing: <c>slash</c>, <c>slash (2)</c> and <c>slash (5)</c> are a quick
-    /// cut, a three-and-a-half-second string and a wide sweep, and the difference decides whether a light
-    /// attack reads as light. Each clip is posed on its own character at five points and rendered from the
-    /// front-left, which shows both the wind-up and the reach.
+    /// 资源包的文件名几乎说明不了什么： <c>slash</c>, <c>slash (2)</c> 和 <c>slash (5)</c> 分别是快
+    /// 斩、三秒半的连击和宽幅横扫；这种差异决定轻攻击是否看起来够轻。每个片段在所属角色上取五个姿势，
+    /// 从左前方渲染，同时展示前摇和伸展范围。
     /// </para>
     /// <para>
-    /// Needs a GPU, so it runs from a batch editor started without <c>-nographics</c>. Frames are written as
-    /// raw RGBA - an 8-byte width and height header, then rows - because image encoding lives in an engine
-    /// module this project does not include; a script outside Unity stitches them into sheets.
+    /// 需要 GPU，因此从未使用以下参数启动的批处理编辑器运行： <c>-nographics</c>。帧以原始 RGBA 写出：
+    /// 先是八字节的宽高头部，再是像素行。项目未包含图像编码所需的引擎模块，
+    /// 故由 Unity 外部脚本拼接成图表。
     /// </para>
     /// </remarks>
     public static class ClipContactSheet
@@ -28,7 +27,7 @@ namespace AdaptiveBossArena.Editor.Art
         private const int Size = 256;
         private static readonly float[] Samples = { 0f, 0.25f, 0.5f, 0.75f, 1f };
 
-        /// <summary>Renders every clip. The output folder is the argument after <c>-contactSheetOut</c>.</summary>
+        /// <summary>渲染每个片段。输出文件夹由以下参数之后的参数指定： <c>-contactSheetOut</c>.</summary>
         public static void Render()
         {
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
@@ -87,9 +86,9 @@ namespace AdaptiveBossArena.Editor.Art
                         {
                             clip.SampleAnimation(body, Samples[i] * clip.length);
 
-                            // Sampling a clip directly plays its root motion, which the game bakes out, so a lunge
-                            // walks the body out of frame. The camera follows the hips instead: this is about the
-                            // pose, not the travel. Three-quarter view from the front-left, close enough to read it.
+                            // 直接采样片段会播放游戏中已去除的根运动，使突进角色走出画面。
+                            // 摄像机因此跟随髋部：这里观察姿势而非位移。
+                            // 采用足够近的左前方四分之三视角，便于辨认动作。
                             var focus = new Vector3(hips.position.x, hips.position.y * 0.9f, hips.position.z);
                             cameraObject.transform.position = focus + new Vector3(-height * 1.1f, height * 0.3f, height * 1.6f);
                             cameraObject.transform.LookAt(focus);

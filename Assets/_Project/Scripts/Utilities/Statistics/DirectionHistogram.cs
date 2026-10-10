@@ -4,52 +4,48 @@ using UnityEngine;
 namespace AdaptiveBossArena.Utilities.Statistics
 {
     /// <summary>
-    /// Weighted histogram of movement directions binned into eight compass sectors.
+    /// 将移动方向分入八个罗盘扇区的加权直方图。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This answers the design requirement "if the player rolls left frequently, the boss predicts
-    /// left". Every dash is folded into a sector, old entries decay on a half-life, and
-    /// <see cref="Predictability"/> reports how lopsided the distribution has become.
+    /// 用于实现玩家常向左翻滚时Boss能够预测左侧的设计。每次冲刺写入扇区，旧权重按半衰期衰减，
+    /// <see cref="Predictability"/>表示分布偏向程度。
     /// </para>
     /// <para>
-    /// Predictability is what gates exploitation: a boss that leads its swing toward the player's
-    /// favourite dodge direction only feels fair if the player really does have a favourite. When
-    /// the distribution is close to uniform, predictability approaches zero and the counter-strategy
-    /// that depends on it should not fire.
+    /// 可预测性约束反制是否合理。只有玩家确有偏好方向，Boss才应向该方向提前挥击；
+    /// 接近均匀分布时可预测性接近零，依赖它的反制不应触发。
     /// </para>
     /// <para>
-    /// Directions are supplied on the arena's horizontal plane as (x, z). Bin zero points along
-    /// positive X and bins advance counter-clockwise in 45 degree steps.
+    /// 输入方向是水平面的(x,z)。第零扇区指向正X，之后每45度逆时针递增。
     /// </para>
     /// </remarks>
     public sealed class DirectionHistogram
     {
-        /// <summary>Number of compass sectors tracked.</summary>
+        /// <summary>跟踪的方向扇区数。</summary>
         public const int BinCount = 8;
 
         private const float RadiansPerBin = 2f * Mathf.PI / BinCount;
 
-        /// <summary>Below this total weight the distribution is treated as having no signal.</summary>
+        /// <summary>总权重低于此值时视为没有有效信号。</summary>
         private const float MinimumMeaningfulWeight = 0.0001f;
 
-        /// <summary>Entropy of a perfectly uniform distribution, used to normalise predictability.</summary>
+        /// <summary>完全均匀分布的熵，用于归一化可预测性。</summary>
         private static readonly float MaxEntropy = Mathf.Log(BinCount);
 
         private readonly float[] _weights = new float[BinCount];
         private float _totalWeight;
 
-        /// <summary>Sum of all bin weights after decay.</summary>
+        /// <summary>衰减后的所有扇区权重总和。</summary>
         public float TotalWeight => _totalWeight;
 
-        /// <summary>True once enough weight has accumulated for the distribution to mean anything.</summary>
+        /// <summary>积累足够权重、分布具有意义时为true。</summary>
         public bool HasSignal => _totalWeight > MinimumMeaningfulWeight;
 
         /// <summary>
-        /// Records a movement direction.
+        /// 记录移动方向。
         /// </summary>
-        /// <param name="direction">Direction on the horizontal plane. Magnitude is ignored; near-zero vectors are discarded.</param>
-        /// <param name="weight">Relative importance of this observation. Must be positive.</param>
+        /// <param name="direction">水平面方向，忽略长度，丢弃接近零的向量。</param>
+        /// <param name="weight">本次观察的相对重要程度，必须为正数。</param>
         public void Add(Vector2 direction, float weight = 1f)
         {
             if (weight <= 0f || direction.sqrMagnitude < Mathf.Epsilon)
@@ -62,10 +58,10 @@ namespace AdaptiveBossArena.Utilities.Statistics
         }
 
         /// <summary>
-        /// Fades every bin toward zero so that stale movement habits stop influencing the boss.
+        /// 将各扇区权重向零衰减，让过时移动习惯不再影响Boss。
         /// </summary>
-        /// <param name="halfLifeSeconds">Time for accumulated weight to halve. Must be positive.</param>
-        /// <param name="deltaTimeSeconds">Elapsed time since the previous decay.</param>
+        /// <param name="halfLifeSeconds">累计权重减半的时间，必须为正数。</param>
+        /// <param name="deltaTimeSeconds">距上次衰减经过的时间。</param>
         public void Decay(float halfLifeSeconds, float deltaTimeSeconds)
         {
             if (halfLifeSeconds <= 0f || deltaTimeSeconds <= 0f || _totalWeight <= 0f)
@@ -83,10 +79,10 @@ namespace AdaptiveBossArena.Utilities.Statistics
             _totalWeight *= retained;
         }
 
-        /// <summary>Fraction of total weight held by <paramref name="bin"/>, in the range zero to one.</summary>
-        /// <param name="bin">Sector index in the range [0, <see cref="BinCount"/>).</param>
-        /// <returns>Normalised weight, or zero when the histogram has no signal.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when the bin index is out of range.</exception>
+        /// <summary><paramref name="bin"/>占总权重的比例，范围零到一。</summary>
+        /// <param name="bin">扇区索引，范围[0,<see cref="BinCount"/>)。</param>
+        /// <returns>归一化权重，没有信号时为零。</returns>
+        /// <exception cref="ArgumentOutOfRangeException">扇区索引越界时抛出。</exception>
         public float NormalizedWeight(int bin)
         {
             if ((uint)bin >= BinCount)
@@ -98,7 +94,7 @@ namespace AdaptiveBossArena.Utilities.Statistics
             return HasSignal ? _weights[bin] / _totalWeight : 0f;
         }
 
-        /// <summary>Index of the most frequently observed sector, or -1 when there is no signal.</summary>
+        /// <summary>观察最多的扇区索引，没有信号时为-1。</summary>
         public int DominantBin
         {
             get
@@ -122,11 +118,10 @@ namespace AdaptiveBossArena.Utilities.Statistics
         }
 
         /// <summary>
-        /// How lopsided the distribution is, from zero (perfectly uniform) to one (a single sector).
+        /// 分布偏向程度，零为完全均匀，一为全部集中在单个扇区。
         /// </summary>
         /// <remarks>
-        /// Computed as normalised inverse Shannon entropy. Counter-strategies that exploit movement
-        /// habits should require this to clear a threshold before engaging.
+        /// 通过归一化后的逆Shannon熵计算。利用移动习惯的反制应在它超过阈值后才启用。
         /// </remarks>
         public float Predictability
         {
@@ -151,10 +146,10 @@ namespace AdaptiveBossArena.Utilities.Statistics
             }
         }
 
-        /// <summary>Unit vector pointing along the centre of the given sector.</summary>
-        /// <param name="bin">Sector index in the range [0, <see cref="BinCount"/>).</param>
-        /// <returns>Unit direction on the horizontal plane.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when the bin index is out of range.</exception>
+        /// <summary>指向指定扇区中心的单位向量。</summary>
+        /// <param name="bin">扇区索引，范围[0,<see cref="BinCount"/>)。</param>
+        /// <returns>水平面单位方向。</returns>
+        /// <exception cref="ArgumentOutOfRangeException">扇区索引越界时抛出。</exception>
         public static Vector2 BinCenterDirection(int bin)
         {
             if ((uint)bin >= BinCount)
@@ -167,19 +162,19 @@ namespace AdaptiveBossArena.Utilities.Statistics
             return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
         }
 
-        /// <summary>Maps a direction onto its compass sector.</summary>
-        /// <param name="direction">Direction on the horizontal plane.</param>
-        /// <returns>Sector index in the range [0, <see cref="BinCount"/>).</returns>
+        /// <summary>将方向映射到罗盘扇区。</summary>
+        /// <param name="direction">水平面方向。</param>
+        /// <returns>扇区索引，范围[0,<see cref="BinCount"/>)。</returns>
         public static int BinForDirection(Vector2 direction)
         {
             float angle = Mathf.Atan2(direction.y, direction.x);
             int bin = Mathf.RoundToInt(angle / RadiansPerBin);
 
-            // Atan2 returns a signed angle and rounding at the seam can reach BinCount, so wrap.
+            // Atan2返回有符号角，接缝处四舍五入可能达到BinCount，因此需要环绕。
             return ((bin % BinCount) + BinCount) % BinCount;
         }
 
-        /// <summary>Clears all accumulated weight.</summary>
+        /// <summary>清除所有累计权重。</summary>
         public void Reset()
         {
             Array.Clear(_weights, 0, BinCount);

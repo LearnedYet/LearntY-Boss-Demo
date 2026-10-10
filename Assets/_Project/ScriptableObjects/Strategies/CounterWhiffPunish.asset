@@ -29,5 +29,5 @@ MonoBehaviour:
   - _parameter: 6
     _targetValue: 0.5
   _easeInSeconds: 6
-  _tellMessage: It punishes your wasted swings.
+  _tellMessage: 它开始抓住你空挥后的破绽。
   _tellAudioCueId: 

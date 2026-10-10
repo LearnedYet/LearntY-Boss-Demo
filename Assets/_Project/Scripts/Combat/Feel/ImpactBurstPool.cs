@@ -4,33 +4,30 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// A fixed set of reusable impact bursts, handed out round-robin.
+    /// 一组固定、可复用的命中爆发效果，按轮转方式分配。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Instantiating an effect per hit would allocate and destroy several objects a second during a
-    /// combo, which is the classic source of a stutter that arrives exactly when the game most needs
-    /// to feel smooth. Every burst is built once at startup and reused.
+    /// 每次命中都实例化效果，会在连击期间每秒分配和销毁多个对象，
+    /// 这正是游戏最需要流畅时发生卡顿的典型来源。每个爆发效果在启动时只构建一次，随后复用。
     /// </para>
     /// <para>
-    /// Allocation is round-robin rather than first-idle. With a pool comfortably larger than the
-    /// number of hits that can overlap, the oldest entry is always the safest one to reuse, and it
-    /// avoids a scan on a path that runs in the middle of combat.
+    /// 采用轮转分配而不是寻找首个空闲项。池大小明显大于同时重叠命中数量时，
+    /// 最旧条目总是最安全的复用对象，并且避免在战斗中途执行的路径上扫描。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class ImpactBurstPool : MonoBehaviour
     {
         /// <summary>
-        /// Shader used for the particles.
+        /// 粒子使用的着色器。
         /// </summary>
         /// <remarks>
-        /// Additive unlit, so sparks read as light rather than as coloured paper and pick up bloom
-        /// from the post-processing volume.
+        /// 采用加法混合无光照，让火花呈现为光而不是彩色纸片，并从后处理体积获得泛光。
         /// </remarks>
         private const string ParticleShaderName = "Universal Render Pipeline/Particles/Unlit";
 
-        /// <summary>Fallback for the rare case the render pipeline's particle shader is unavailable.</summary>
+        /// <summary>渲染管线粒子着色器不可用的少见情况下使用的回退项。</summary>
         private const string FallbackShaderName = "Sprites/Default";
 
         private const uint ScatterSeed = 0x51A7u;
@@ -44,16 +41,15 @@ namespace AdaptiveBossArena.Combat.Feel
         private int _next;
 
         /// <summary>
-        /// Builds the pool around the material its sparks are drawn with.
+        /// 围绕绘制火花的材质构建池。
         /// </summary>
         /// <remarks>
-        /// The material is handed in, from an asset the scene references, rather than built here from
-        /// a shader looked up by name. A build only includes shaders something in it references, so a
-        /// name lookup is a shader the build was free to strip. Building one here remains only as a
-        /// fallback, and it says so when used.
+        /// 材质由场景引用的资源传入，而不是在这里通过名称查找着色器后创建。
+        /// 构建只包含被其中某个对象引用的着色器，因此按名称查找的着色器可能被构建剔除。
+        /// 这里只保留创建材质的回退方式，且使用时会明确报告。
         /// </remarks>
-        /// <param name="material">The spark material, normally the generated asset.</param>
-        /// <param name="matterMaterial">The alpha-blended material blood and dust are drawn with.</param>
+        /// <param name="material">火花材质，通常为生成的资源。</param>
+        /// <param name="matterMaterial">绘制鲜血与灰尘的透明度混合材质。</param>
         public void Construct(Material material, Material matterMaterial = null)
         {
             if (material == null)
@@ -68,8 +64,8 @@ namespace AdaptiveBossArena.Combat.Feel
             int capacity = EffectBudget.IsReduced ? Mathf.Min(_capacity, EffectBudget.WebImpactBursts) : _capacity;
             _bursts = new ImpactBurst[capacity];
 
-            // Its own seeded generator: scatter is cosmetic, so it must not draw from the one the boss's
-            // decisions are pinned to, and the global generator is off limits.
+            // 使用独立的带种子生成器：散射只影响外观，因此不能使用决定首领决策的生成器，
+            // 全局生成器也禁止使用。
             var random = new XorShiftRandomProvider(ScatterSeed);
 
             for (int i = 0; i < capacity; i++)
@@ -82,10 +78,10 @@ namespace AdaptiveBossArena.Combat.Feel
             }
         }
 
-        /// <summary>Plays an impact at a point in the world.</summary>
-        /// <param name="position">Where the hit landed.</param>
-        /// <param name="direction">Direction the sparks are thrown along.</param>
-        /// <param name="flavour">What kind of impact this was.</param>
+        /// <summary>在世界某点播放命中效果。</summary>
+        /// <param name="position">命中落点。</param>
+        /// <param name="direction">火花抛出的方向。</param>
+        /// <param name="flavour">命中效果的种类。</param>
         public void Play(Vector3 position, Vector3 direction, ImpactFlavour flavour)
         {
             if (_bursts == null || _bursts.Length == 0)
@@ -97,7 +93,7 @@ namespace AdaptiveBossArena.Combat.Feel
             _next = (_next + 1) % _bursts.Length;
         }
 
-        /// <summary>Builds the one material every burst shares.</summary>
+        /// <summary>构建所有爆发效果共用的唯一材质。</summary>
         private static Material CreateParticleMaterial()
         {
             Shader shader = Shader.Find(ParticleShaderName) ?? Shader.Find(FallbackShaderName);
@@ -108,9 +104,8 @@ namespace AdaptiveBossArena.Combat.Feel
                 hideFlags = HideFlags.HideAndDontSave
             };
 
-            // Named through the property strings rather than a keyword helper because the two
-            // shaders above disagree about which properties exist; setting one that is absent is a
-            // no-op rather than an error, so this covers both.
+            // 通过属性字符串命名，而不是使用关键字辅助方法，因为上方两个着色器具有的属性不同；
+            // 设置不存在的属性不会生效，也不会报错，因此能够覆盖两者。
             material.SetFloat("_Surface", 1f);
             material.SetFloat("_Blend", 1f);
             material.SetFloat("_ZWrite", 0f);

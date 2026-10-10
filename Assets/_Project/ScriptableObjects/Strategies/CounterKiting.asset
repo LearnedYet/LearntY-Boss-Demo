@@ -29,5 +29,5 @@ MonoBehaviour:
   - _parameter: 5
     _targetValue: 0.75
   _easeInSeconds: 6
-  _tellMessage: It refuses to let you breathe.
+  _tellMessage: 它不再给你喘息的机会。
   _tellAudioCueId: 

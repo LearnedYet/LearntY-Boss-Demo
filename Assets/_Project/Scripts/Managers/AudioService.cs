@@ -6,47 +6,44 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Plays every sound in the game, from procedurally generated clips.
+    /// 使用程序生成的音频片段播放游戏全部声音。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Implements the <see cref="IAudioService"/> contract that was designed in the first phase and
-    /// left unimplemented until the game turned out to be unpleasant to play in silence. Combat
-    /// feedback is at least as much auditory as visual: without a sound on the exact frame of
-    /// contact, a hit reads as not having landed however much the screen shakes.
+    /// 实现第一阶段设计的 <see cref="IAudioService"/> 契约；此前一直没有实现，
+    /// 直到发现无声游玩体验很差。战斗反馈的听觉重要性至少与视觉相当：若接触发生的准确帧没有声音，
+    /// 无论屏幕如何震动，命中都会像没有落地。
     /// </para>
     /// <para>
-    /// Sources are pooled and voice-limited. A three-hit combo landing inside a fifth of a second
-    /// would otherwise stack three copies of the same impact and produce a harsh cluster instead of
-    /// three distinct hits.
+    /// 音源采用对象池且限制发声数量。否则五分之一秒内命中的三段连击会叠加三份相同冲击声，
+    /// 产生刺耳声团，而非三次清晰命中。
     /// </para>
     /// <para>
-    /// Pitch is randomised slightly per playback. Repeating an identical sample is the single
-    /// clearest tell that a sound is synthetic, and a few percent of variation removes almost all of
-    /// that impression for no cost.
+    /// 每次播放轻微随机改变音高。反复相同采样是声音合成感最明显的标志；
+    /// 几个百分点的变化便能几乎消除这种印象，而且没有额外成本。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class AudioService : MonoBehaviour, IAudioService
     {
-        /// <summary>Simultaneous effect voices. Beyond this the oldest is recycled.</summary>
+        /// <summary>同时播放的效果声数，超过后回收最旧音源。</summary>
         private const int VoiceCount = 12;
 
-        /// <summary>Shortest gap between two playbacks of the same cue, in seconds.</summary>
+        /// <summary>同一音效两次播放之间的最短间隔，单位为秒。</summary>
         private const float SameCueCooldown = 0.035f;
 
-        /// <summary>Pitch variation applied per playback.</summary>
+        /// <summary>每次播放采用的音高变化。</summary>
         private const float PitchJitter = 0.08f;
 
-        /// <summary>Stacked music loops: a base bed, a tension layer, and a driving pulse.</summary>
+        /// <summary>叠加音乐循环：基础铺底、紧张层与推动节奏的脉冲。</summary>
         private static readonly string[] MusicLayerClips = { "music.layer0", "music.layer1", "music.layer2" };
 
         /// <summary>
-        /// Target volume of each layer at each intensity level (row = level, column = layer).
+        /// 各强度级别下每层的目标音量，行表示级别，列表示层。
         /// </summary>
         /// <remarks>
-        /// Level zero is the bare bed. Each step fades another layer in; at the top the bed ducks
-        /// slightly so the driving pulse cuts through rather than muddying it.
+        /// 零级只有基础层，每升一级淡入另一层；最高级时基础层稍微压低，让推动节奏的脉冲清晰突出，
+        /// 而非混浊叠加。
         /// </remarks>
         private static readonly float[][] IntensityTargets =
         {
@@ -55,46 +52,44 @@ namespace AdaptiveBossArena.Game
             new[] { 0.9f, 0.9f, 0.85f }
         };
 
-        /// <summary>How fast a music layer fades toward its target volume, per second.</summary>
+        /// <summary>音乐层每秒趋近目标音量的速度。</summary>
         private const float MusicFadePerSecond = 0.8f;
 
-        /// <summary>Fade rate used when a caller asks for no fade at all.</summary>
+        /// <summary>调用者要求无淡变时采用的变化速率。</summary>
         private const float ImmediateMusicFade = 100f;
 
-        /// <summary>Distance within which a world sound plays at full volume, in metres.</summary>
+        /// <summary>世界声音保持满音量的距离，单位为米。</summary>
         /// <remarks>
-        /// Roughly the range the fight is actually conducted at, so ordinary combat is not quietened
-        /// by its own distance falloff — the falloff exists to place a sound, not to hide it.
+        /// 大致对应实际交战距离，使普通战斗不会因自身距离衰减而变安静；衰减用于定位声音，而非隐藏声音。
         /// </remarks>
         private const float NearFieldMetres = 4f;
 
-        /// <summary>Distance beyond which a world sound is effectively inaudible, in metres.</summary>
+        /// <summary>超过后世界声音基本不可闻的距离，单位为米。</summary>
         private const float ArenaAudibleMetres = 22f;
 
-        /// <summary>How far the score is pulled down under a loud effect.</summary>
+        /// <summary>响亮效果出现时配乐被压低的程度。</summary>
         private const float DuckDepth = 0.45f;
 
-        /// <summary>How long a duck lasts before the score returns.</summary>
+        /// <summary>配乐恢复前压低效果持续的时间。</summary>
         private const float DuckSeconds = 0.35f;
 
-        /// <summary>Cue gain above which a sound is loud enough to duck the score.</summary>
+        /// <summary>触发配乐压低的音效增益阈值。</summary>
         private const float DuckThresholdGain = 0.9f;
 
-        /// <summary>Seconds remaining in the current duck.</summary>
+        /// <summary>当前配乐压低状态的剩余秒数。</summary>
         private float _duckRemaining;
 
         /// <summary>
-        /// Relative loudness per cue, on top of the peak each clip was generated at.
+        /// 在各片段生成峰值之上叠加的音效相对响度。
         /// </summary>
         /// <remarks>
-        /// The clip peak decides how a sound is shaped; this decides how much of it belongs in the
-        /// mix. Keeping the two separate means the balance can be adjusted without regenerating any
-        /// audio, and it is the only place the relative importance of the cues is written down.
-        /// Anything absent plays at unity.
+        /// 片段峰值决定声音形状，这里决定它在混音中占多大比例。两者分开，
+        /// 使平衡可在不重新生成音频的情况下调整；这里也是记录各提示相对重要性的唯一位置。
+        /// 未列出的音效采用单位增益。
         /// </remarks>
         private static readonly Dictionary<string, float> CueGains = new Dictionary<string, float>
         {
-            // Constant background. Loud footsteps are the fastest way to make a mix tiring.
+            // 持续背景声。响亮脚步最容易让混音令人疲劳。
             { Cues.FootstepPlayer, 0.5f },
             { Cues.FootstepBoss, 0.7f },
             { Cues.Whoosh, 0.7f },
@@ -104,7 +99,7 @@ namespace AdaptiveBossArena.Game
             { Cues.Whiff, 0.55f },
             { Cues.GuardRaise, 0.6f },
 
-            // The moments the fight turns on.
+            // 决定战斗走向的时刻。
             { Cues.Deflect, 1f },
             { Cues.Parry, 1f },
             { Cues.PostureBreak, 1f },
@@ -114,15 +109,15 @@ namespace AdaptiveBossArena.Game
             { Cues.PlayerDeath, 1f },
             { Cues.BossDeath, 1f },
 
-            // Interface, deliberately quiet enough to sit under a fight in progress.
+            // 界面声音刻意足够轻，可以位于进行中的战斗声之下。
             { Cues.UiClick, 0.45f },
             { Cues.UiHover, 0.3f }
         };
 
-        /// <summary>Current fade rate, set by the fade length the caller asked for.</summary>
+        /// <summary>当前淡变速率，由调用者要求的淡变时长设定。</summary>
         private float _musicFadePerSecond = MusicFadePerSecond;
 
-        /// <summary>Whether the score has been started, so intensity is only seeded once.</summary>
+        /// <summary>配乐是否已开始，确保强度只初始化一次。</summary>
         private bool _hasMusicStarted;
 
         private readonly Dictionary<string, AudioClip> _clips = new Dictionary<string, AudioClip>();
@@ -134,117 +129,116 @@ namespace AdaptiveBossArena.Game
         private float[] _musicTargets;
         private int _nextVoice;
 
-        /// <summary>Cue identifiers, kept as constants so call sites cannot mistype them.</summary>
+        /// <summary>音效标识保持为常量，防止调用处拼写错误。</summary>
         public static class Cues
         {
-            /// <summary>A light attack connecting.</summary>
+            /// <summary>轻攻击命中。</summary>
             public const string HitLight = "hit.light";
 
-            /// <summary>A heavy attack connecting.</summary>
+            /// <summary>重攻击命中。</summary>
             public const string HitHeavy = "hit.heavy";
 
-            /// <summary>A swing passing through the air.</summary>
+            /// <summary>挥击划过空气。</summary>
             public const string Whoosh = "swing.whoosh";
 
-            /// <summary>A clean deflect.</summary>
+            /// <summary>精准弹反。</summary>
             public const string Deflect = "guard.deflect";
 
-            /// <summary>A deliberate parry: brighter and harder than a deflect, because it is the harder act.</summary>
+            /// <summary>主动招架，比弹反更明亮、更硬，因为动作更难。</summary>
             public const string Parry = "player.parry";
 
-            /// <summary>A late block.</summary>
+            /// <summary>较晚格挡。</summary>
             public const string Block = "guard.block";
 
-            /// <summary>A guard or poise breaking.</summary>
+            /// <summary>防御或姿态崩溃。</summary>
             public const string PostureBreak = "guard.break";
 
-            /// <summary>The boss escalating to a new phase.</summary>
+            /// <summary>首领升级到新阶段。</summary>
             public const string BossRoar = "boss.roar";
 
-            /// <summary>A perfect dodge.</summary>
+            /// <summary>完美闪避。</summary>
             public const string PerfectDodge = "dodge.perfect";
 
-            /// <summary>A dash launching.</summary>
+            /// <summary>闪避起步。</summary>
             public const string Dash = "dodge.whoosh";
 
-            /// <summary>A heal being channelled.</summary>
+            /// <summary>引导治疗。</summary>
             public const string Heal = "player.heal";
 
-            /// <summary>A weapon being drawn.</summary>
+            /// <summary>拔出武器。</summary>
             public const string WeaponDraw = "weapon.draw";
 
-            /// <summary>An execution — the riposte into a broken guard.</summary>
+            /// <summary>处决，对崩溃防御的反击。</summary>
             public const string Execution = "player.execution";
 
-            /// <summary>A player footstep.</summary>
+            /// <summary>玩家脚步。</summary>
             public const string FootstepPlayer = "step.player";
 
-            /// <summary>A boss footstep — heavier and lower.</summary>
+            /// <summary>首领脚步，更重、更低沉。</summary>
             public const string FootstepBoss = "step.boss";
 
-            /// <summary>The focus meter reaching full.</summary>
+            /// <summary>专注槽充满。</summary>
             public const string FocusFull = "focus.full";
 
-            /// <summary>A ground hazard erupting.</summary>
+            /// <summary>地面危险区域爆发。</summary>
             public const string Hazard = "hazard.erupt";
 
-            /// <summary>A hiss where scorched ground burns the knight, on every tick.</summary>
+            /// <summary>灼烧地面每次伤害骑士时的嘶声。</summary>
             public const string HazardBurn = "hazard.burn";
 
-            /// <summary>The brute's grunt as it heaves into a swing: the audible half of its wind-up.</summary>
+            /// <summary>巨兽用力挥击时的低吼，作为前摇的声音提示。</summary>
             public const string BossGrunt = "boss.grunt";
 
-            /// <summary>The cathedral's own sound: a slow, stony air under the fight.</summary>
+            /// <summary>大教堂本身的声音，战斗之下缓慢的石厅空气声。</summary>
             public const string Ambience = "ambience.nave";
 
-            /// <summary>A guard being raised.</summary>
+            /// <summary>举起防御。</summary>
             public const string GuardRaise = "guard.raise";
 
-            /// <summary>A single heartbeat, pulsed while the player is near death.</summary>
+            /// <summary>单次心跳，玩家濒死时脉冲播放。</summary>
             public const string Heartbeat = "player.heartbeat";
 
-            /// <summary>The warning sting on a perilous, unblockable wind-up.</summary>
+            /// <summary>危险、不可格挡攻击前摇的警示音。</summary>
             public const string Peril = "peril.warning";
 
-            /// <summary>The unsteady stagger when a committed boss swing overbalances it.</summary>
+            /// <summary>首领投入挥击后失衡产生的不稳踉跄。</summary>
             public const string Overbalance = "boss.overbalance";
 
-            /// <summary>The player falling. The fight's ending had no sound of its own.</summary>
+            /// <summary>玩家倒下；过去战斗结束没有独立声音。</summary>
             public const string PlayerDeath = "player.death";
 
-            /// <summary>The boss falling: lower and longer, because it is the larger thing.</summary>
+            /// <summary>首领倒下，更低沉、更长，因为倒下的是更大物体。</summary>
             public const string BossDeath = "boss.death";
 
-            /// <summary>A swing that touched nothing.</summary>
+            /// <summary>未碰到任何目标的挥击。</summary>
             public const string Whiff = "swing.whiff";
 
-            /// <summary>A heal that ran to completion rather than being interrupted.</summary>
+            /// <summary>完整结束而非被打断的治疗。</summary>
             public const string HealComplete = "player.healed";
 
-            /// <summary>Swing of the standard blade.</summary>
+            /// <summary>普通长剑挥击。</summary>
             public const string SwingBlade = "swing.blade";
 
-            /// <summary>Swing of the greatsword: slow, low and airy.</summary>
+            /// <summary>巨剑挥击，缓慢、低沉且有破风感。</summary>
             public const string SwingGreatsword = "swing.greatsword";
 
-            /// <summary>Swing of the energy blade: thin and quick.</summary>
+            /// <summary>能量刃挥击，轻薄而迅速。</summary>
             public const string SwingEnergy = "swing.energy";
 
-            /// <summary>A menu button being pressed.</summary>
+            /// <summary>菜单按钮按下。</summary>
             public const string UiClick = "ui.click";
 
-            /// <summary>A menu button being highlighted.</summary>
+            /// <summary>菜单按钮高亮。</summary>
             public const string UiHover = "ui.hover";
         }
 
         /// <summary>
-        /// One recorded clip standing in for a synthesised cue.
+        /// 用一段录制片段替换一个合成音效。
         /// </summary>
         /// <remarks>
-        /// The route for real audio. Everything here is generated at startup from code, which ships
-        /// nothing and costs nothing, but it will never beat a recorded sound. Naming a cue and
-        /// dropping a file beside it replaces that one sound and leaves every caller untouched, so
-        /// the bank can be replaced a cue at a time rather than all at once.
+        /// 真实音频的接入途径。这里所有声音启动时由代码生成，无需携带资源，也无成本，但无法胜过录音。
+        /// 指定音效标识并添加文件，就能替换单个声音而不修改调用者，因此音效库可以逐个替换，
+        /// 而不必一次全部替换。
         /// </remarks>
         [System.Serializable]
         private struct CueOverride
@@ -262,22 +256,21 @@ namespace AdaptiveBossArena.Game
             public float Pitch;
         }
 
-        /// <summary>Every recorded take per cue, when a cue has more than one.</summary>
+        /// <summary>某音效有多个录制版本时保存其全部版本。</summary>
         private readonly Dictionary<string, AudioClip[]> _takes = new Dictionary<string, AudioClip[]>();
 
         /// <summary>
-        /// The synthesised sound each recorded cue replaced, played in its place while the recording is still
-        /// decoding - so a blow is never silent.
+        /// 每个录制音效所替换的合成声音，在录音仍然解码时临时代播，确保攻击绝不无声。
         /// </summary>
         private readonly Dictionary<string, AudioClip> _synthesised = new Dictionary<string, AudioClip>();
 
-        /// <summary>The take each cue played last, so the next is never the same one.</summary>
+        /// <summary>每个音效上次播放的版本，确保下次不重复。</summary>
         private readonly Dictionary<string, int> _lastTake = new Dictionary<string, int>();
 
-        /// <summary>A cue's base pitch, for recorded takes reused lower or higher than recorded.</summary>
+        /// <summary>音效基础音高，用于降低或升高录制版本的播放音高。</summary>
         private readonly Dictionary<string, float> _basePitch = new Dictionary<string, float>();
 
-        /// <summary>The injected random stream for take choice and pitch variation. Null plays takes in turn, unvaried.</summary>
+        /// <summary>注入的随机流用于版本选择及音高变化；为 null 时轮流播放且不变化。</summary>
         private IRandomProvider _random;
 
         [SerializeField]
@@ -291,8 +284,8 @@ namespace AdaptiveBossArena.Game
             GenerateClips();
             ApplyCueOverrides();
 
-            // These must match SettingsData's defaults, or the game plays at one volume until the
-            // settings menu is opened for the first time and pushes the saved values down.
+            // 必须与 SettingsData 默认值一致，否则首次打开设置菜单并传递保存数值前，
+            // 游戏会使用另一套音量。
             _busVolumes[AudioBus.Master] = SettingsData.DefaultMasterVolume;
             _busVolumes[AudioBus.Music] = SettingsData.DefaultMusicVolume;
             _busVolumes[AudioBus.Effects] = SettingsData.DefaultEffectsVolume;
@@ -315,7 +308,7 @@ namespace AdaptiveBossArena.Game
                 return;
             }
 
-            // The layered score is the game's only music, so a null track means fade to silence.
+            // 分层配乐是游戏唯一音乐，因此空曲目表示淡出至静音。
             if (string.IsNullOrEmpty(trackId))
             {
                 for (int i = 0; i < _musicLayers.Length; i++)
@@ -339,10 +332,8 @@ namespace AdaptiveBossArena.Game
                 }
             }
 
-            // The requested fade is honoured rather than ignored, and the bed is only introduced when
-            // nothing is playing yet. Resetting unconditionally meant any later call — a restart, say
-            // — silently dropped the score back to the opening layer while the boss was still in a
-            // late phase.
+            // 遵守请求的淡变，而非忽略它；只有尚未播放时才引入基础层。
+            // 过去无条件重置会使重试等后续调用在首领仍处于后期阶段时，悄悄将配乐退回开场层。
             _musicFadePerSecond = fadeSeconds > 0f ? 1f / fadeSeconds : ImmediateMusicFade;
 
             if (!_hasMusicStarted)
@@ -372,10 +363,10 @@ namespace AdaptiveBossArena.Game
         public void SetBusVolume(AudioBus bus, float linearVolume) =>
             _busVolumes[bus] = Mathf.Clamp01(linearVolume);
 
-        /// <summary>The looping room sound, when one is playing.</summary>
+        /// <summary>当前播放中的房间循环环境声。</summary>
         private AudioSource _ambience;
 
-        /// <summary>How loud the room sits against the music bus: present, never over the fight.</summary>
+        /// <summary>房间声相对于音乐总线的响度，保持存在感但不压过战斗。</summary>
         private const float AmbienceGain = 0.55f;
 
         /// <inheritdoc />
@@ -406,15 +397,15 @@ namespace AdaptiveBossArena.Game
             _ambience.Play();
         }
 
-        /// <summary>Eases each music layer toward its target, so intensity and volume changes glide.</summary>
+        /// <summary>让各音乐层平滑趋近目标，使强度与音量自然变化。</summary>
         private void Update()
         {
-            // The room follows the music volume setting, and the master, like the score does.
+            // 房间声与配乐一样遵守音乐音量及主音量设置。
             if (_ambience != null)
             {
                 _ambience.volume = EffectiveVolume(AudioBus.Music) * AmbienceGain;
 
-                // Started before its recording had decoded, it would stay silent; start it once it is ready.
+                // 录音解码前开始会一直无声，因此就绪后再启动。
                 if (!_ambience.isPlaying && _ambience.clip != null &&
                     _ambience.clip.loadState == AudioDataLoadState.Loaded)
                 {
@@ -429,8 +420,7 @@ namespace AdaptiveBossArena.Game
 
             _duckRemaining = Mathf.Max(0f, _duckRemaining - Time.unscaledDeltaTime);
 
-            // Recovers over the whole duck rather than snapping back, so a run of impacts holds the
-            // score down and it rises again only once the exchange is over.
+            // 在整个压低时段逐渐恢复，而非瞬间弹回，使连续冲击持续压住配乐，直到交锋结束才再次升起。
             float duck = Mathf.Lerp(1f, 1f - DuckDepth, _duckRemaining / DuckSeconds);
             float effectiveMusic = EffectiveVolume(AudioBus.Music) * duck;
             float step = _musicFadePerSecond * Time.unscaledDeltaTime;
@@ -450,12 +440,11 @@ namespace AdaptiveBossArena.Game
             _busVolumes.TryGetValue(bus, out float volume) ? volume : 1f;
 
         /// <summary>
-        /// Plays a cue on the next free voice.
+        /// 在下一个空闲音源上播放音效。
         /// </summary>
         /// <remarks>
-        /// The per-cue cooldown is what keeps a flurry sounding like a flurry. Without it, several
-        /// hits landing on nearly the same frame sum into one loud transient that reads as
-        /// distortion rather than as impacts.
+        /// 逐音效冷却让连击听起来仍像连击。否则多次几乎同帧命中会合成一个巨大瞬态，
+        /// 听起来像失真而非多次冲击。
         /// </remarks>
         private void Play(string cueId, Vector3 worldPosition, bool spatial)
         {
@@ -466,7 +455,7 @@ namespace AdaptiveBossArena.Game
 
             clip = TakeFor(cueId, clip);
 
-            // Still decoding: play the synthesised sound this once rather than nothing, and let it finish.
+            // 仍在解码：这次播放合成声音而非静音，并让它完整结束。
             if (clip.loadState != AudioDataLoadState.Loaded)
             {
                 if (clip.loadState == AudioDataLoadState.Unloaded)
@@ -494,8 +483,8 @@ namespace AdaptiveBossArena.Game
 
             voice.transform.position = worldPosition;
 
-            // Fully spatialised, not the previous two-thirds. Leaving a third of every world sound
-            // unpanned meant even a correctly-placed impact leaked out of the centre of the mix.
+            // 完全空间化，而非过去的三分之二。每个世界声音留三分之一未声像定位，
+            // 会使正确放置的冲击声仍从混音中心泄漏。
             voice.spatialBlend = spatial ? 1f : 0f;
             voice.clip = clip;
             voice.volume = EffectiveVolume(AudioBus.Effects) * GainFor(cueId);
@@ -505,20 +494,18 @@ namespace AdaptiveBossArena.Game
 
             voice.Play();
 
-            // A loud moment ducks the score rather than fighting it. Nothing else in the game
-            // arbitrates between the two, so without this the music simply adds to the pile.
+            // 响亮瞬间压低配乐，而非与配乐竞争。游戏中没有其他组件协调两者，若无此处理，
+            // 音乐只会继续叠加。
             RequestDuck(GainFor(cueId));
         }
 
         /// <summary>
-        /// Picks the voice least costly to interrupt.
+        /// 选择打断代价最低的音源。
         /// </summary>
         /// <remarks>
-        /// The previous strict round-robin stole the next voice in sequence whether or not it was
-        /// still playing, so anything long was cut off mid-tail by whatever came next: the roar runs
-        /// 1.4 seconds and a posture break 0.9, while footsteps from two characters alone can turn
-        /// the pool over in far less than that. An idle voice is always taken first; when they are
-        /// all busy the one nearest its end loses the least.
+        /// 过去严格轮转会按顺序抢占下一音源，不管它是否仍在播放，导致长声音尾部被后续声音切断：
+        /// 咆哮持续1.4 秒，姿态崩溃 0.9 秒，而双方脚步就能在更短时间内轮完音源池。优先选空闲音源；
+        /// 全部忙碌时，最接近结束的声音被打断损失最小。
         /// </remarks>
         private AudioSource ClaimVoice()
         {
@@ -540,9 +527,8 @@ namespace AdaptiveBossArena.Game
             {
                 AudioSource candidate = _voices[i];
 
-                // In the browser a recorded clip decodes after it is handed over, and reading its length before
-                // then only logs a warning and returns nothing useful. A voice still decoding has barely started,
-                // so it is the last one worth cutting off.
+                // 浏览器中录制片段移交后才解码，提前读取长度只会产生警告且返回无用信息。
+                // 仍在解码的音源才刚开始，因此最不值得切断。
                 float remaining = candidate.clip != null && candidate.clip.loadState == AudioDataLoadState.Loaded
                     ? candidate.clip.length - candidate.time
                     : float.MaxValue;
@@ -559,12 +545,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Swaps recorded clips in over the synthesised ones.
+        /// 用录制片段替换合成声音。
         /// </summary>
         /// <remarks>
-        /// Runs after generation so an override always wins, and warns rather than failing on a cue
-        /// id that matches nothing — a typo in an identifier would otherwise be a sound that silently
-        /// never plays, which is the hardest kind of audio bug to notice.
+        /// 在生成后执行，确保覆盖优先；找不到匹配音效标识时警告而非失败，
+        /// 否则标识拼写错误会造成声音悄悄从不播放，这是最难发现的音频问题。
         /// </remarks>
         private void ApplyCueOverrides()
         {
@@ -604,9 +589,8 @@ namespace AdaptiveBossArena.Game
 
                 _clips[replacement.CueId] = first;
 
-                // The browser decodes a recording only after it is asked for, and a clip played before it has
-                // decoded is silent. Asking for every take now, as the arena loads, gives them the entrance to
-                // decode in rather than the first blow.
+                // 浏览器只在请求后解码录音，解码前播放的片段无声。竞技场加载时请求全部版本，
+                // 让它们在入场阶段而非第一次攻击时完成解码。
                 first.LoadAudioData();
 
                 if (replacement.Clips != null)
@@ -633,11 +617,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// The take to play for a cue: a different one from last time when there are several.
+        /// 音效应播放的版本；存在多个时不能与上次相同。
         /// </summary>
         /// <remarks>
-        /// The same recorded hit twice in a row is what makes a recording sound like a sample rather than a blow.
-        /// Picked from the injected random stream, like everything else probabilistic here, and never repeating.
+        /// 连续两次相同命中录音会让声音像采样，而不像实际攻击。与其他概率机制一样从注入随机流选择，
+        /// 且绝不连续重复。
         /// </remarks>
         private AudioClip TakeFor(string cueId, AudioClip fallback)
         {
@@ -657,11 +641,11 @@ namespace AdaptiveBossArena.Game
             return takes[next];
         }
 
-        /// <summary>Relative loudness for a cue, defaulting to unity when none is listed.</summary>
+        /// <summary>音效相对响度，未列出时采用单位增益。</summary>
         private float GainFor(string cueId) =>
             CueGains.TryGetValue(cueId, out float gain) ? gain : 1f;
 
-        /// <summary>Deepens the current duck if this sound is loud enough to warrant one.</summary>
+        /// <summary>声音足够响亮时进一步压低当前配乐。</summary>
         private void RequestDuck(float gain)
         {
             if (gain < DuckThresholdGain)
@@ -672,7 +656,7 @@ namespace AdaptiveBossArena.Game
             _duckRemaining = DuckSeconds;
         }
 
-        /// <summary>Creates the pooled voices and the music source.</summary>
+        /// <summary>创建池化音源与音乐音源。</summary>
         private void BuildVoices()
         {
             _voices = new AudioSource[VoiceCount];
@@ -685,24 +669,21 @@ namespace AdaptiveBossArena.Game
                 AudioSource source = voiceObject.AddComponent<AudioSource>();
                 source.playOnAwake = false;
 
-                // Logarithmic, and scaled to the arena. The previous setup rolled off linearly from
-                // one metre to forty across a sixteen-metre floor, so a sound five metres away was at
-                // ninety per cent and one across the arena at seventy-five: nothing ever read as near
-                // or far. Full volume out to the usual fighting distance, then a real falloff.
+                // 采用对数衰减，并与竞技场尺度匹配。过去从一米到四十米线性衰减，而地面只有十六米，
+                // 导致五米外声音仍有百分之九十、竞技场对侧仍有百分之七十五，完全没有远近感。
+                // 现在普通交战距离内保持满音量，之后真正衰减。
                 source.rolloffMode = AudioRolloffMode.Logarithmic;
                 source.minDistance = NearFieldMetres;
                 source.maxDistance = ArenaAudibleMetres;
 
-                // Nothing here moves fast enough for Doppler to be anything but an unwanted pitch
-                // wobble on footsteps and swings, layered on top of the deliberate jitter.
+                // 这里运动速度不足以让多普勒有益，反而会在脚步与挥击上产生不需要的音高摆动，
+                // 再叠加已有的刻意随机变化。
                 source.dopplerLevel = 0f;
 
-                // Effects deliberately ignore the time scale, so impacts still sound during the
-                // hit-stop they cause rather than being pitched down into a groan.
+                // 效果刻意忽略时间缩放，使冲击声在它导致的顿帧期间正常响起，而非降调成低吟。
                 source.ignoreListenerPause = true;
 
-                // Effects deliberately ignore the time scale, so impacts still sound during the
-                // hit-stop they cause rather than being pitched down into a groan.
+                // 效果刻意忽略时间缩放，使冲击声在它导致的顿帧期间正常响起，而非降调成低吟。
                 source.ignoreListenerPause = true;
 
                 _voices[i] = source;
@@ -726,12 +707,11 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Synthesises every clip the game uses.</summary>
+        /// <summary>合成游戏使用的全部音频片段。</summary>
         private void GenerateClips()
         {
-            // Impacts are layered rather than filtered noise: a crack for the contact and a
-            // pitch-dropping body for the mass behind it. The peaks are the mix — a heavy blow is
-            // louder than a light one because it is told to be, not because of its filter.
+            // 冲击采用分层而非滤波噪声：尖裂声表现接触，降调主体表现背后重量。峰值负责混音；
+            // 重击比轻击响，是因为明确设定，而非滤波器偶然造成。
             _clips[Cues.HitLight] =
                 ToneGenerator.CreateWeightedImpact("hit.light", 150f, 2400f, 0.22f, 0.62f, 0.4f, seed: 3);
 
@@ -741,8 +721,7 @@ namespace AdaptiveBossArena.Game
             _clips[Cues.Block] =
                 ToneGenerator.CreateWeightedImpact("guard.block", 115f, 700f, 0.26f, 0.58f, 0.35f, seed: 11);
 
-            // Per-weapon swings. One moveset, three silhouettes of sound: the greatsword is slow and
-            // airy, the blade neutral, the energy blade thin and quick.
+            // 逐武器挥击。同一动作组有三种声音轮廓：巨剑缓慢、破风感强，长剑中性，能量刃轻薄、迅速。
             _clips[Cues.Whoosh] = ToneGenerator.CreateWhoosh("swing.whoosh");
             _clips[Cues.SwingBlade] = ToneGenerator.CreateWhoosh("swing.blade", 0.28f, 7, 0.42f, 1f);
             _clips[Cues.SwingGreatsword] =
@@ -750,8 +729,7 @@ namespace AdaptiveBossArena.Game
             _clips[Cues.SwingEnergy] =
                 ToneGenerator.CreateWhoosh("swing.energy", 0.2f, 17, 0.38f, 2.1f);
 
-            // The deflect is the highest, brightest sound in the game on purpose: it is the moment
-            // the player most needs to know they got it exactly right.
+            // 弹反刻意采用游戏最高、最亮的声音，因为这一刻玩家最需要知道自己准确做对了。
             _clips[Cues.Deflect] = ToneGenerator.CreateMetallicRing("guard.deflect", 1180f, 0.45f, 0.85f);
             _clips[Cues.Parry] = ToneGenerator.CreateMetallicRing("player.parry", 1720f, 0.6f, 1f);
             _clips[Cues.PostureBreak] = ToneGenerator.CreateMetallicRing("guard.break", 320f, 0.9f, 0.9f);
@@ -759,82 +737,77 @@ namespace AdaptiveBossArena.Game
 
             _clips[Cues.BossRoar] = ToneGenerator.CreateRoar("boss.roar", peak: 1f);
 
-            // The fight's two endings. Neither had a sound at all, so the single most important
-            // moment in the encounter passed in silence. The boss's knell is lower and longer,
-            // because it is the larger thing falling.
+            // 战斗的两种结局。过去两者完全无声，遭遇战最重要的瞬间在沉默中经过。首领终结声更低、更长，
+            // 因为倒下的物体更大。
             _clips[Cues.PlayerDeath] = ToneGenerator.CreateDeathKnell("player.death", 104f, 1.9f, 0.95f);
             _clips[Cues.BossDeath] = ToneGenerator.CreateDeathKnell("boss.death", 68f, 2.6f, 1f);
 
-            // A shorter, breathier whoosh than a swing, so a dash reads as the player moving rather
-            // than attacking.
+            // 比挥击更短、更多气息的破风声，使闪避表现为玩家移动，而非攻击。
             _clips[Cues.Dash] = ToneGenerator.CreateWhoosh("dodge.whoosh", 0.2f, seed: 21);
 
-            // Warm and rising for the heal; a bright, short chime the instant focus fills, and a
-            // softer one when the heal actually completes rather than being interrupted.
+            // 治疗声温暖上扬；专注充满瞬间播放短亮提示，治疗真正完成而非被打断时再播放较柔和提示。
             _clips[Cues.Heal] = ToneGenerator.CreateShimmer("player.heal", 520f, 0.7f, 0.55f);
             _clips[Cues.HealComplete] = ToneGenerator.CreateShimmer("player.healed", 700f, 0.5f, 0.5f);
             _clips[Cues.FocusFull] = ToneGenerator.CreateShimmer("focus.full", 1040f, 0.4f, 0.68f);
 
-            // A short high metallic 'shing' for drawing a weapon.
+            // 拔出武器时短促高亮的金属出鞘声。
             _clips[Cues.WeaponDraw] = ToneGenerator.CreateMetallicRing("weapon.draw", 1500f, 0.2f, 0.5f);
 
-            // The execution is the heaviest, lowest blow the player can land — the payoff of a
-            // broken guard, so it hits harder than anything else they have.
+            // 处决是玩家能施加的最重、最低沉攻击，作为防御崩溃的回报，冲击应强于其他全部攻击。
             _clips[Cues.Execution] =
                 ToneGenerator.CreateWeightedImpact("player.execution", 52f, 620f, 0.6f, 1f, 0.8f, seed: 29);
 
-            // Footsteps: a soft tap for the player, a heavier and much lower thud for the boss. Both
-            // sit well back in the mix — they play constantly and must never compete with a hit.
+            // 脚步：玩家轻拍，首领更重、更低沉。两者都位于混音后方，因为不断播放，绝不能与命中竞争。
             _clips[Cues.FootstepPlayer] =
                 ToneGenerator.CreateImpact("step.player", 0.08f, 520f, seed: 31, peak: 0.26f);
 
             _clips[Cues.FootstepBoss] =
                 ToneGenerator.CreateWeightedImpact("step.boss", 58f, 300f, 0.22f, 0.44f, 0.3f, seed: 37);
 
-            // A low, broadband rumble for a hazard erupting from the ground.
+            // 地面危险区域爆发时的低沉宽频轰鸣。
             _clips[Cues.Hazard] =
                 ToneGenerator.CreateWeightedImpact("hazard.erupt", 44f, 380f, 0.62f, 0.8f, 0.75f, seed: 41);
 
-            // A short bright hiss for scorched ground burning the knight: high and noisy, so it is never mistaken
-            // for a blow, and short, because it repeats every tick the knight stays in the fire.
+            // 灼烧地面烧伤骑士时的短亮嘶声；高频嘈杂以免与攻击混淆，保持短促，
+            // 因为骑士停在火中时每次伤害都会重复。
             _clips[Cues.HazardBurn] =
                 ToneGenerator.CreateImpact("hazard.burn", 0.2f, 3200f, seed: 53, peak: 0.3f);
 
-            // A low, short heave for the brute's wind-up, until a recording replaces it.
+            // 巨兽前摇的低短用力声，直到被录音替换。
             _clips[Cues.BossGrunt] =
                 ToneGenerator.CreateWeightedImpact("boss.grunt", 70f, 260f, 0.28f, 0.5f, 0.35f, seed: 59);
 
-            // A short, soft shift for raising a guard.
+            // 举起防御时短促柔和的移动声。
             _clips[Cues.GuardRaise] =
                 ToneGenerator.CreateImpact("guard.raise", 0.09f, 900f, seed: 47, peak: 0.34f);
 
-            // The heartbeat is the clearest case of the old bug: at 85 Hz the filter left it at four
-            // per cent of full scale, so the game's low-health warning was effectively silent.
+            // 心跳是旧问题最明显的例子：85 Hz 时滤波器只留下满幅的百分之四，
+            // 因此游戏的低生命警告实际上无声。
             _clips[Cues.Heartbeat] =
                 ToneGenerator.CreateWeightedImpact("player.heartbeat", 46f, 140f, 0.3f, 0.7f, 0.25f, seed: 43);
 
-            // The perilous-attack warning: a tense tritone sting under a fast tremolo.
+            // 危险攻击警示：快速颤音之上的紧张三全音刺声。
             _clips[Cues.Peril] = ToneGenerator.CreatePerilWarning("peril.warning", peak: 0.9f);
 
-            // The boss overbalancing: an unsteady low lurch whose pitch sags as it tips.
+            // 首领失衡：不稳的低沉踉跄声，倾倒时音高下沉。
             _clips[Cues.Overbalance] = ToneGenerator.CreateStumble("boss.overbalance", peak: 0.78f);
 
-            // A swing that hits nothing: air, and no contact at all. Quiet, but its absence made a
-            // whiffed attack feel like the game had missed the input rather than the target.
+            // 未击中任何目标的挥击：只有空气声，完全无接触。虽然轻，缺少它却会让空挥像游戏漏掉了输入，
+            // 而非攻击漏掉了目标。
             _clips[Cues.Whiff] = ToneGenerator.CreateWhoosh("swing.whiff", 0.34f, 53, 0.3f, 0.7f);
 
-            // Menu feedback, on the interface bus that existed and was never used by anything.
+            // 菜单反馈使用早已存在、却未被任何内容使用的界面总线。
             _clips[Cues.UiClick] = ToneGenerator.CreateMetallicRing("ui.click", 1320f, 0.12f, 0.4f);
             _clips[Cues.UiHover] = ToneGenerator.CreateMetallicRing("ui.hover", 1760f, 0.07f, 0.22f);
 
-            // Three stacked loops, harmonically related so they layer without dissonance: a low bed,
-            // a fifth above it for tension, and a rhythmic pulse an octave up for the final phase.
+            // 三个和声相关的叠加循环，避免不协和：低音铺底，高五度的紧张层，以及高八度、
+            // 供最终阶段使用的节奏脉冲。
             _clips[MusicLayerClips[0]] = ToneGenerator.CreateDrone(MusicLayerClips[0], 55f);
             _clips[MusicLayerClips[1]] = ToneGenerator.CreateDrone(MusicLayerClips[1], 82.5f);
             _clips[MusicLayerClips[2]] = ToneGenerator.CreatePulse(MusicLayerClips[2], 110f, 120f, 8);
         }
 
-        /// <summary>Combines a bus level with the master level.</summary>
+        /// <summary>将某总线音量与主音量结合。</summary>
         private float EffectiveVolume(AudioBus bus) =>
             GetBusVolume(bus) * GetBusVolume(AudioBus.Master);
     }

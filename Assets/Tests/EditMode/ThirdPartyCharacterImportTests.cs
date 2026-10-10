@@ -7,12 +7,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts the imported character art arrives in the shape the game depends on.
+    /// 断言导入的角色美术符合游戏所依赖的结构。
     /// </summary>
     /// <remarks>
-    /// Import settings fail silently. A rig that falls back to Generic still imports, still plays in
-    /// the preview, and simply cannot drive the game's Humanoid body or have its hand bone found -
-    /// and nothing but running the game would show it. These pin the settings the code relies on.
+    /// 导入配置可能无声失败。骨架回退为 Generic 时仍能导入、仍可在预览中播放，
+    /// 却无法驱动游戏的 Humanoid 身体，也找不到手骨；只有运行游戏才会显现。此处固定代码依赖的配置。
     /// </remarks>
     [TestFixture]
     public sealed class ThirdPartyCharacterImportTests

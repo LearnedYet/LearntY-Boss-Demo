@@ -6,12 +6,10 @@ using UnityEngine;
 namespace AdaptiveBossArena.AI.States
 {
     /// <summary>
-    /// Waiting, before the boss has seen anything worth reacting to.
+    /// Boss 尚未看见值得反应的信息时等待。
     /// </summary>
     /// <remarks>
-    /// Reached at the very start of a fight, when the perception history is not yet deep enough to
-    /// satisfy the observation delay. The boss genuinely does not know where the player is, and
-    /// standing still is the honest response.
+    /// 战斗刚开始、感知历史不足以满足延迟时进入。Boss 确实不知道玩家在哪，站着不动是诚实响应。
     /// </remarks>
     public sealed class BossIdleState : StateBase<BossContext>
     {
@@ -24,18 +22,15 @@ namespace AdaptiveBossArena.AI.States
     }
 
     /// <summary>
-    /// Holding position at the distance the boss currently prefers, watching for an opening.
+    /// 保持 Boss 当前首选距离，观察空当。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The state the boss spends most of the fight in, and the one adaptation changes most visibly.
-    /// Preferred range and aggression are both tuning values, so a boss that has learned the player
-    /// likes to keep away will hold closer and press sooner, without any new behaviour having been
-    /// added to it.
+    /// Boss 大部分战斗处于此状态，也是适应变化最明显的状态。首选距离和进攻性均为可调值，
+    /// 因此学到玩家喜欢保持距离后，Boss会更靠近并更早施压，而无需新增行为。
     /// </para>
     /// <para>
-    /// A deliberate dead zone around the preferred distance stops the boss oscillating in and out
-    /// when it is already roughly where it wants to be.
+    /// 在首选距离附近刻意设置死区，避免 Boss已大致处于目标位置时不断进出振荡。
     /// </para>
     /// </remarks>
     public sealed class BossObserveState : StateBase<BossContext>
@@ -43,13 +38,11 @@ namespace AdaptiveBossArena.AI.States
         /// <inheritdoc />
         protected override void OnEnter(BossContext context)
         {
-            // Entering this state means no attack is committed. Clearing here stops a choice made
-            // before an interruption from being resurrected later, when the situation that justified
-            // it has passed.
+            // 进入此状态意味着没有已确定的攻击。在此清除选择，
+            // 防止中断前基于已过时场景作出的决定以后复活。
             context.PendingAttack = null;
 
-            // A fresh reaction delay on entry means the boss cannot leave this state and attack in
-            // the same instant it arrives, no matter how obvious the opening.
+            // 进入时开启新的反应延迟，确保即使空当明显，Boss也不能到达同一瞬间立即离开并攻击。
             context.BeginReactionDelay();
         }
 
@@ -67,7 +60,7 @@ namespace AdaptiveBossArena.AI.States
 
             context.Motor.FaceDirection(context.DirectionToPlayer, deltaTime);
 
-            // A slow, circling stalk that eases between closing and giving ground; see BossPacing.
+            // 缓慢绕圈逼近，接近与让步之间平滑变化；参见 BossPacing。
             context.Motor.MoveInDirection(
                 BossPacing.Stalk(
                     context.DirectionToPlayer, context.DistanceToPlayer, context.PreferredRange,
@@ -79,18 +72,17 @@ namespace AdaptiveBossArena.AI.States
     }
 
     /// <summary>
-    /// Closing the distance with intent, rather than drifting toward it.
+    /// 带明确意图接近目标，而非漫无目的漂移。
     /// </summary>
     /// <remarks>
-    /// Distinguished from observing because a boss that has decided to attack should commit to
-    /// reaching the player instead of continuing to circle. How readily it makes that decision is
-    /// governed by its learned aggression.
+    /// 与观察状态区分，因为决定攻击的 Boss应投入接近玩家，而非继续绕圈。
+    /// 作出该决定的积极程度由学习后的进攻性控制。
     /// </remarks>
     public sealed class BossApproachState : StateBase<BossContext>
     {
-        /// <summary>True once the boss is close enough for its chosen attack to reach.</summary>
-        /// <param name="context">The boss context.</param>
-        /// <returns>Whether the approach has succeeded.</returns>
+        /// <summary>Boss 已接近到所选攻击能触及时为 true。</summary>
+        /// <param name="context">Boss 上下文。</param>
+        /// <returns>接近是否成功。</returns>
         public bool HasArrived(BossContext context)
         {
             if (context.PendingAttack == null)
@@ -110,8 +102,7 @@ namespace AdaptiveBossArena.AI.States
 
             context.Motor.FaceDirection(toPlayer, deltaTime);
 
-            // Walks in when the blow is nearly in reach and runs only across real distance, scaled by learned
-            // aggression; see BossPacing.
+            // 攻击将够到目标时走近，只有真实距离较大才奔跑，并按学习后的进攻性缩放；参见 BossPacing。
             float reach = context.PendingAttack != null ? context.PendingAttack.EffectiveReach : 0f;
             float speed = BossPacing.ApproachSpeed(
                 context.DistanceToPlayer - reach,

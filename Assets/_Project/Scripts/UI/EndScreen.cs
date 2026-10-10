@@ -5,18 +5,15 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.UI
 {
     /// <summary>
-    /// The panel shown once the fight is decided, whichever way it went.
+    /// 胜负确定后显示的结果面板。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// One component covers both outcomes, because the two screens differ only in wording and
-    /// colour. Splitting them would duplicate the fade, the summary layout and the restart wiring
-    /// for no benefit.
+    /// 两种结果只在文字和颜色上不同，因此共用组件，避免重复淡入淡出、布局和重试绑定。
     /// </para>
     /// <para>
-    /// The summary deliberately leads with how many strategies the boss developed rather than with
-    /// the clock. In this game that number is the more meaningful score: it says how readable the
-    /// player was, which is the thing the whole encounter is built to test.
+    /// 摘要优先显示Boss形成了多少种策略，这比耗时更能说明玩家行为有多容易被预测，
+    /// 符合遭遇战的核心目标。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -54,18 +51,17 @@ namespace AdaptiveBossArena.UI
         [Tooltip("Fade-in duration.")]
         private float _fadeSeconds = 0.6f;
 
-        // Tarnished gold for a victory and old blood for a defeat, spaced like an inscription. Pale blue and
-        // pink capitals read as an arcade's game-over card.
+        // 胜利用暗金、失败用旧血色，文字像铭文般排布，避免浅蓝粉色大写的街机结束画面感。
         private static readonly Color VictoryColor = new Color(0.84f, 0.72f, 0.46f);
         private static readonly Color DefeatColor = new Color(0.66f, 0.09f, 0.06f);
 
         private bool _isRunning;
         private float _elapsed;
 
-        /// <summary>Raised when the player asks to try again.</summary>
+        /// <summary>玩家请求再试一次时触发。</summary>
         public event Action RestartRequested;
 
-        /// <summary>True once the fight has been decided and this screen has taken over.</summary>
+        /// <summary>胜负已确定且此界面接管时为true。</summary>
         public bool IsShown => _isRunning;
 
         private void Awake() => Hide();
@@ -91,13 +87,13 @@ namespace AdaptiveBossArena.UI
         }
 
         /// <summary>
-        /// Shows the outcome.
+        /// 显示结果。
         /// </summary>
-        /// <param name="won">Whether the boss was defeated.</param>
-        /// <param name="durationSeconds">How long the attempt lasted.</param>
-        /// <param name="adaptationsAllowed">Counter-strategies the boss developed.</param>
-        /// <param name="isNewRecord">Whether this attempt set a personal best.</param>
-        /// <param name="dossier">The boss's read on the player, or empty for none.</param>
+        /// <param name="won">Boss是否被击败。</param>
+        /// <param name="durationSeconds">本次尝试时长。</param>
+        /// <param name="adaptationsAllowed">Boss形成的反制策略数量。</param>
+        /// <param name="isNewRecord">本次是否刷新个人最佳。</param>
+        /// <param name="dossier">Boss对玩家的分析，没有则为空。</param>
         public void Show(bool won, float durationSeconds, int adaptationsAllowed, bool isNewRecord,
             string dossier = "")
         {
@@ -116,7 +112,7 @@ namespace AdaptiveBossArena.UI
 
             if (_headline != null)
             {
-                _headline.text = won ? "T H E   B R U T E   F A L L S" : "Y O U   F A L L";
+                _headline.text = won ? "巨兽已倒下" : "你倒下了";
                 _headline.color = won ? VictoryColor : DefeatColor;
             }
 
@@ -131,7 +127,7 @@ namespace AdaptiveBossArena.UI
             }
         }
 
-        /// <summary>Hides the panel and returns to the neutral state.</summary>
+        /// <summary>隐藏面板并恢复中立状态。</summary>
         public void Hide()
         {
             _isRunning = false;
@@ -148,19 +144,19 @@ namespace AdaptiveBossArena.UI
             }
         }
 
-        /// <summary>Asks for another attempt. Bound to the panel's retry button.</summary>
+        /// <summary>请求再次尝试，绑定面板重试按钮。</summary>
         public void Restart()
         {
             Hide();
             RestartRequested?.Invoke();
         }
 
-        /// <summary>Assigns the references. Used by the interface generator.</summary>
-        /// <param name="panel">Root object containing the panel.</param>
-        /// <param name="group">Group to fade.</param>
-        /// <param name="headline">Headline text.</param>
-        /// <param name="summary">Summary text.</param>
-        /// <param name="dossier">The boss's read-on-the-player text.</param>
+        /// <summary>指定引用，供界面生成器使用。</summary>
+        /// <param name="panel">包含面板的根对象。</param>
+        /// <param name="group">用于淡入淡出的CanvasGroup。</param>
+        /// <param name="headline">标题文字。</param>
+        /// <param name="summary">摘要文字。</param>
+        /// <param name="dossier">Boss对玩家的分析文字。</param>
         public void Bind(GameObject panel, CanvasGroup group, Text headline, Text summary, Text dossier)
         {
             _panel = panel;
@@ -170,7 +166,7 @@ namespace AdaptiveBossArena.UI
             _dossier = dossier;
         }
 
-        /// <summary>Composes the outcome summary.</summary>
+        /// <summary>组合结果摘要。</summary>
         private static string BuildSummary(
             bool won,
             float durationSeconds,
@@ -181,18 +177,18 @@ namespace AdaptiveBossArena.UI
             var seconds = Mathf.FloorToInt(durationSeconds % 60f);
 
             string readAsText = adaptationsAllowed == 0
-                ? "It never worked you out."
+                ? "它没能看穿你的习惯。"
                 : adaptationsAllowed == 1
-                    ? "It worked out one of your habits."
-                    : $"It worked out {adaptationsAllowed} of your habits.";
+                    ? "它看穿了你的一个习惯。"
+                    : $"它看穿了你的 {adaptationsAllowed} 个习惯。";
 
-            string record = isNewRecord ? "\n\nNew personal best." : string.Empty;
+            string record = isNewRecord ? "\n\n刷新个人最佳纪录。" : string.Empty;
 
             string closing = won
-                ? "\n\nTry winning while giving it less to learn from."
-                : "\n\nChange something. It only counters what you repeat.";
+                ? "\n\n下次试着让它学到更少，再赢一次。"
+                : "\n\n改变你的打法。它只会针对你重复的行为。";
 
-            return $"{readAsText}\n\nTime: {minutes:00}:{seconds:00}{record}{closing}";
+            return $"{readAsText}\n\n用时：{minutes:00}:{seconds:00}{record}{closing}";
         }
     }
 }

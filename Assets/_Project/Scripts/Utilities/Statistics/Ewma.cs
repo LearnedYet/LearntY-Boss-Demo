@@ -3,20 +3,16 @@ using System;
 namespace AdaptiveBossArena.Utilities.Statistics
 {
     /// <summary>
-    /// Time-aware exponentially weighted moving average with a configurable half-life.
+    /// 具有可配置半衰期、基于经过时间的指数加权移动平均。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This type is the mechanism behind two of the boss's design requirements at once:
-    /// <em>adapt slowly</em> and <em>forget stale behavior</em>. The half-life states how long it
-    /// takes for an old observation's influence to fall to half. A short half-life makes the boss
-    /// twitchy and reactive; a long one makes it stubborn. Tuning adaptation feel is largely a
-    /// matter of tuning half-lives.
+    /// 同时服务于<em>缓慢适应</em>和<em>遗忘过时行为</em>两个设计目标。
+    /// 半衰期表示旧观察影响减半所需时间，短半衰期反应敏感，长半衰期更固执；适应手感主要通过它调整。
     /// </para>
     /// <para>
-    /// Weighting is driven by elapsed time rather than sample count, so a feature sampled
-    /// irregularly (a dodge, a landed hit) decays at the same real-world rate as one sampled on a
-    /// fixed cadence (distance to the player).
+    /// 权重按经过时间计算，不按样本数计算，因此不定期的闪避、
+    /// 命中和固定频率的距离采样具有一致的实际衰减速度。
     /// </para>
     /// </remarks>
     public sealed class Ewma
@@ -27,9 +23,9 @@ namespace AdaptiveBossArena.Utilities.Statistics
         private float _value;
         private int _sampleCount;
 
-        /// <summary>Creates an average that halves the weight of old samples every <paramref name="halfLifeSeconds"/>.</summary>
-        /// <param name="halfLifeSeconds">Time for an observation's influence to decay by half. Must be positive.</param>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when the half-life is not positive.</exception>
+        /// <summary>创建每隔<paramref name="halfLifeSeconds"/>将旧样本权重减半的平均器。</summary>
+        /// <param name="halfLifeSeconds">观察影响减半的时间，必须为正数。</param>
+        /// <exception cref="ArgumentOutOfRangeException">半衰期不是正数时抛出。</exception>
         public Ewma(float halfLifeSeconds)
         {
             if (halfLifeSeconds < MinimumHalfLifeSeconds)
@@ -41,27 +37,26 @@ namespace AdaptiveBossArena.Utilities.Statistics
             _halfLifeSeconds = halfLifeSeconds;
         }
 
-        /// <summary>Current smoothed value. Zero until the first sample arrives.</summary>
+        /// <summary>当前平滑值，首样本到来前为零。</summary>
         public float Value => _value;
 
-        /// <summary>Total number of samples fed in since construction or the last reset.</summary>
+        /// <summary>构造或上次重置以来输入的样本总数。</summary>
         public int SampleCount => _sampleCount;
 
-        /// <summary>True once at least one sample has been recorded.</summary>
+        /// <summary>至少记录一个样本后为true。</summary>
         public bool HasSamples => _sampleCount > 0;
 
-        /// <summary>Configured half-life in seconds.</summary>
+        /// <summary>配置的半衰期，单位为秒。</summary>
         public float HalfLifeSeconds => _halfLifeSeconds;
 
         /// <summary>
-        /// Folds a new observation into the average, weighting it by how much time has passed.
+        /// 将新观察并入平均值，按经过时间加权。
         /// </summary>
-        /// <param name="sample">The observed value.</param>
-        /// <param name="deltaTimeSeconds">Time elapsed since the previous sample. Negative values are clamped to zero.</param>
+        /// <param name="sample">观察值。</param>
+        /// <param name="deltaTimeSeconds">距上次采样经过的时间，负值钳制为零。</param>
         public void AddSample(float sample, float deltaTimeSeconds)
         {
-            // The first sample defines the baseline outright. Blending it against the implicit zero
-            // would otherwise bias every feature toward zero for the opening seconds of a fight.
+            // 首样本直接定义基线，避免与隐式零值混合后，让战斗开局的所有特征偏向零。
             if (_sampleCount == 0)
             {
                 _value = sample;
@@ -80,14 +75,13 @@ namespace AdaptiveBossArena.Utilities.Statistics
         }
 
         /// <summary>
-        /// Decays the average toward <paramref name="restingValue"/> without recording a new observation.
+        /// 不记录新观察，将平均值向<paramref name="restingValue"/>衰减。
         /// </summary>
         /// <remarks>
-        /// Used when a behavior simply stops happening. Absence of evidence has to erode a feature,
-        /// otherwise the boss would keep countering a tactic the player abandoned minutes ago.
+        /// 用于某行为不再发生时；缺少证据应削弱特征，避免Boss持续反制玩家早已放弃的战术。
         /// </remarks>
-        /// <param name="restingValue">The value the average relaxes toward.</param>
-        /// <param name="deltaTimeSeconds">Time elapsed since the previous update.</param>
+        /// <param name="restingValue">平均值回归的目标。</param>
+        /// <param name="deltaTimeSeconds">距上次更新经过的时间。</param>
         public void DecayToward(float restingValue, float deltaTimeSeconds)
         {
             if (_sampleCount == 0 || deltaTimeSeconds <= 0f)
@@ -98,21 +92,21 @@ namespace AdaptiveBossArena.Utilities.Statistics
             _value += (restingValue - _value) * AlphaForElapsed(deltaTimeSeconds);
         }
 
-        /// <summary>Clears the average back to its unobserved state.</summary>
+        /// <summary>清空平均值，恢复未观察状态。</summary>
         public void Reset()
         {
             _value = 0f;
             _sampleCount = 0;
         }
 
-        /// <summary>Overwrites the current value without disturbing the sample count.</summary>
-        /// <param name="value">The value to force.</param>
+        /// <summary>覆盖当前值但不改变样本数。</summary>
+        /// <param name="value">要强制设置的值。</param>
         public void SetValue(float value) => _value = value;
 
-        /// <summary>Blend weight for a sample observed after the given elapsed time.</summary>
+        /// <summary>指定时间之后观察到的样本混合权重。</summary>
         private float AlphaForElapsed(float deltaTimeSeconds)
         {
-            // Derived from 0.5 ^ (dt / halfLife): the fraction of the old value that survives.
+            // 由0.5^(dt/halfLife)推导，即旧值保留的比例。
             double retained = Math.Pow(0.5d, deltaTimeSeconds / _halfLifeSeconds);
             return (float)(1d - retained);
         }

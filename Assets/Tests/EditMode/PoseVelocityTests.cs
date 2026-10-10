@@ -5,10 +5,10 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the velocity a ragdoll's bodies inherit from the animation they were taken from.
+    /// 测试布娃娃各刚体继承原动画速度的规则。
     /// </summary>
     /// <remarks>
-    /// Bodies used to start at rest, so a fighter killed mid-swing stopped dead and dropped straight down.
+    /// 刚体原先从静止开始，因此挥击中被杀死的战斗者会突然停止，并垂直落下。
     /// </remarks>
     [TestFixture]
     public sealed class PoseVelocityTests

@@ -5,38 +5,36 @@ using UnityEngine;
 namespace AdaptiveBossArena.Learning
 {
     /// <summary>
-    /// Turns the boss's picture of the player into plain sentences for the post-fight report.
+    /// 将首领的玩家画像转为战后报告中的易懂语句。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The whole encounter is about the boss studying you, but until now that story lived only in the
-    /// developer overlay behind F1. This renders the same profile as a dossier the player is shown
-    /// when the fight ends — "here is what it worked out about you" — which is the payoff the mechanic
-    /// has been earning the entire fight.
+    /// 整个遭遇战围绕首领研究玩家展开，但此前这段叙事只存在于F1 后的开发者叠加层。
+    /// 这里将同一画像渲染为战斗结束后向玩家展示的档案：“这是它识破的你的习惯”，
+    /// 让玩家得到机制在整场战斗中逐渐积累的回报。
     /// </para>
     /// <para>
-    /// Pure and static, like <see cref="AdaptiveBossArena.Combat.DefenceResolver"/>, so the choice of
-    /// which habits are worth mentioning and in what order can be pinned by an edit-mode test rather
-    /// than eyeballed on a results screen. It deliberately reports only <em>strong</em> habits: a
-    /// reading that is confident but near zero ("you almost never whiffed") is not something the boss
-    /// leaned on, so listing it would misrepresent what actually happened in the fight.
+    /// 与 <see cref="AdaptiveBossArena.Combat.DefenceResolver"/> 一样为纯静态逻辑，
+    /// 因此哪些习惯值得提及、如何排序，可以通过编辑模式测试固定，无需在结算界面目测。
+    /// 这里只报告<em>强烈</em>的习惯：数值接近零但可信度高的读数（“你几乎不空挥”）不是首领据以反制的习
+    /// 惯，列出它会歪曲战斗实际情况。
     /// </para>
     /// </remarks>
     public static class ProfileReport
     {
-        /// <summary>Least confidence a habit needs before it is worth telling the player about.</summary>
+        /// <summary>值得向玩家报告某项习惯所需的最低可信度。</summary>
         public const float ConfidenceFloor = 0.35f;
 
-        /// <summary>Least strength a habit needs to count as a habit rather than its absence.</summary>
+        /// <summary>将特征视为习惯而非习惯缺失所需的最低强度。</summary>
         public const float ValueFloor = 0.4f;
 
         /// <summary>
-        /// The habits the boss grew confident in, phrased for the player and ordered strongest first.
+        /// 以面向玩家的语句报告首领确信的习惯，最强的排在前面。
         /// </summary>
-        /// <param name="profile">The boss's picture of the player at the end of the fight.</param>
-        /// <param name="confidenceFloor">Least confidence a habit needs to be included.</param>
-        /// <param name="valueFloor">Least strength a habit needs to be included.</param>
-        /// <returns>Ordered sentences, empty when the boss never read the player clearly.</returns>
+        /// <param name="profile">战斗结束时首领的玩家画像。</param>
+        /// <param name="confidenceFloor">报告某项习惯所需的最低可信度。</param>
+        /// <param name="valueFloor">报告某项习惯所需的最低强度。</param>
+        /// <returns>排序后的语句；首领未明确识破玩家时为空。</returns>
         public static IReadOnlyList<string> HabitLines(
             BehaviorProfile profile,
             float confidenceFloor = ConfidenceFloor,
@@ -54,10 +52,10 @@ namespace AdaptiveBossArena.Learning
                 }
 
                 int percent = Mathf.RoundToInt(reading.Confidence * 100f);
-                scored.Add((reading.Weighted, $"{Describe(feature)}  ({percent}% sure)"));
+                scored.Add((reading.Weighted, $"{Describe(feature)}  （可信度 {percent}%）"));
             }
 
-            // Strongest evidence first, so the dossier opens with what the boss was most certain of.
+            // 最充分的证据排在前面，使档案以首领最确信的判断开头。
             scored.Sort((a, b) => b.weighted.CompareTo(a.weighted));
 
             var lines = new List<string>(scored.Count);
@@ -69,26 +67,25 @@ namespace AdaptiveBossArena.Learning
             return lines;
         }
 
-        /// <summary>The player-facing sentence for a habit read at strength.</summary>
+        /// <summary>对强烈习惯使用的玩家可见语句。</summary>
         /// <remarks>
-        /// Each phrases the <em>high</em>-value meaning of its feature, because only strong readings
-        /// reach this point. The absence of a habit (passivity, say) is told instead through the
-        /// counter the boss adopted for it, which carries its own tell.
+        /// 每句描述对应特征的<em>高</em>值含义，因为只有强烈读数才会进入这里。
+        /// 习惯的缺失（例如被动）则通过首领采纳的反制策略及其提示来报告。
         /// </remarks>
         private static string Describe(BehaviorFeature feature) => feature switch
         {
-            BehaviorFeature.AttackFrequency => "You kept up a relentless offence.",
-            BehaviorFeature.HeavyAttackRatio => "You leaned on heavy swings.",
-            BehaviorFeature.PostDodgeAggression => "You struck the instant a dodge ended.",
-            BehaviorFeature.DashDirectionBias => "You favoured one way to roll.",
-            BehaviorFeature.PreferredDistance => "You fought from range.",
-            BehaviorFeature.Aggression => "You pressed forward and refused to give ground.",
-            BehaviorFeature.WhiffRatio => "You swung at empty air often.",
-            BehaviorFeature.HealFrequency => "You broke off to heal often.",
-            BehaviorFeature.DodgeTimingConsistency => "Your perfect dodges fell on the same beat.",
-            BehaviorFeature.EvasionSuccess => "You slipped almost everything it threw.",
-            BehaviorFeature.GuardReliance => "You met it behind the guard rather than moving.",
-            BehaviorFeature.DeflectSkill => "Your deflects landed on the beat, again and again.",
+            BehaviorFeature.AttackFrequency => "你持续发动猛烈的进攻。",
+            BehaviorFeature.HeavyAttackRatio => "你偏爱使用重攻击。",
+            BehaviorFeature.PostDodgeAggression => "你总在闪避结束后立刻出手。",
+            BehaviorFeature.DashDirectionBias => "你习惯朝同一方向翻滚。",
+            BehaviorFeature.PreferredDistance => "你倾向于保持距离作战。",
+            BehaviorFeature.Aggression => "你不断逼近，不肯退让。",
+            BehaviorFeature.WhiffRatio => "你的攻击经常落空。",
+            BehaviorFeature.HealFrequency => "你经常中断交战来治疗。",
+            BehaviorFeature.DodgeTimingConsistency => "你的完美闪避总遵循相同的节奏。",
+            BehaviorFeature.EvasionSuccess => "你躲过了它几乎所有的攻击。",
+            BehaviorFeature.GuardReliance => "你依赖防御来抵挡攻击，而很少移动。",
+            BehaviorFeature.DeflectSkill => "你一次次精准把握弹反的时机。",
             _ => feature.ToString()
         };
     }

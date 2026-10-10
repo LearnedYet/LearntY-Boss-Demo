@@ -3,53 +3,50 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// A coloured glow that intensifies as a fight escalates.
+    /// 随战斗升级而增强的彩色辉光。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A phase change on a primitive is otherwise invisible — the capsule looks identical whether the
-    /// boss is measured or desperate. This lights the boss from within, cool and dark at the start,
-    /// hotter and angrier with each phase, so the escalation is something the player sees on the
-    /// character rather than only infers from being hit harder.
+    /// 基础几何体上的阶段变化原本不可见——无论首领沉稳还是绝望，胶囊体看起来都相同。
+    /// 这里让首领从内部发光，开始时冷暗，每个阶段更炽热、更愤怒，让玩家在角色身上看见升级，
+    /// 而不是只从受伤更重推断。
     /// </para>
     /// <para>
-    /// A real light rather than a material tint, on purpose: it stacks with nothing (so it never
-    /// fights the hit-flash for the base colour), spills onto the floor around the boss, and picks up
-    /// the bloom in the post-processing volume for free. Everything eases on unscaled time so the
-    /// pulse at a transition still reads through the hit-stop it lands in.
+    /// 刻意采用真实灯光而不是材质染色：它不与任何材质颜色叠加（因此不会与受击闪光争夺基础色），
+    /// 会照亮首领周围地面，并自然利用后处理体积的泛光。所有变化按未缩放时间缓动，
+    /// 确保阶段转换脉冲即使发生于顿帧中仍可辨认。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class PhaseAura : MonoBehaviour
     {
-        /// <summary>Local height the glow sits at, roughly the boss's centre of mass.</summary>
+        /// <summary>辉光所在的局部高度，大致为首领重心。</summary>
         private const float LightHeight = 1.5f;
 
-        /// <summary>Reach of the glow in world units.</summary>
+        /// <summary>辉光范围，单位为世界单位。</summary>
         private const float LightRange = 7f;
 
-        /// <summary>How fast the steady glow eases toward a new phase's level.</summary>
+        /// <summary>稳定辉光向新阶段强度缓动的速度。</summary>
         private const float EaseHalfLife = 0.25f;
 
-        /// <summary>How fast a transition pulse springs back.</summary>
+        /// <summary>阶段转换脉冲回落的速度。</summary>
         private const float PulseDecayPerSecond = 3.5f;
 
-        /// <summary>Extra intensity a transition pulse adds on top of the steady glow.</summary>
+        /// <summary>阶段转换脉冲在稳定辉光之上添加的额外强度。</summary>
         private const float PulseIntensity = 7f;
 
-        /// <summary>Extra intensity a fully-charged gambit adds, so the boss visibly winds up.</summary>
+        /// <summary>战术爆发蓄满时增加的额外强度，让首领蓄势清晰可见。</summary>
         private const float ChargeIntensity = 6f;
 
-        /// <summary>Extra intensity while the parry window is open.</summary>
+        /// <summary>招架窗口开启时的额外强度。</summary>
         private const float ParryIntensity = 5f;
 
         /// <summary>
-        /// The colour the aura snaps to while a parry window is open.
+        /// 招架窗口开启时，光环立即切换到的颜色。
         /// </summary>
         /// <remarks>
-        /// Cold and unlike anything else the boss does, all of which is hot. The distinction has to
-        /// survive being seen for a sixth of a second in peripheral vision, which rules out anything
-        /// that reads as a brighter version of the ordinary glow.
+        /// 采用冷色，与首领其他所有炽热效果区分。区别必须在余光中仅看到六分之一秒时仍可辨认，
+        /// 因此不能采用任何看起来只是普通辉光加亮的颜色。
         /// </remarks>
         private static readonly Color ParryColor = new Color(0.55f, 0.85f, 1.6f);
 
@@ -67,11 +64,11 @@ namespace AdaptiveBossArena.Combat.Feel
 
         private ParticleSystem _embers;
 
-        /// <summary>Embers per second the boss sheds in each phase, from none while calm to a stream in its last.</summary>
+        /// <summary>首领各阶段每秒散发的余烬数，从平静时没有余烬到最终阶段连续散发。</summary>
         private static readonly float[] EmbersPerSecondByPhase = { 0f, 4f, 10f, 20f };
 
-        /// <summary>Assigns the ember material. Used by the prefab generator.</summary>
-        /// <param name="material">Additive spark material.</param>
+        /// <summary>指定余烬材质，由预制体生成器使用。</summary>
+        /// <param name="material">加法混合火花材质。</param>
         public void SetEmberMaterial(Material material) => _emberMaterial = material;
 
         private void Awake()
@@ -92,12 +89,12 @@ namespace AdaptiveBossArena.Combat.Feel
         }
 
         /// <summary>
-        /// Builds the embers that rise off the boss as its fury grows.
+        /// 构建随首领愤怒增强而从身上升起的余烬。
         /// </summary>
         /// <remarks>
-        /// A light alone lit the floor around the boss but put nothing on the boss itself. Embers drifting up
-        /// from its core make each escalation visible on the body, and a stream of them in the last phase is the
-        /// "aura" the player asked for. Halved in a browser, where every particle is paid for on weak graphics.
+        /// 单独灯光会照亮首领周围地面，却不在首领自身呈现任何效果。
+        /// 从核心向上飘的余烬让每次升级在身体上可见，最终阶段连续喷出的余烬就是玩家要求的“光环”。
+        /// 浏览器中减半，因为较弱图形硬件需要为每个粒子付出成本。
         /// </remarks>
         private void BuildEmbers(Transform parent)
         {
@@ -153,8 +150,8 @@ namespace AdaptiveBossArena.Combat.Feel
             _embers.Play();
         }
 
-        /// <summary>Sets the steady glow to match a phase, from calm at zero to furious at the top.</summary>
-        /// <param name="phaseIndex">Zero-based phase index.</param>
+        /// <summary>设置匹配阶段的稳定辉光，从零阶段的平静到最高阶段的狂怒。</summary>
+        /// <param name="phaseIndex">从零开始的阶段索引。</param>
         public void SetPhase(int phaseIndex)
         {
             if (_embers != null)
@@ -182,48 +179,46 @@ namespace AdaptiveBossArena.Combat.Feel
                     break;
 
                 default:
-                    // Last Stand and beyond: a hotter, blown-out crimson so the desperation phase
-                    // burns visibly brighter than the merely relentless one before it.
+                    // 最终抵抗及后续阶段：更炽热、曝光更强的深红色，
+                    // 让绝望阶段比之前仅仅无情的阶段燃烧得明显更亮。
                     _targetColor = new Color(1f, 0.28f, 0.4f);
                     _targetIntensity = 8.5f;
                     break;
             }
         }
 
-        /// <summary>Flares the glow briefly, for a phase transition or a moment of adaptation.</summary>
+        /// <summary>短暂增强辉光，用于阶段转换或适应时刻。</summary>
         public void Pulse() => _pulse = PulseIntensity;
 
         /// <summary>
-        /// Sets a steady charge glow, zero to one, so a filling gambit meter is visible on the boss.
+        /// 设置零到一的稳定蓄力辉光，让逐渐填满的战术爆发槽在首领身上可见。
         /// </summary>
         /// <remarks>
-        /// The gambit's legibility. An attack the player cannot see coming is indistinguishable from
-        /// the boss cheating, so the meter's approach to full is shown as the boss winding up brighter
-        /// and brighter before it erupts.
+        /// 战术爆发的可读性。玩家看不到预兆的攻击与首领作弊无法区分，因此数值槽接近满值时，
+        /// 首领会越来越亮，在爆发前清楚地表现蓄势。
         /// </remarks>
-        /// <param name="normalized">How full the gambit meter is, zero to one.</param>
+        /// <param name="normalized">战术爆发槽的填充程度，从零到一。</param>
         public void SetCharge(float normalized) => _charge = Mathf.Clamp01(normalized);
 
         /// <summary>
-        /// Shows or hides the parry window on the boss.
+        /// 在首领身上显示或隐藏招架窗口。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// A term of its own rather than a use of <see cref="SetCharge"/>, which the gambit meter
-        /// owns: borrowing it would make the wind-up glow lie about how full the meter is.
+        /// 采用独立项而不是借用 <see cref="SetCharge"/>，因为后者由战术爆发槽控制；
+        /// 借用它会让蓄力辉光错误表示数值槽的填充程度。
         /// </para>
         /// <para>
-        /// The obligation runs both ways. The boss is told a guard is raised but never whether the
-        /// player's deflect window is open; the player's channel is the screen, so the boss's window
-        /// has to be visible there or a stance that refuses hits is indistinguishable from one that
-        /// refuses them at random. What must be shown is the window alone - the punishable tail
-        /// looks like the boss standing still, which is what it is.
+        /// 可读性义务是双向的。首领会得知玩家举起防御，但绝不知道玩家弹反窗口是否开启；
+        /// 玩家的信息渠道是画面，因此首领的窗口必须在画面中可见，
+        /// 否则会拒绝命中的姿态与随机拒绝命中的姿态无法区分。
+        /// 只需显示窗口本身——可被惩罚的尾段看起来就是首领静止站立，实际也正是如此。
         /// </para>
         /// </remarks>
-        /// <param name="isOpen">Whether a hit arriving now would be refused.</param>
+        /// <param name="isOpen">此刻到达的命中是否会被化解。</param>
         public void SetParryWindow(bool isOpen) => _parryWindowOpen = isOpen;
 
-        /// <summary>Clears the glow back to its opening state, for a retry.</summary>
+        /// <summary>将辉光清除并恢复到初始状态，用于重试。</summary>
         public void ResetAura()
         {
             _pulse = 0f;
@@ -249,9 +244,8 @@ namespace AdaptiveBossArena.Combat.Feel
 
             float deltaTime = Time.unscaledDeltaTime;
 
-            // The steady glow eases toward the phase's level; the pulse rides on top and springs back
-            // on its own. Keeping them separate means a transition flare never disturbs where the
-            // steady glow is heading.
+            // 稳定辉光向阶段目标强度缓动；脉冲叠加在其上，独立回落。保持两者分离，
+            // 确保阶段转换闪亮不会改变稳定辉光的目标。
             _pulse = Mathf.Max(0f, _pulse - PulseDecayPerSecond * deltaTime);
             _steadyIntensity = Mathf.Lerp(
                 _steadyIntensity, _targetIntensity, DampFactor(EaseHalfLife, deltaTime));
@@ -259,20 +253,18 @@ namespace AdaptiveBossArena.Combat.Feel
             _light.intensity = _steadyIntensity + _pulse + _charge * ChargeIntensity +
                                (_parryWindowOpen ? ParryIntensity : 0f);
 
-            // Snapped, not eased. Every other colour change here is a slow escalation the player has
-            // seconds to notice; this one has to be legible inside a window shorter than the ease's
-            // own half-life, so easing it would show the player a colour that had barely started
-            // moving by the time the window shut.
+            // 立即切换，而不缓动。这里其他所有颜色变化都是缓慢升级，玩家有数秒察觉；
+            // 这次变化必须在比缓动自身半衰期更短的窗口内可读，否则窗口关闭时，
+            // 玩家看到的颜色才刚开始变化。
             _light.color = _parryWindowOpen
                 ? ParryColor
                 : Color.Lerp(_light.color, _targetColor, DampFactor(EaseHalfLife, deltaTime));
 
-            // Switched off entirely once dark, so the opening phase spends nothing on a light that
-            // contributes nothing.
+            // 完全暗下后关闭灯光，让初始阶段不为没有任何贡献的灯光付出成本。
             _light.enabled = _light.intensity > 0.01f;
         }
 
-        /// <summary>Frame-rate independent interpolation factor for a half-life.</summary>
+        /// <summary>按半衰期计算、不依赖帧率的插值系数。</summary>
         private static float DampFactor(float halfLifeSeconds, float deltaTime) =>
             1f - Mathf.Exp(-deltaTime / Mathf.Max(0.0001f, halfLifeSeconds));
     }

@@ -3,26 +3,25 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// How a striking part is tested between two frames, so a fast swing cannot pass through a body unseen.
+    /// 在两帧之间检测打击部位，避免快速挥击未被察觉地穿过身体。
     /// </summary>
     /// <remarks>
-    /// A great sword's tip crosses well over a metre in one frame of a swing. Testing only where it ends up
-    /// would let it skip clean over the knight between two frames; testing its whole path would cost a
-    /// swept-volume query the physics engine does not offer for capsules. Sampling the path in steps no longer
-    /// than the part's own thickness finds the same contacts at a handful of overlap queries per frame.
+    /// 巨剑尖端在一次挥击的一帧中能移动超过一米。只检测最终位置会让它在两帧之间完整越过骑士；
+    /// 检测全路径则需要物理引擎没有提供的胶囊扫掠体积查询。沿路径以不超过部位厚度的步长采样，
+    /// 只需每帧少量重叠查询便能找出相同接触。
     /// </remarks>
     public static class StrikeSweep
     {
         /// <summary>
-        /// How many samples cover the path between two poses.
+        /// 覆盖两姿态间路径所需的采样数。
         /// </summary>
-        /// <param name="previousStart">The base last frame.</param>
-        /// <param name="previousEnd">The tip last frame.</param>
-        /// <param name="start">The base now.</param>
-        /// <param name="end">The tip now.</param>
-        /// <param name="radius">The part's thickness.</param>
-        /// <param name="maximum">A ceiling on samples, so a teleport cannot cost a hundred queries.</param>
-        /// <returns>At least one sample; more the further the fastest end travelled.</returns>
+        /// <param name="previousStart">上帧根部位置。</param>
+        /// <param name="previousEnd">上帧尖端位置。</param>
+        /// <param name="start">当前根部位置。</param>
+        /// <param name="end">当前尖端位置。</param>
+        /// <param name="radius">部位厚度。</param>
+        /// <param name="maximum">采样上限，避免瞬移产生上百次查询。</param>
+        /// <returns>至少一次采样；移动较快端距离越远，采样越多。</returns>
         public static int SampleCount(
             Vector3 previousStart, Vector3 previousEnd, Vector3 start, Vector3 end, float radius, int maximum)
         {
@@ -32,14 +31,14 @@ namespace AdaptiveBossArena.Combat
             return Mathf.Clamp(samples, 1, Mathf.Max(1, maximum));
         }
 
-        /// <summary>The part's pose part-way between two frames.</summary>
-        /// <param name="previousStart">The base last frame.</param>
-        /// <param name="previousEnd">The tip last frame.</param>
-        /// <param name="start">The base now.</param>
-        /// <param name="end">The tip now.</param>
-        /// <param name="t">Zero for last frame's pose, one for this frame's.</param>
-        /// <param name="sampleStart">The base at that point.</param>
-        /// <param name="sampleEnd">The tip at that point.</param>
+        /// <summary>两帧之间某个时刻的部位姿态。</summary>
+        /// <param name="previousStart">上帧根部位置。</param>
+        /// <param name="previousEnd">上帧尖端位置。</param>
+        /// <param name="start">当前根部位置。</param>
+        /// <param name="end">当前尖端位置。</param>
+        /// <param name="t">零表示上帧姿态，一表示本帧姿态。</param>
+        /// <param name="sampleStart">该时刻的根部位置。</param>
+        /// <param name="sampleEnd">该时刻的尖端位置。</param>
         public static void Between(
             Vector3 previousStart, Vector3 previousEnd, Vector3 start, Vector3 end, float t,
             out Vector3 sampleStart, out Vector3 sampleEnd)

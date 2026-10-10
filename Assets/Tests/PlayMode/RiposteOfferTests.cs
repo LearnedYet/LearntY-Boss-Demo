@@ -9,12 +9,11 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that the punish for breaking the boss's guard is offered, not taken automatically.
+    /// 测试首领破防的惩罚机会由玩家选择，而非自动执行。
     /// </summary>
     /// <remarks>
-    /// The riposte used to fire itself the instant the guard broke, from any state and any distance, interrupting
-    /// whatever the player was doing - the best moment in the fight happened without them. It now waits for the
-    /// player to walk in, face the boss and press attack.
+    /// 反击原先在破防瞬间自动触发，无论玩家处于何种状态、何种距离，都会打断其当前行为；
+    /// 战斗最精彩的时刻无需玩家参与就发生。现在它等待玩家走近、面向首领并按下攻击。
     /// </remarks>
     [TestFixture]
     public sealed class RiposteOfferTests
@@ -43,7 +42,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             Assert.IsNotNull(player);
             Assert.IsNotNull(boss);
 
-            // Well out of reach, so the offer must not stand however broken the guard is.
+            // 明显超出攻击范围，因此无论防御破得多严重，都不能提供可执行机会。
             boss.transform.position = player.transform.position + Vector3.forward * 9f;
             boss.Poise.ApplyPoiseDamage(1000f);
 

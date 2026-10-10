@@ -5,13 +5,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Player.States
 {
     /// <summary>
-    /// Standing still.
+    /// 静止站立。
     /// </summary>
     /// <remarks>
-    /// Kept distinct from <see cref="PlayerMoveState"/> rather than folded into a single grounded
-    /// state. The separation costs almost nothing and gives idle-specific presentation — breathing
-    /// animation, stance, a different footfall on the first step — somewhere to live without a
-    /// speed check scattered through the movement code.
+    /// 与 <see cref="PlayerMoveState"/>分开，而非合并为一个地面状态。分离几乎没有额外成本，
+    /// 却能容纳待机专属表现，如呼吸动画、站姿和第一步不同的脚步声，无需在移动代码中散布速度判断。
     /// </remarks>
     public sealed class PlayerIdleState : StateBase<PlayerContext>
     {
@@ -24,11 +22,10 @@ namespace AdaptiveBossArena.Player.States
         /// <inheritdoc />
         protected override void OnTick(PlayerContext context, float deltaTime)
         {
-            // Still decelerating: a character entering idle while sliding out of a dash should coast
-            // to a halt rather than stop dead.
+            // 仍然减速：从闪避滑行进入待机的角色应惯性滑至停止，而非突然停住。
             context.Motor.Decelerate(deltaTime);
 
-            // Locked on, a standing knight keeps squaring up to the boss as it circles.
+            // 锁定时，站立的骑士会随着 Boss 绕行而持续正对它。
             if (context.IsLockedOn)
             {
                 context.Motor.FaceDirection(context.FacingTowardThreat, deltaTime);
@@ -38,7 +35,7 @@ namespace AdaptiveBossArena.Player.States
         }
     }
 
-    /// <summary>Running under player control.</summary>
+    /// <summary>受玩家控制跑动。</summary>
     public sealed class PlayerMoveState : StateBase<PlayerContext>
     {
         /// <inheritdoc />
@@ -53,9 +50,8 @@ namespace AdaptiveBossArena.Player.States
             Vector2 input = context.Input.MoveDirection;
             context.Motor.ApplyMoveInput(input, deltaTime);
 
-            // Facing follows the stick, not the velocity. Following velocity meant a reversal turned the knight
-            // only as fast as momentum bled off, so he visibly lagged where he was pointed. Locked on, he keeps
-            // facing the boss and the directional blend plays strafes and back-steps.
+            // 朝向跟随摇杆，而非速度。原先跟随速度使反向输入时骑士只能随动量消退缓慢转身，
+            // 明显落后于输入方向。锁定时保持面向 Boss，方向混合则播放横移和后退动作。
             Vector3 facing = context.IsLockedOn
                 ? context.FacingTowardThreat
                 : context.Motor.ToWorldDirection(input);

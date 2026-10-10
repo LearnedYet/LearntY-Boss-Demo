@@ -3,19 +3,16 @@ using System.Globalization;
 namespace AdaptiveBossArena.Utilities.Statistics
 {
     /// <summary>
-    /// Whether this run was launched to capture a performance measurement, and how.
+    /// 本次是否请求性能采样，以及采样方式。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Pure and in Utilities because two assemblies must agree on it and neither may see the other.
-    /// The probe that measures lives in Game; the title screen that must skip straight into the fight
-    /// lives in UI, which Game references and not the reverse. A capture that stopped at the title
-    /// screen measured a menu and never wrote its line, which is exactly how the first baseline
-    /// attempt failed.
+    /// 放在Utilities的纯逻辑中，供两个互不可见的程序集一致使用。测量探针在Game，
+    /// 跳过标题进入战斗的逻辑在UI，依赖方向不能反转。首次基线测量曾停在标题，只测到菜单且未输出结果。
     /// </para>
     /// <para>
-    /// Desktop players take <c>-perfCapture &lt;seconds&gt; [-perfLog &lt;path&gt;] [-perfQuit]</c>.
-    /// A WebGL page has no command line, so it takes <c>?perf=&lt;seconds&gt;</c> instead.
+    /// 桌面程序接收<c>-perfCapture &lt;seconds&gt; [-perfLog &lt;path&gt; ] [-perfQuit]</c>，
+    /// WebGL没有命令行，改用<c>?perf=&lt;seconds&gt;</c>。
     /// </para>
     /// </remarks>
     public readonly struct PerfCaptureRequest
@@ -27,52 +24,52 @@ namespace AdaptiveBossArena.Utilities.Statistics
         private const string ShotsFlag = "-perfShots";
         private const string ShotEveryFlag = "-perfShotEvery";
 
-        /// <summary>Starts the frame sequence during the frozen intro rather than once the fight runs.</summary>
+        /// <summary>在冻结的开场期间开始采集帧序列。</summary>
         private const string ShotsIntroFlag = "-perfShotsIntro";
 
-        /// <summary>Default spacing of a frame sequence: ten frames a second, enough to read a swing's arc.</summary>
+        /// <summary>默认帧序列间隔为每秒十帧，足以观察挥击轨迹。</summary>
         public const float DefaultShotEverySeconds = 0.1f;
         private const string CaptureQueryKey = "perf";
 
-        /// <summary>How long to sample, in seconds. Zero when no capture was requested.</summary>
+        /// <summary>采样时长，单位为秒；未请求时为零。</summary>
         public float Seconds { get; init; }
 
-        /// <summary>File the report line is appended to, or null.</summary>
+        /// <summary>报告行追加到的文件，没有则为null。</summary>
         public string LogPath { get; init; }
 
-        /// <summary>File a screenshot of the fight is saved to, or null.</summary>
+        /// <summary>保存战斗截图的文件，没有则为null。</summary>
         /// <remarks>
-        /// A capture measures the frame; this shows it. Every test can pass while a character renders at
-        /// the wrong scale or holds its blade backwards, and only an image of the running build says so.
+        /// 性能采样测量帧，截图显示帧。即使测试全通过，角色仍可能比例错误或反拿武器，
+        /// 运行构建的图像才能发现。
         /// </remarks>
         public string ShotPath { get; init; }
 
-        /// <summary>Folder a sequence of frames is written to during the capture, or null.</summary>
-        /// <remarks>A single frame cannot show whether a swing has weight or a fall reads as a fall; a sequence can.</remarks>
+        /// <summary>采样期间写出帧序列的目录，没有则为null。</summary>
+        /// <remarks>单帧无法判断挥击重量感或倒地动作，帧序列可以。</remarks>
         public string ShotFolder { get; init; }
 
-        /// <summary>Seconds between frames of the sequence.</summary>
+        /// <summary>帧序列采样间隔，单位为秒。</summary>
         public float ShotEverySeconds { get; init; }
 
-        /// <summary>Whether the application should quit once the capture is written.</summary>
+        /// <summary>写完采样后是否退出应用。</summary>
         public bool QuitWhenDone { get; init; }
 
         /// <summary>
-        /// Whether the frame sequence also covers the intro, which the frame timings never do.
+        /// 帧序列是否也包括开场；帧时间测量始终不包括开场。
         /// </summary>
         /// <remarks>
-        /// The entrance is a camera move played while time is frozen, so the only way to look at it headlessly is to
-        /// photograph those frames too. Opt-in, so existing sequences keep their frame numbering.
+        /// 入场镜头在时间冻结时播放，批处理下要评估它只能同时拍摄这些帧。
+        /// 显式启用以保留已有序列的帧编号。
         /// </remarks>
         public bool ShotsIncludeIntro { get; init; }
 
-        /// <summary>Whether a capture was requested at all.</summary>
+        /// <summary>是否请求了任何采样。</summary>
         public bool IsRequested => Seconds > 0f;
 
-        /// <summary>Reads a capture request from the command line, falling back to the page URL.</summary>
-        /// <param name="arguments">Command-line arguments, as from <c>Environment.GetCommandLineArgs</c>.</param>
-        /// <param name="url">The page URL, which is empty outside a browser.</param>
-        /// <returns>The request, which may be empty.</returns>
+        /// <summary>从命令行读取采样请求，回退到页面URL。</summary>
+        /// <param name="arguments">命令行参数，如<c>Environment.GetCommandLineArgs</c>的结果。</param>
+        /// <param name="url">页面URL，浏览器外为空。</param>
+        /// <returns>采样请求，可能为空。</returns>
         public static PerfCaptureRequest Read(string[] arguments, string url)
         {
             float seconds = 0f;
@@ -139,13 +136,13 @@ namespace AdaptiveBossArena.Utilities.Statistics
             };
         }
 
-        /// <summary>Reads the capture length from a page URL's query string.</summary>
+        /// <summary>从页面URL查询字符串读取采样时长。</summary>
         /// <remarks>
-        /// Parsed by hand because a WebGL build has no <c>System.Web</c>, and only one key is needed.
+        /// 手动解析，因为WebGL没有<c>System.Web</c>，且只需要一个键。
         /// </remarks>
-        /// <param name="url">The page URL.</param>
-        /// <param name="seconds">The requested capture length.</param>
-        /// <returns>True when the query asked for a capture.</returns>
+        /// <param name="url">页面URL。</param>
+        /// <param name="seconds">请求的采样时长。</param>
+        /// <returns>查询中请求采样时返回true。</returns>
         public static bool TryReadQuerySeconds(string url, out float seconds)
         {
             seconds = 0f;

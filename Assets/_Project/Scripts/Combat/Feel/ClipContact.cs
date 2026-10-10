@@ -1,33 +1,32 @@
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// Finds when in an attack clip the blow lands, from how fast the weapon hand moves.
+    /// 根据武器手移动速度，找出攻击片段中打击落下的时刻。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The clip warp maps an attack's live hitbox window onto the moment its clip connects, so the blade is
-    /// seen striking while the hit is real. That only works if the moment is right for each clip. A swing is
-    /// fastest where it strikes, so contact is the fraction of the clip at which the weapon hand's speed peaks.
+    /// 片段时间变形将攻击的生效命中窗口映射到片段接触时刻，让刀刃可见的打击与实际命中一致。
+    /// 这只在每个片段的时刻正确时成立。挥击在命中时最快，因此接触点取武器手速度达到峰值时的片段进度。
     /// </para>
     /// <para>
-    /// The first and last stretch of a clip are ignored: Mixamo clips often whip the hand back to guard in their
-    /// closing frames or snap out of the previous pose in their opening ones, and neither is the strike.
+    /// 忽略片段开头和结尾：Mixamo 片段常在末尾将手快速收回防御，或在开头突然离开前一个姿势，
+    /// 两者都不是打击。
     /// </para>
     /// </remarks>
     public static class ClipContact
     {
-        /// <summary>The earliest a strike is believed to land, as a fraction of the clip.</summary>
+        /// <summary>认为打击可能落下的最早位置，以片段比例表示。</summary>
         public const float EarliestContact = 0.15f;
 
-        /// <summary>The latest a strike is believed to land, as a fraction of the clip.</summary>
+        /// <summary>认为打击可能落下的最晚位置，以片段比例表示。</summary>
         public const float LatestContact = 0.85f;
 
-        /// <summary>The contact used when a clip cannot be measured.</summary>
+        /// <summary>无法测量片段时使用的接触点。</summary>
         public const float DefaultContact = 0.45f;
 
-        /// <summary>The fraction of the clip at which the hand is fastest, within the believable window.</summary>
-        /// <param name="handSpeeds">Hand speed sampled evenly from the clip's start to its end.</param>
-        /// <returns>Contact as a fraction of the clip's length.</returns>
+        /// <summary>可信窗口内，手速度最快时的片段比例。</summary>
+        /// <param name="handSpeeds">从片段开始到结束均匀采样的手部速度。</param>
+        /// <returns>以片段时长比例表示的接触点。</returns>
         public static float PeakFraction(float[] handSpeeds)
         {
             if (handSpeeds == null || handSpeeds.Length < 5)

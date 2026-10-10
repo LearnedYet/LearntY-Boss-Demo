@@ -12,20 +12,19 @@ using Object = UnityEngine.Object;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Headless player builds for the standalone and browser demos.
+    /// 用于独立版和浏览器演示的无界面玩家构建。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Both targets build from the same scene list — whatever is enabled in Build Settings, which the
-    /// menu-scene generator already pins to title-first, arena-second — so the two artefacts can never
-    /// disagree about which scenes ship. Driven from the command line with
-    /// <c>-executeMethod AdaptiveBossArena.Editor.BuildScript.BuildWindows</c> (or <c>BuildWebGL</c>).
+    /// 两个目标使用同一场景列表，即 Build Settings中启用的场景；主菜单场景生成器已固定为标题场景在前、
+    /// 竞技场在后，保证两种产物包含相同场景。通过命令行调用
+    /// <c>-executeMethod AdaptiveBossArena.Editor.BuildScript.BuildWindows</c> （或
+    /// <c>BuildWebGL</c>).
     /// </para>
     /// <para>
-    /// The WebGL settings are chosen for GitHub Pages specifically: Pages serves static files without
-    /// a <c>Content-Encoding</c> header, so a gzip-compressed build only loads if Unity's JavaScript
-    /// decompression fallback is enabled. With it on, the build is small and still loads from a plain
-    /// static host.
+    /// WebGL 设置专门面向 GitHub Pages：Pages 提供静态文件时没有<c>Content-Encoding</c> 响应头，
+    /// 因此 gzip 压缩构建必须启用 Unity的 JavaScript 解压回退才能加载。开启后构建体积小，
+    /// 也能从普通静态主机加载。
     /// </para>
     /// </remarks>
     public static class BuildScript
@@ -35,17 +34,16 @@ namespace AdaptiveBossArena.Editor
         private const string WebGLOutput = "Build/WebGL";
         private const string ReleaseFolder = "Build/Release";
 
-        /// <summary>Builds the 64-bit Windows standalone player.</summary>
+        /// <summary>构建 64 位 Windows 独立玩家版本。</summary>
         [MenuItem(EditorMenus.Setup + "Build Windows (x64)")]
         public static void BuildWindows() => Build(BuildTarget.StandaloneWindows64, WindowsOutput);
 
         /// <summary>
-        /// Builds the Windows player and packs it into a zip ready to attach to a release.
+        /// 构建 Windows 玩家版本，并打包成可附加到发行版的 zip。
         /// </summary>
         /// <remarks>
-        /// Named after the commit it was built from, so a downloaded zip can always be traced back to
-        /// the exact code it contains. Publishing the zip is deliberately not done here: a release is
-        /// an outward-facing act and is taken separately.
+        /// 按构建来源提交命名，使下载的 zip 可以追溯到准确代码。这里刻意不发布 zip：发行是对外操作，
+        /// 需要单独执行。
         /// </remarks>
         [MenuItem(EditorMenus.Setup + "Build Windows Release Zip")]
         public static void BuildWindowsRelease()
@@ -72,16 +70,14 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Explains why a target's default quality level would render with the wrong tier, or null.
+        /// 说明目标默认画质等级为何会使用错误层级；没有问题时返回 null。
         /// </summary>
         /// <remarks>
-        /// A build that silently started in the other tier would either ship ambient occlusion to a
-        /// browser, which crashed it on load, or ship the desktop build with none of the graphics it
-        /// exists for. Both failures are invisible until someone runs the result, so the build refuses
-        /// to start instead.
+        /// 若构建悄然从另一层级启动，会把导致浏览器启动崩溃的环境遮蔽发布到网页，
+        /// 或让桌面版缺少应有图形效果。运行产物前这些问题都不可见，因此改为拒绝开始构建。
         /// </remarks>
-        /// <param name="target">The build target.</param>
-        /// <returns>A description of the problem, or null when the tier is correct.</returns>
+        /// <param name="target">构建目标。</param>
+        /// <returns>问题说明；层级正确时返回 null。</returns>
         public static string TierProblemFor(BuildTarget target)
         {
             bool isWeb = target == BuildTarget.WebGL;
@@ -135,13 +131,11 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Checks the pipeline assets the engine will actually ship for a platform.
+        /// 检查引擎实际将随某平台发布的渲染管线资产。
         /// </summary>
         /// <remarks>
-        /// The default-level check alone passed on two builds that shipped the wrong tier, because the
-        /// settings were right and the engine still packed the other platform's assets. This asks the
-        /// engine the question it answers when it builds, so a wrong-tier asset about to ship is caught
-        /// before the build rather than discovered in a browser.
+        /// 仅检查默认等级，曾让两次发布错误层级的构建通过，因为配置正确但引擎仍打包了另一平台资产。
+        /// 这里询问引擎实际构建时所使用的数据，提前拦截错误，而不是等到浏览器运行才发现。
         /// </remarks>
         private static string ShippedPipelineProblem(string platform, string[] expectedPipelines)
         {
@@ -161,35 +155,32 @@ namespace AdaptiveBossArena.Editor
             return shipped.Count == 0 ? $"a {platform} build would ship no render pipeline at all" : null;
         }
 
-        /// <summary>Builds the WebGL player, configured to run from GitHub Pages.</summary>
+        /// <summary>构建可从 GitHub Pages 运行的 WebGL 玩家版本。</summary>
         [MenuItem(EditorMenus.Setup + "Build WebGL")]
         public static void BuildWebGL()
         {
-            // Gzip plus the JS decompression fallback keeps the download small while still loading
-            // from a static host that sends no Content-Encoding header.
+            // Gzip 配合 JS 解压回退，既减小下载量，也能从没有 Content-Encoding 响应头的静态主机加载。
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
             PlayerSettings.WebGL.decompressionFallback = true;
 
-            // The demo should keep simulating when the tab loses focus mid-fight rather than freezing.
+            // 演示应在战斗中标签页失焦后继续模拟，而不是冻结。
             PlayerSettings.runInBackground = true;
 
-            // Native WebAssembly exceptions rather than JavaScript ones. With JavaScript exceptions every call made inside
-            // a try block goes out through a JS trampoline and back, so each level of a deep call chain costs a JS
-            // frame as well as a wasm one. Firefox's stack is the smallest of the major browsers, and a player hit
-            // "too much recursion" there on a chain Chrome and Windows ran through without trouble. Every current
-            // browser supports the 2023 feature set; Firefox has since version 100.
+            // 使用原生 WebAssembly 异常而非 JavaScript 异常。采用 JavaScript 异常时，
+            // try 块中的每次调用都经 JS 跳板往返，深调用链每层额外消耗一个 JS 栈帧。
+            // Firefox 的栈在主流浏览器中最小，玩家曾在 Chrome 和 Windows 正常运行的链路遇到“too much
+            // recursion”。当前浏览器都支持2023 功能集，Firefox 从版本 100 起已支持。
             PlayerSettings.WebGL.wasm2023 = true;
 
-            // A browser reports a crash only as numbered wasm functions. Every build writes a symbol map beside it that
-            // names them, so a player's screenshot of a crash can be read against the exact build they were running.
-            // The map is kept locally and not deployed.
+            // 浏览器崩溃只显示编号 wasm 函数。每次构建都在旁边写出命名符号映射，
+            // 便于对照玩家实际版本解读截图。映射仅本地保留，不部署。
             PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.External;
 
             Build(BuildTarget.WebGL, WebGLOutput);
         }
 
-        /// <summary>Runs a player build and fails the process loudly when it does not succeed.</summary>
-        /// <returns>True when the build succeeded.</returns>
+        /// <summary>运行玩家构建；失败时明确使进程失败。</summary>
+        /// <returns>构建成功时返回 true。</returns>
         private static bool Build(BuildTarget target, string outputPath)
         {
             string[] scenes = EditorBuildSettings.scenes
@@ -203,11 +194,10 @@ namespace AdaptiveBossArena.Editor
                 return false;
             }
 
-            // Switched before anything else, not left to BuildPlayer. The render pipeline decides
-            // which pipeline assets ship from the editor's active platform before BuildPlayer gets
-            // round to switching it, so a WebGL build started from a Windows-active editor shipped
-            // the desktop tier - ambient occlusion and all - and the next Windows build, started from
-            // WebGL, shipped the web tier. Every build carried the previous platform's graphics.
+            // 先于其他操作切换目标，不交给 BuildPlayer 延迟处理。
+            // 渲染管线在 BuildPlayer 切换之前就按编辑器当前平台决定发布资产，
+            // 因此从 Windows 编辑器开始的 WebGL构建曾包含桌面层级及环境遮蔽，
+            // 随后从 WebGL 开始的 Windows 构建又包含网页层级。每次都带上了前一个平台的图形配置。
             BuildTargetGroup group = BuildPipeline.GetBuildTargetGroup(target);
 
             if (EditorUserBuildSettings.activeBuildTarget != target &&
@@ -250,7 +240,7 @@ namespace AdaptiveBossArena.Editor
             return true;
         }
 
-        /// <summary>The current commit's short hash, or "local" when git is unavailable.</summary>
+        /// <summary>当前提交的短哈希；无法使用 git 时为“local”。</summary>
         private static string ShortCommit()
         {
             try
@@ -278,7 +268,7 @@ namespace AdaptiveBossArena.Editor
             }
         }
 
-        /// <summary>Logs the failure and, in batch mode, exits non-zero so CI notices.</summary>
+        /// <summary>记录失败，批处理模式下以非零码退出，使 CI 能够发现。</summary>
         private static void Fail(string message)
         {
             Debug.LogError($"[Build] {message}");

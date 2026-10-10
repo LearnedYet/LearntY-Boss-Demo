@@ -5,23 +5,19 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Runs the full first-time setup in the order the steps depend on one another.
+    /// 按步骤依赖顺序运行完整首次设置。
     /// </summary>
     /// <remarks>
-    /// The three setup commands must run in sequence: the scene builder needs the configuration
-    /// assets, and those assets need the project's layers to exist. Exposing a single command
-    /// removes the chance of running them out of order and getting a scene with objects on the
-    /// default layer that then never collide correctly.
+    /// 三个设置命令必须顺序运行：场景需要配置资产，资产需要项目层。提供单一命令避免乱序，
+    /// 让对象误用默认层而碰撞异常。
     /// </remarks>
     public static class ProjectSetupRunner
     {
-        /// <summary>Runs project configuration, asset generation and scene building in order.</summary>
+        /// <summary>依次运行项目配置、资产生成和场景构建。</summary>
         [MenuItem(EditorMenus.Setup + "Run Full Setup", priority = EditorMenus.SetupPriorityRunAll)]
         public static void RunFullSetup()
         {
-            // A modal dialog cannot be answered on a build machine, so batch runs proceed directly.
-            // Anyone invoking this from the command line has already made the decision the dialog
-            // asks about.
+            // 构建机器无法回答模态对话框，因此批处理直接继续。命令行调用者已作出对话框所询问的决定。
             if (!Application.isBatchMode)
             {
                 bool proceed = EditorUtility.DisplayDialog(
@@ -38,12 +34,10 @@ namespace AdaptiveBossArena.Editor
                 }
             }
 
-            // Order is a hard dependency chain: assets need layers, the prefab needs both the
-            // configuration assets and the input bindings, and the scene needs the prefab.
+            // 顺序是严格依赖链：资产需要层，预制体需要配置与输入绑定，场景需要预制体。
             ProjectConfigurator.ConfigureProject();
 
-            // Must precede material creation: without an assigned pipeline the shader lookup falls
-            // back to the built-in renderer and every generated surface renders magenta.
+            // 必须早于材质创建：未配置管线时着色器查找回退内置渲染器，所有生成表面变品红。
             RenderPipelineConfigurator.ConfigureRenderPipeline();
             PostProcessingConfigurator.ConfigurePostProcessing();
 
@@ -52,13 +46,12 @@ namespace AdaptiveBossArena.Editor
             PlayerPrefabBuilder.GeneratePlayerPrefab();
             BossPrefabBuilder.GenerateBossPrefab();
 
-            // After the prefab: the reach is measured on the brute's real body, cleaver and all.
+            // 在预制体之后：范围需在巨兽真实身体及砍刀上测量。
             Art.AttackReachMeasure.MeasureBossReach();
 
             ArenaSceneBuilder.BuildArenaScene();
 
-            // Built last so its explicit build-order write — title first, arena second — is the one
-            // that stands, rather than being appended after the arena.
+            // 最后构建，使明确写入的标题先、竞技场后顺序最终生效，而非将标题追加到竞技场后。
             MainMenuSceneBuilder.BuildMainMenuScene();
 
             IReadOnlyList<string> violations = ArchitectureValidator.FindViolations();
@@ -68,8 +61,7 @@ namespace AdaptiveBossArena.Editor
                 Debug.LogError($"[Adaptive Boss Arena] Architecture violation: {violation}");
             }
 
-            // Runs as part of setup because a dangling attack reference produces a game that starts,
-            // compiles and passes its tests while being completely unplayable.
+            // 作为设置的一部分运行，因为悬空攻击引用会让游戏启动、编译、测试通过，却完全不可玩。
             IReadOnlyList<string> broken = AssetIntegrityValidator.FindBrokenReferences();
 
             foreach (string problem in broken)

@@ -7,43 +7,40 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Verifies that the assembly graph still enforces the boss's inability to cheat.
+    /// 验证程序集依赖图是否仍能阻止首领作弊。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The project's central design guarantee is that the boss cannot read player input. That is not
-    /// enforced by convention but by the assembly graph: the AI and Learning assemblies do not
-    /// reference the Player assembly or the Input System, so the code to cheat cannot be written
-    /// there and still compile.
+    /// 本项目的核心设计保证是首领无法读取玩家输入。这依靠程序集依赖图而不是约定来约束：
+    /// AI 和 Learning 程序集不引用 Player程序集或 Input System，
+    /// 因此在那里编写读取输入作弊的代码将无法通过编译。
     /// </para>
     /// <para>
-    /// A guarantee of that kind decays the moment someone adds a reference to resolve an
-    /// inconvenient compile error. This validator makes that change fail loudly instead of
-    /// silently dismantling the design. It is exercised by an edit-mode test, so the check runs in
-    /// continuous integration rather than depending on anyone remembering to invoke it.
+    /// 只要有人为解决一个棘手的编译错误而新增引用，这项保证就会失效。此验证器会明确报告这种变更，
+    /// 而不是让设计约束悄然瓦解。编辑模式测试会执行它，使检查可以在持续集成中运行，
+    /// 而不依赖人工记得调用。
     /// </para>
     /// <para>
-    /// References are followed transitively. A reference laundered through an intermediate assembly
-    /// is the same violation as a direct one.
+    /// 检查会沿引用关系递归追踪。通过中间程序集绕接的引用与直接引用同样构成违规。
     /// </para>
     /// </remarks>
     public static class ArchitectureValidator
     {
-        /// <summary>Assemblies that must remain unable to observe the player directly.</summary>
+        /// <summary>必须始终无法直接观察玩家的程序集。</summary>
         private static readonly string[] RestrictedAssemblies =
         {
             "AdaptiveBossArena.AI",
             "AdaptiveBossArena.Learning"
         };
 
-        /// <summary>Assemblies the restricted set must never be able to reach.</summary>
+        /// <summary>受限程序集绝不能访问的程序集。</summary>
         private static readonly string[] ForbiddenAssemblies =
         {
             "AdaptiveBossArena.Player",
             "Unity.InputSystem"
         };
 
-        /// <summary>Runs the check and reports the result to the console.</summary>
+        /// <summary>执行检查并将结果报告到控制台。</summary>
         [MenuItem(EditorMenus.Validate + "Check Architecture Firewall")]
         public static void ValidateFromMenu()
         {
@@ -64,9 +61,9 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Finds every path by which a restricted assembly can reach a forbidden one.
+        /// 查找受限程序集访问禁止程序集的所有依赖路径。
         /// </summary>
-        /// <returns>Human-readable descriptions of each violation, empty when the graph is sound.</returns>
+        /// <returns>每项违规的人类可读说明；依赖图符合约束时为空。</returns>
         public static IReadOnlyList<string> FindViolations()
         {
             Dictionary<string, List<string>> graph = BuildReferenceGraph();
@@ -97,7 +94,7 @@ namespace AdaptiveBossArena.Editor
             return violations;
         }
 
-        /// <summary>Reads every assembly definition in the project into a reference graph.</summary>
+        /// <summary>读取项目中所有程序集定义，构建引用关系图。</summary>
         private static Dictionary<string, List<string>> BuildReferenceGraph()
         {
             var graph = new Dictionary<string, List<string>>(StringComparer.Ordinal);
@@ -140,12 +137,11 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Converts a reference entry to an assembly name.
+        /// 将引用条目转换为程序集名称。
         /// </summary>
         /// <remarks>
-        /// Unity writes references either as plain names or, when "Use GUIDs" is enabled, as
-        /// <c>GUID:</c>-prefixed identifiers. Both forms must be understood or the validator would
-        /// quietly pass a project that had simply switched representation.
+        /// Unity 将引用保存为普通名称；启用“Use GUIDs”时则保存为<c>GUID:</c>前缀的标识符。
+        /// 必须同时识别两种形式，否则项目仅切换表示方式就会被验证器悄然判定为通过。
         /// </remarks>
         private static string ResolveReference(string reference, IReadOnlyDictionary<string, string> guidToName)
         {
@@ -160,8 +156,8 @@ namespace AdaptiveBossArena.Editor
             return guidToName.TryGetValue(guid, out string name) ? name : reference;
         }
 
-        /// <summary>Breadth-first search for a reference path between two assemblies.</summary>
-        /// <returns>The path including both endpoints, or null when none exists.</returns>
+        /// <summary>通过广度优先搜索查找两个程序集之间的引用路径。</summary>
+        /// <returns>包含两个端点的路径；不存在路径时返回 null。</returns>
         private static List<string> FindPath(
             IReadOnlyDictionary<string, List<string>> graph,
             string from,
@@ -202,7 +198,7 @@ namespace AdaptiveBossArena.Editor
             return null;
         }
 
-        /// <summary>Walks the predecessor map backwards to produce a readable path.</summary>
+        /// <summary>沿前驱映射反向回溯，生成可读的路径。</summary>
         private static List<string> ReconstructPath(
             IReadOnlyDictionary<string, string> previous,
             string from,
@@ -220,14 +216,14 @@ namespace AdaptiveBossArena.Editor
             return path;
         }
 
-        /// <summary>Minimal shape of an assembly definition file, for JSON deserialisation.</summary>
+        /// <summary>用于 JSON 反序列化的程序集定义文件最小数据结构。</summary>
         [Serializable]
         private sealed class AssemblyDefinitionData
         {
-            /// <summary>Assembly name.</summary>
+            /// <summary>程序集名称。</summary>
             public string name = string.Empty;
 
-            /// <summary>Referenced assemblies, by name or GUID.</summary>
+            /// <summary>按名称或 GUID 指定的程序集引用。</summary>
             public string[] references = Array.Empty<string>();
         }
     }

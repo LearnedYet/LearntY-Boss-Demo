@@ -2,10 +2,10 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.Core.Events
 {
-    /// <summary>Event channel carrying a string, such as the tell for a newly adopted adaptation.</summary>
+    /// <summary>携带字符串的事件通道，例如新适应策略的提示。</summary>
     /// <remarks>
-    /// One class per file, named for the class. See <see cref="VoidEventChannel"/> for why: a
-    /// concrete channel declared beside another type cannot be saved as a working asset.
+    /// 每个类单独放在同名文件中。原因见 <see cref="VoidEventChannel"/>：
+    /// 与其他类型放在一起的具体通道无法保存为正常工作的资源。
     /// </remarks>
     [CreateAssetMenu(
         fileName = "StringEventChannel",

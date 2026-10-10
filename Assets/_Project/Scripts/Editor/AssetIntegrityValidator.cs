@@ -8,28 +8,25 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Checks that every configuration asset's references actually resolve.
+    /// 检查所有配置资产的引用是否确实可解析。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Exists because of a failure that cost a whole playtest. Regenerating the attack assets
-    /// deleted their <c>.meta</c> files, so the new assets received new identifiers while both
-    /// character configurations still pointed at the old ones. Every attack reference became null.
+    /// 此工具源于一次浪费完整试玩的问题：重新生成攻击资产时删除了它们的 <c>.meta</c> 文件，
+    /// 新资产获得新标识符，而双方角色配置仍引用旧标识符，导致全部攻击引用变为 null。
     /// </para>
     /// <para>
-    /// Nothing complained. The project compiled, all tests passed, the scene built, and the game ran
-    /// — but the boss had an empty attack catalogue so it circled the arena forever, and the
-    /// player's attack button resolved to null and did nothing at all. From the outside it looked
-    /// like an AI bug and a missing-visuals bug; it was neither.
+    /// 没有任何报警：项目能编译、所有测试通过、场景可构建、游戏可运行，但首领攻击目录为空，只会不停绕圈；
+    /// 玩家攻击按钮解析成 null，毫无作用。外观看起来像 AI 和视觉缺失问题，实际都不是。
     /// </para>
     /// <para>
-    /// A null reference in a configuration asset is never acceptable, so this fails loudly rather
-    /// than warning. It runs as part of setup and is asserted by an edit-mode test.
+    /// 配置资产中的 null 引用绝不可接受，因此明确报错而非仅警告。该检查是设置流程的一部分，
+    /// 也由编辑模式测试断言。
     /// </para>
     /// </remarks>
     public static class AssetIntegrityValidator
     {
-        /// <summary>Runs the check and reports to the console.</summary>
+        /// <summary>运行检查并报告到控制台。</summary>
         [MenuItem(EditorMenus.Validate + "Check Asset References")]
         public static void ValidateFromMenu()
         {
@@ -48,9 +45,9 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Finds every unresolved reference across the shipped configuration assets.
+        /// 查找游戏配置资产中所有无法解析的引用。
         /// </summary>
-        /// <returns>Human-readable descriptions, empty when everything resolves.</returns>
+        /// <returns>人类可读说明；所有引用可解析时为空。</returns>
         public static IReadOnlyList<string> FindBrokenReferences()
         {
             var problems = new List<string>();
@@ -97,18 +94,15 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Asserts the execution exists and refuses to be deflected.
+        /// 断言处决攻击存在且无法被弹反。
         /// </summary>
         /// <remarks>
-        /// Both halves matter, and neither is visible at author time. The riposte state throws
-        /// <c>ExecutionAttack</c>, which falls back through the weapon's riposte to the ordinary
-        /// heavy - so a config with no execution assigned does not fail, it silently downgrades the
-        /// punish to a normal swing that the boss's stance can then refuse. That is the exact shape
-        /// of bug this validator exists for: it runs, it looks fine, and a mechanic quietly stops
-        /// working.
+        /// 两个条件都重要，且在编辑时都不明显。反击状态使用<c>ExecutionAttack</c>；
+        /// 它会经武器反击回退到普通重攻击。因此未配置处决不会报错，而是悄然将惩罚降级为普通挥击，
+        /// 首领仍能用架势防御。验证器正是用于发现这类问题：可以运行，外观看似正常，但机制悄然失效。
         /// </remarks>
-        /// <param name="config">The player config to inspect.</param>
-        /// <param name="problems">Collection to report failures into.</param>
+        /// <param name="config">要检查的玩家配置。</param>
+        /// <param name="problems">用于记录失败项的集合。</param>
         private static void ValidateExecution(PlayerConfig config, ICollection<string> problems)
         {
             if (config.ExecutionAttack == null)
@@ -134,7 +128,7 @@ namespace AdaptiveBossArena.Editor
             {
                 if (config.ReactionProfile == null)
                 {
-                    // Without this the boss refuses to run at all, by design.
+                    // 没有它，首领按设计会完全拒绝运行。
                     problems.Add($"{config.name}: reaction profile is unresolved.");
                 }
 
@@ -197,8 +191,7 @@ namespace AdaptiveBossArena.Editor
                     continue;
                 }
 
-                // A strategy the player cannot perceive is indistinguishable from the boss cheating,
-                // so a missing tell is a genuine defect rather than a cosmetic omission.
+                // 玩家无法感知的策略与首领作弊没有区别，因此缺少提示是实际缺陷，而非装饰遗漏。
                 if (string.IsNullOrWhiteSpace(strategies[i].TellMessage))
                 {
                     problems.Add(
@@ -210,25 +203,22 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Every parameter a strategy adjusts must be one the AI actually reads.
+        /// 策略调整的每个参数必须被 AI 实际读取。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This encodes a bug that hid for a long time behind a green suite. Two parameters —
-        /// <c>AttackDelay</c> and <c>ComboExtensionChance</c> — were written by strategies, eased
-        /// every frame and drawn in the debug overlay, but never read by any state. The boss raised
-        /// the tell "It waits for your opening now." and then did not wait.
+        /// 这里记录了一个长期藏在全绿测试后的问题：两个参数<c>AttackDelay</c> 和
+        /// <c>ComboExtensionChance</c> 由策略写入、每帧平滑变化并显示在调试面板上，
+        /// 却没有任何状态读取。首领发出“It waits for your opening now.”提示后，行为却没有等待。
         /// </para>
         /// <para>
-        /// An adaptation the player cannot perceive is indistinguishable from cheating; one that is
-        /// <em>announced</em> and then does nothing is worse, because the tell makes a promise the
-        /// fight does not keep. Nothing else catches it: the code compiles, the asset resolves, and
-        /// the number moves. So the consumed set is listed explicitly and checked here.
+        /// 玩家无法感知的适应与作弊无异；如果适应已经<em>宣布</em> 却毫无作用，反而更糟，
+        /// 因为提示承诺了战斗没有兑现的行为。其他检查发现不了：代码可编译、资产可解析、数值在变化。
+        /// 因此这里明确列出被实际消费的参数并检查。
         /// </para>
         /// <para>
-        /// When wiring a new parameter into the AI, add it to this list. If a parameter is listed but
-        /// its consumer is later deleted, this check will not notice — so the list is a floor, not a
-        /// proof.
+        /// 接入新参数时将其加入此列表。若参数已经列出但后来删除了消费者，检查不会发现，
+        /// 因此列表只是最低要求而非充分证明。
         /// </para>
         /// </remarks>
         private static void AdjustmentsAreConsumed(
@@ -251,13 +241,13 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// The tuning parameters some part of the AI genuinely acts on.
+        /// AI 某部分确实会使用的调参项。
         /// </summary>
         /// <remarks>
-        /// Each entry corresponds to a real <c>Tuning.Get</c> call: attack cadence and combo length in
-        /// <c>BossAttackState</c>, attack weighting in <c>BossAttackSelector</c>, held range in
-        /// <c>BossContext</c>, parrying in <c>BossController</c>, dodge leading in the attack state,
-        /// and pressure in <c>BossPositioningStates</c>.
+        /// 每个条目都对应一次真实的 <c>Tuning.Get</c> 调用：
+        /// 攻击节奏和连击长度位于<c>BossAttackState</c>，攻击权重位于 <c>BossAttackSelector</c>，
+        /// 保持距离位于<c>BossContext</c>，招架位于 <c>BossController</c>，闪避预判位于攻击状态，
+        /// 压迫行为位于 <c>BossPositioningStates</c>.
         /// </remarks>
         private static readonly HashSet<Learning.BossTuningParameter> ConsumedTuningParameters = new()
         {
@@ -273,7 +263,7 @@ namespace AdaptiveBossArena.Editor
             Learning.BossTuningParameter.UnblockableWeight
         };
 
-        /// <summary>Loads every asset of a type in the project.</summary>
+        /// <summary>加载项目中某类型的全部资产。</summary>
         private static IEnumerable<TAsset> LoadAll<TAsset>() where TAsset : Object
         {
             foreach (string guid in AssetDatabase.FindAssets($"t:{typeof(TAsset).Name}"))

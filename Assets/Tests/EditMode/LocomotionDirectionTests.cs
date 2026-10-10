@@ -5,11 +5,10 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests how movement is read relative to facing for the directional locomotion blend.
+    /// 测试方向移动混合如何读取相对于朝向的移动。
     /// </summary>
     /// <remarks>
-    /// A single speed drove clips that only step forward, so sideways and backwards movement slid on legs
-    /// walking straight ahead.
+    /// 原先单一速度驱动只向前迈步的动画，因此侧向和后退移动时双腿仍直向前走，身体却滑动。
     /// </remarks>
     [TestFixture]
     public sealed class LocomotionDirectionTests
@@ -26,7 +25,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void MovingToYourRightWhileFacingEastIsAStrafeRight()
         {
-            // Facing east (+x), moving south (-z): that is to the right of the facing.
+            // 面向东（+x）、向南（-z）移动，相对于朝向是向右移动。
             Quaternion east = Quaternion.LookRotation(Vector3.right);
             Vector2 blend = LocomotionDirection.BlendPosition(new Vector3(0f, 0f, -0.1f), east, 0.3f, Vector2.zero);
 

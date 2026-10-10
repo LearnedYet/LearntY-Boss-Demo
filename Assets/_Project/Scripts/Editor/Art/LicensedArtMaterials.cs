@@ -5,35 +5,33 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Builds the licensed characters' own textured materials for URP.
+    /// 为许可角色构建适用于 URP 的专用纹理材质。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Mixamo embeds each character's diffuse, normal and specular maps in its FBX, and Unity imports them as
-    /// nothing until they are extracted. The imported materials also target the built-in renderer, so the
-    /// characters rendered white until the generator painted them a flat colour. Here the maps are extracted
-    /// once beside the characters and wired into URP Lit in the specular workflow, which is how Mixamo's
-    /// specular maps are authored.
+    /// Mixamo 将各角色的漫反射、法线和高光贴图内嵌于 FBX；提取之前，Unity 不会把它们导入为可用资源。
+    /// 导入材质还面向内置渲染器，因此生成器涂上纯色之前角色全白。这里将贴图一次性提取到角色旁边，
+    /// 接入 URP Lit 的高光工作流，与 Mixamo 高光贴图的制作方式一致。
     /// </para>
     /// <para>
-    /// Everything this writes lives in the licensed folder, which is not in the repository, because the
-    /// textures are Mixamo's. It is rebuilt by setup wherever the licensed art is present.
+    /// 所有写出的内容都位于未纳入仓库的许可资源文件夹，因为纹理属于Mixamo。存在许可美术时，
+    /// 设置流程会重新构建。
     /// </para>
     /// </remarks>
     public static class LicensedArtMaterials
     {
-        /// <summary>Folder the extracted textures are written to.</summary>
+        /// <summary>写入提取纹理的文件夹。</summary>
         public const string TextureFolder = LicensedArtPostprocessor.MixamoFolder + "Characters/Textures";
 
         private const string MaterialFolder = LicensedArtPostprocessor.MixamoFolder + "Materials";
 
-        /// <summary>The knight's plate: fairly glossy steel with its own normal detail.</summary>
-        /// <returns>The material, or null when the licensed art is absent.</returns>
+        /// <summary>骑士甲胄：较有光泽的钢材，带自身法线细节。</summary>
+        /// <returns>材质；许可美术缺失时返回 null。</returns>
         public static Material Knight() =>
             Build("KnightBody", LicensedArtPostprocessor.KnightCharacter, "Paladin", smoothness: 0.55f);
 
-        /// <summary>The brute's hide: rough, with the specular map picking out horn and armour.</summary>
-        /// <returns>The material, or null when the licensed art is absent.</returns>
+        /// <summary>巨兽皮肤：粗糙表面，高光贴图区分角质和护甲。</summary>
+        /// <returns>材质；许可美术缺失时返回 null。</returns>
         public static Material Brute() =>
             Build("BruteBody", LicensedArtPostprocessor.BossCharacter, "bear", smoothness: 0.35f);
 

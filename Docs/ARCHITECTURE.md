@@ -1,138 +1,98 @@
-# Architecture
+# 架构说明
 
-## The problem this structure solves
+## 这套结构要解决的问题
 
-An adaptive boss has one failure mode that ruins it: feeling like a cheat. If the player suspects
-the boss is reading their controller, every clever counter becomes an insult rather than a
-challenge, and the central mechanic collapses.
+自适应 Boss 最致命的失败是让玩家感觉它在作弊。一旦玩家怀疑它直接读取控制器输入，精巧的反制就会变成令人不满的惩罚，核心机制也随之失效。
 
-Suspicion is easy to earn and hard to shake. A boss that dodges the instant the attack button goes
-down feels wrong even if it did so by coincidence. So the design does not merely avoid cheating —
-it makes cheating **structurally impossible**, and then adds enough latency and fallibility that
-the boss's behaviour is legibly human.
+怀疑很容易产生，却难以消除。即使只是巧合，攻击按钮刚按下 Boss 就闪避也会显得不公平。因此设计通过结构限制作弊信息的访问，再加入足够的延迟和失误，让行为更接近人类对手。
 
-## Three layers of defence
+## 三层防护
 
-### 1. The assembly graph
+### 1. 程序集依赖图
 
-```
-Utilities  ── pure algorithms, no dependencies
+```text
+Utilities  ── 纯算法，无依赖
     ↑
-   Core     ── interfaces, data types, services
+   Core     ── 接口、数据类型、服务
     ↑
   Combat
     ↑                    ↑
  Player               Learning ←── AI            UI
-(input lives           (no reference to Player, no reference to InputSystem)
- only here)
+（输入处理              （不引用 Player 或 InputSystem）
+  位于这里）
     ↑                    ↑         ↑              ↑
-    └──────────────── Game (composition root) ────┘
+    └──────────────── Game（系统组装入口）────────┘
                           ↑
                        Editor
 ```
 
-`AdaptiveBossArena.AI` and `AdaptiveBossArena.Learning` do not reference
-`AdaptiveBossArena.Player` or `Unity.InputSystem`. Those types are not in scope in those
-assemblies. Code that reads the player's input from the boss's decision-making **does not compile**.
+`AdaptiveBossArena.AI` 和 `AdaptiveBossArena.Learning` 不引用 `AdaptiveBossArena.Player` 或 `Unity.InputSystem`，因此这些类型不在 AI 和学习程序集的可用范围内。从 Boss 决策代码直接读取玩家输入的代码无法编译。
 
-Unity assembly references are not transitive, so this cannot be circumvented by an intermediate
-hop, and `ArchitectureValidator` follows the graph transitively anyway in case someone tries.
+Unity 程序集引用不具有传递性，不能通过中间程序集获得隐式引用；`ArchitectureValidator` 仍会遍历整个依赖图，检查是否存在绕过边界的路径。
 
-### 2. The observation interface
+### 2. 观察接口
 
-The only channel through which player state reaches the AI is `IObservablePlayer`, which produces a
-`PlayerObservation`. It carries position, velocity, facing, the visually distinct action being
-performed, how long that action has been running, and normalised health — all things visible on
-screen.
+玩家状态通过 `IObservablePlayer` 生成的 `PlayerObservation` 传给 AI。它包含位置、速度、朝向、能够从表现上区分的动作、动作已持续的时间，以及归一化生命值，均属于画面可见信息。
 
-What it deliberately omits, and why:
+有意省略的内容及其原因：
 
-| Omitted | Reason |
-|---------|--------|
-| Input vector, buffered input, held buttons | Reading intent before it becomes motion is the definition of the cheat |
-| Stamina | An opponent cannot see a number; exhaustion must be inferred from a dash that did not come |
-| Cooldown timers | The boss learns ability rhythm from observed frequency, as a human would |
-| Invincibility flag | The boss discovers a dash beat its attack by whiffing — and that whiff feeds the learning system |
+| 省略的信息 | 原因 |
+|------------|------|
+| 输入向量、输入缓冲、按住的按钮 | 在意图变成动作之前读取它，就是输入作弊 |
+| 体力 | 对手看不到内部数值，只能从没有发生的冲刺推测是否力竭 |
+| 冷却计时器 | Boss 应像人类一样，根据观察到的频率学习技能节奏 |
+| 无敌标记 | Boss 应通过攻击落空得知冲刺避开了攻击，落空事件再进入学习统计 |
 
-Adding a field here is a design decision, not a refactor. The test is always: *could a skilled human
-opponent perceive this by watching?*
+向该接口添加字段属于设计决策，需要先判断：有经验的人类对手能否通过观察画面感知这条信息？
 
-### 3. Perception latency and fallibility
+### 3. 感知延迟和失误
 
-`DelayedPerceptionSource` records observations into a fixed-capacity ring buffer and serves them
-back delayed by a configurable latency (default ~140 ms). The boss is always reasoning about what
-the player was doing a moment ago.
+`DelayedPerceptionSource` 把观察记录写入固定容量环形缓冲区，并按可配置延迟返回，默认约 140 ms。Boss 始终基于片刻之前的玩家行为推理。
 
-Two things follow from this, both desirable:
+这样带来两种预期效果：
 
-- **Feints work.** A commitment the boss makes during the latency window cannot be taken back, so
-  baiting is a real tactic rather than a thing the player imagines is happening.
-- **Reaction times are human.** `ReactionProfile` clamps decisions to a 220–420 ms band with
-  variance, and includes a `MissedOpportunityChance` so the boss sometimes simply fails to punish an
-  opening. Later phases tighten toward the fast end of that band but never below it.
+- **佯攻有效。** Boss 在延迟窗口中已经作出的投入不能立即撤回，因此诱导具有实际战术价值。
+- **反应接近人类。** `ReactionProfile` 将决策反应限制在带波动的 220–420 ms 范围，并通过 `MissedOpportunityChance` 让 Boss 偶尔错过惩罚机会。后续阶段会接近该范围的较快端，但不会突破下限。
 
-Sampling is pushed by the composition root rather than pulled by the AI. The boss cannot request a
-fresher reading, because it never holds a reference to the player at all.
+采样职责的设计目标是由系统组装入口推送观察数据，避免 Boss 主动请求更新鲜的信息。具体采样位置和调用顺序以当前实现为准。
 
-## How learning will work (Phase 5)
+## 学习系统的设计（阶段 5）
 
-```
-combat events ──▶ CombatMemory ──▶ PatternRecognizer ──▶ BehaviourProfile
-                 (ring buffers)    (EWMA + histograms)   (feature + confidence)
-                                                                │
-                                                                ▼
-ThreatEvaluator ──────────────────────────────────────▶ CounterSelector
-(situation read)                                        (weighted, seeded random)
-                                                                │
-                                                                ▼
-                                                       AdaptationManager
-                                              (gradual lerps, cooldowns, phase gating)
-                                                                │
-                                                                ▼
-                                                          BossTuning
-                                                   (numbers the FSM reads)
+```text
+战斗事件 ──▶ CombatMemory ──▶ PatternRecognizer ──▶ BehaviourProfile
+              （环形缓冲区）     （EWMA + 直方图）       （特征 + 置信度）
+                                                            │
+                                                            ▼
+ThreatEvaluator ────────────────────────────────────▶ CounterSelector
+（情境评估）                                          （带种子的加权随机）
+                                                            │
+                                                            ▼
+                                                   AdaptationManager
+                                            （渐变、冷却、阶段限制）
+                                                            │
+                                                            ▼
+                                                       BossTuning
+                                                 （状态机读取的数值）
 ```
 
-Design properties this shape enforces:
+上述为学习系统的目标设计图，不表示图中的每个模块都已接入当前运行链路。
 
-- **Adaptation is slow and forgetful.** Features are exponentially weighted moving averages with
-  half-lives. A habit the player abandons decays, which is what makes switching tactics a real
-  answer to being countered rather than a permanent penalty.
-- **Confidence gates action.** Every feature carries a confidence derived from sample count. A habit
-  seen twice nudges the boss; a habit seen thirty times drives it. The boss cannot react to a
-  coincidence.
-- **Selection is probabilistic.** If the strongest habit always produced the same counter, the
-  player would learn the lookup table and the fight would become memorisation — the exact failure
-  the design exists to avoid. Selection is weighted-random from a seeded `IRandomProvider`, which
-  also keeps it testable.
-- **Adaptation changes numbers, never rules.** `BossTuningParameter` covers things like attack
-  delay, preferred range, parry chance and dodge-prediction strength. The boss cannot gain a
-  capability it did not already have, only lean harder on one. Everything it does in phase three was
-  visible, in weaker form, in phase one.
-- **Every adaptation announces itself.** `CounterStrategy.TellMessage` is required, not decorative.
-  An adaptation the player cannot perceive is indistinguishable from cheating.
+该设计希望保证以下性质：
 
-## Key decisions and their reasons
+- **缓慢适应并能够遗忘。** 特征采用带半衰期的指数加权移动平均。玩家放弃某个习惯后，其影响逐渐衰减，让切换战术成为应对反制的实际方法。
+- **置信度约束行为。** 每个特征都带有根据样本数计算的置信度。只观察到两次的习惯应只造成轻微影响，观察到三十次的习惯才足以驱动强反制，避免把巧合当作规律。
+- **概率选择。** 如果最强习惯总对应固定反制，玩家就会记住查找表，战斗变成机械背诵。使用带种子的 `IRandomProvider` 加权随机选择，同时保持可测试性。
+- **只改变数值，不改变规则。** `BossTuningParameter` 覆盖攻击延迟、偏好距离、招架概率和闪避预测强度等参数。Boss 只能加强已有能力，不能凭空获得新能力；第三阶段的行为应在第一阶段以较弱形式出现过。
+- **每次适应都有提示。** `CounterStrategy.TellMessage` 是必要条件。玩家无法察觉的适应，与作弊难以区分。
 
-**Attacks are timed phases, not animation events.** `AttackDefinition` declares startup, active and
-recovery in seconds; `IAttackTimeline` raises the callbacks an animation event would. This works
-with primitive placeholder art, keeps frame data testable in edit mode, and survives clip
-re-imports. Swapping to animation-driven timing later replaces the driver and nothing else.
+## 关键决策及原因
 
-**One owner of time.** Hit-stop, the perfect-dodge slow-motion reward and the pause menu all want to
-control time. Letting each write `Time.timeScale` produces the classic bug where unpausing restores
-the wrong speed. Everything routes through `ITimeService`, and combat ticks on scaled time while UI
-ticks on unscaled.
+**攻击按时间阶段驱动。** `AttackDefinition` 用秒定义前摇、生效和恢复阶段，`IAttackTimeline` 提供原本可由动画事件触发的回调。这样既适合基础几何体占位资源，也让帧数据能够在编辑模式测试，并避免动画重新导入影响玩法时序。未来改为动画驱动时，可替换时间驱动器。
 
-**Scenes are generated, not authored.** Unity scene files merge badly and are unreviewable in a
-diff. `ArenaSceneBuilder` builds the arena from `ArenaConfig`, so changing the radius and rebuilding
-is the whole workflow, and a fresh clone reproduces the scene exactly.
+**时间只有一个管理者。** 打击停顿、完美闪避的慢动作奖励和暂停菜单都想控制时间。如果分别写入 `Time.timeScale`，容易出现解除暂停后速度恢复错误的问题。所有请求经过 `ITimeService`；战斗使用缩放时间，UI 使用未缩放时间。
 
-**A registry, not a DI container.** The project has about a dozen long-lived services. Constructor
-and inspector injection cover nearly everything; `ServiceRegistry` exists for the cases where Unity
-instantiates an object and leaves no seam to inject through. It is the single global access point
-in the project, and intentionally the only one.
+**场景由代码生成。** Unity 场景文件难以合并和审查。`ArenaSceneBuilder` 根据 `ArenaConfig` 构建竞技场，修改半径后重新生成即可；新克隆也能够复现场景。
 
-**State machines hold their transitions.** Transitions are objects registered with the machine, not
-branches inside states. That is what lets a counter-strategy add a parry response at runtime without
-the existing attack states knowing anything changed.
+**使用轻量服务注册表。** 项目约有十余个长期存在的服务，大部分通过构造函数或 Inspector 注入。`ServiceRegistry` 只处理 Unity 创建对象时缺少注入入口的情况，并集中全局服务访问。
+
+**状态转换由状态机持有。** 转换以对象形式注册在状态机中，避免散落在状态内部的分支。这样可以在运行时为反制策略添加招架响应，而已有攻击状态无需感知这一变化。

@@ -11,18 +11,15 @@ using UnityEngine.InputSystem;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Shows what the boss currently believes about the player.
+    /// 展示首领当前对玩家的判断。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Effectively mandatory for tuning this encounter. Adaptation is invisible by construction —
-    /// the boss changes gradually and never states why — which makes it impossible to tell a
-    /// threshold that is set too high from one that is set too low by playing alone. This panel is
-    /// the only way to see whether the boss has drawn the conclusion you were trying to provoke.
+    /// 调校此遭遇战几乎必备的工具。适应本身不可见：首领渐进改变行为，却不会说明原因，
+    /// 因此仅靠游玩无法分辨阈值太高还是太低。此面板是确认首领是否得出预期结论的唯一途径。
     /// </para>
     /// <para>
-    /// Drawn with immediate-mode GUI on purpose. It needs no prefabs, no canvas and no layout work,
-    /// and it is compiled out of release builds entirely, so it can afford to be ugly.
+    /// 刻意采用即时模式 GUI。无需预制体、画布或布局工作，且正式发布构建会完全移除，因此外观不必精致。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -32,10 +29,9 @@ namespace AdaptiveBossArena.Game
         private const float PanelMargin = 12f;
         private const int BarSegments = 20;
 
-        /// <summary>How many recent combat occurrences the tail shows.</summary>
+        /// <summary>事件尾部列表展示的最近战斗事件数量。</summary>
         /// <remarks>
-        /// Enough to cover a full combo and the answer to it, short enough to read at a glance while
-        /// the fight is running.
+        /// 足够覆盖完整连段及应对，又足够短，便于在战斗进行时一眼读懂。
         /// </remarks>
         private const int EventTailLength = 10;
 
@@ -61,11 +57,11 @@ namespace AdaptiveBossArena.Game
         private ITimeService _time;
         private ICombatEventBus _events;
 
-        /// <summary>The most recent occurrences, oldest first, for the tail.</summary>
+        /// <summary>供尾部列表使用的最近事件，按从旧到新排序。</summary>
         private readonly CombatEvent[] _recentEvents = new CombatEvent[EventTailLength];
         private int _recentCount;
 
-        /// <summary>Running tally of every occurrence seen, indexed by <see cref="CombatEventKind"/>.</summary>
+        /// <summary>所有已观察事件的累计计数，以 <see cref="CombatEventKind"/> 索引。</summary>
         private readonly int[] _eventCounts =
             new int[Enum.GetValues(typeof(CombatEventKind)).Length];
 
@@ -88,14 +84,13 @@ namespace AdaptiveBossArena.Game
         private float _nextHeartbeatAt;
 
         /// <summary>
-        /// Forces the panel on regardless of the toggle key, for Training mode.
+        /// 训练模式下强制显示面板，不受切换键影响。
         /// </summary>
         /// <remarks>
-        /// Training is a practice mode the player opts into, and seeing what the boss is working out is
-        /// the whole point of practising against it — so a forced panel renders even in a player build,
-        /// unlike the developer toggle, which stays stripped from release.
+        /// 训练是玩家主动选择的练习模式，而了解首领正在推断什么正是练习的意义，
+        /// 因此强制面板在玩家构建中也会渲染，开发者切换入口则仍从正式发布中移除。
         /// </remarks>
-        /// <param name="on">Whether to force the panel visible.</param>
+        /// <param name="on">是否强制显示面板。</param>
         public void SetForcedVisible(bool on) => _forced = on;
 
         private void Start()
@@ -111,9 +106,9 @@ namespace AdaptiveBossArena.Game
 
             ServiceRegistry.Current.TryGet(out _time);
 
-            // The event tail is the decisive instrument: it distinguishes "no attack was ever thrown"
-            // from "attacks were thrown and all missed" from "attacks landed but the interface did not
-            // move", which look identical from the outside and cannot be told apart by reading code.
+            // 事件尾部列表是关键诊断工具：它可以区分“从未发动攻击”、
+            // “发动了攻击但全部落空”和“攻击命中但界面没有变化”。这几种情况从外部看完全相同，
+            // 仅阅读代码无法区分。
             if (ServiceRegistry.Current.TryGet(out _events))
             {
                 _events.EventRecorded += OnCombatEvent;
@@ -128,7 +123,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Keeps the most recent occurrences, shuffling the oldest out.</summary>
+        /// <summary>保留最近事件，并移出最旧事件。</summary>
         private void OnCombatEvent(CombatEvent combatEvent)
         {
             var kind = (int)combatEvent.Kind;
@@ -149,12 +144,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Polls the toggle key through the Input System.
+        /// 通过 Input System 轮询切换键。
         /// </summary>
         /// <remarks>
-        /// Deliberately not <c>UnityEngine.Input</c>. With the project set to use the Input System
-        /// package exclusively, the legacy class throws on first access, and a debug tool that
-        /// crashes the game it is meant to help diagnose is worse than no debug tool.
+        /// 刻意不使用 <c>UnityEngine.Input</c>。项目设置为只使用 Input System包时，
+        /// 旧类首次访问就会抛出异常；用于诊断游戏的调试工具若反而导致崩溃，比没有工具更糟。
         /// </remarks>
         private void Update()
         {
@@ -169,13 +163,12 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Writes the fight's vital signs to the log at a slow interval.
+        /// 按较慢间隔把战斗生命体征写入日志。
         /// </summary>
         /// <remarks>
-        /// The on-screen panel needs someone sitting in front of it. This does not: in a browser it
-        /// lands in the developer console, so a deployed build can be diagnosed remotely from a tab
-        /// nobody is playing. That matters here because the boss attacks a stationary player, which
-        /// is enough to prove whether damage lands at all — no input required.
+        /// 屏幕面板需要有人坐在屏幕前观察，日志不需要：浏览器中它会进入开发者控制台，
+        /// 因此可以从无人游玩的标签页远程诊断部署构建。这一点很重要，因为首领会攻击静止玩家，
+        /// 足以证明伤害是否生效，无需任何输入。
         /// </remarks>
         private void TickHeartbeat()
         {
@@ -210,11 +203,10 @@ namespace AdaptiveBossArena.Game
             Debug.Log($"[DIAG] {clock} | {player} | {boss} | {CountsSummary()}");
         }
 
-        /// <summary>Summarises the tallies, listing only kinds that have actually occurred.</summary>
+        /// <summary>汇总计数，仅列出确实发生过的事件类型。</summary>
         /// <remarks>
-        /// Uses its own builder rather than the panel's. The two run in different callbacks and would
-        /// not currently collide, but sharing a scratch buffer between them is the kind of coupling
-        /// that breaks silently the first time one of them moves.
+        /// 使用独立构建器，而非面板的构建器。两者位于不同回调，目前不会冲突，
+        /// 但共享临时缓冲会形成一种耦合，首次调整调用位置时就可能悄悄失效。
         /// </remarks>
         private string CountsSummary()
         {
@@ -244,10 +236,8 @@ namespace AdaptiveBossArena.Game
 
         private void OnGUI()
         {
-            // Available in player builds too, behind the toggle key. The panel began as a tuning aid,
-            // but it is also the only way to diagnose a fight that has gone quiet — and the fights
-            // worth diagnosing are the ones a player reports from a shipped build, not the ones
-            // reproduced in the editor.
+            // 玩家构建也可通过切换键启用。面板起初是调校辅助，也是诊断突然沉寂战斗的唯一途径；
+            // 值得诊断的战斗通常来自玩家对发布构建的反馈，而非编辑器中复现的情况。
             if (!_isVisible && !_forced)
             {
                 return;
@@ -264,13 +254,12 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Composes the whole panel into one string, rebuilt each frame without allocating.
+        /// 将整个面板组合为一个字符串，逐帧重建且不分配内存。
         /// </summary>
         /// <remarks>
-        /// The combat diagnostics come first and are drawn unconditionally. Everything below them
-        /// needs a fully-constructed boss, and a boss that failed to construct is precisely the
-        /// failure this panel has to be able to show — so the adaptation sections degrade to a line
-        /// of explanation rather than blanking the whole overlay.
+        /// 战斗诊断优先且无条件绘制。后续内容依赖完整构造的首领，
+        /// 而首领构造失败恰恰是此面板必须展示的问题，因此适应部分降级为一行说明，
+        /// 而非让整个叠加层变空。
         /// </remarks>
         private string BuildReport()
         {
@@ -301,12 +290,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Reports the clock, which gates almost every other system.
+        /// 报告时钟状态，因为它控制几乎所有其他系统。
         /// </summary>
         /// <remarks>
-        /// A paused or zero-scaled clock stops both controllers' <c>Update</c> before anything runs,
-        /// which freezes every bar, prevents death and prevents the outcome screen — while logging
-        /// nothing at all. It is the cheapest thing to rule out, so it goes first.
+        /// 暂停或零缩放的时钟会在任何逻辑运行前阻止两个控制器的 <c>Update</c>，冻结全部进度条、
+        /// 阻止死亡和结果界面，且不产生任何日志。这是成本最低的排查项，所以先展示。
         /// </remarks>
         private void AppendClock()
         {
@@ -325,12 +313,11 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Reports both combatants as raw values, not percentages.
+        /// 使用原始数值而非百分比报告双方状态。
         /// </summary>
         /// <remarks>
-        /// Raw current-over-maximum on purpose: a bar pinned at 100% and a bar that is not being
-        /// driven at all look identical, and the numbers separate them immediately. The flags beside
-        /// them cover every guard that can silently swallow a hit.
+        /// 刻意显示当前值和最大值：卡在 100% 的进度条与完全未被驱动的进度条看起来一样，
+        /// 原始数值能立即区分。旁边的状态标记覆盖所有可能悄悄吞掉命中的保护条件。
         /// </remarks>
         private void AppendCombatants()
         {
@@ -380,14 +367,12 @@ namespace AdaptiveBossArena.Game
         }
 
         /// <summary>
-        /// Lists the most recent combat occurrences.
+        /// 列出最近的战斗事件。
         /// </summary>
         /// <remarks>
-        /// This is the diagnostic the rest of the panel exists to support. Nothing at all means no
-        /// attack was thrown; a run of whiffs means the swings are missing; evasions mean an
-        /// invulnerability guard is eating them; and landings while the bars sit still mean the
-        /// damage is real and the interface is at fault. One caveat: a deflect or a late block
-        /// resolves to an outcome the executor does not publish, so guarded hits leave no trace here.
+        /// 其他面板内容都为支持此诊断：完全无事件表示未发动攻击；连续空挥表示攻击未命中；
+        /// 规避表示无敌保护吞掉命中；命中而进度条不动表示伤害真实存在，错误在界面。注意：
+        /// 弹反或较晚格挡会产生执行器不发布的结果，因此被防御接下的命中不会留下记录。
         /// </remarks>
         private void AppendEventTail()
         {
@@ -420,14 +405,14 @@ namespace AdaptiveBossArena.Game
             _builder.AppendLine();
         }
 
-        /// <summary>Renders a pool as raw current-over-maximum, so a still bar can be told from a full one.</summary>
+        /// <summary>将资源池显示为当前值和最大值，以区分静止进度条与满条。</summary>
         private static string Amount(IResourcePool pool) =>
             pool == null ? "n/a" : $"{pool.Current:0}/{pool.Maximum:0}";
 
-        /// <summary>Renders a flag compactly, emphasising the state that would explain a swallowed hit.</summary>
+        /// <summary>紧凑显示状态标记，突出可能解释命中被吞掉的状态。</summary>
         private static string Flag(bool value) => value ? "<b>YES</b>" : "no";
 
-        /// <summary>Lists every habit with its strength and how much evidence stands behind it.</summary>
+        /// <summary>列出每项习惯的强度及证据充分程度。</summary>
         private void AppendProfile(BehaviorProfile profile)
         {
             _builder.AppendLine("<b>WHAT IT THINKS IT KNOWS</b>");
@@ -447,7 +432,7 @@ namespace AdaptiveBossArena.Game
             _builder.AppendLine();
         }
 
-        /// <summary>Lists only the behaviours that have actually moved away from their baseline.</summary>
+        /// <summary>仅列出确实偏离基线的行为参数。</summary>
         private void AppendTuning(BossTuning tuning)
         {
             _builder.AppendLine("<b>HOW IT HAS CHANGED</b>");
@@ -477,7 +462,7 @@ namespace AdaptiveBossArena.Game
             _builder.AppendLine();
         }
 
-        /// <summary>Lists the answers the boss has developed, in the order it developed them.</summary>
+        /// <summary>按形成顺序列出首领已经形成的应对。</summary>
         private void AppendAdopted(AdaptationManager adaptation)
         {
             _builder.AppendLine("<b>ANSWERS DEVELOPED</b>");
@@ -504,7 +489,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Renders a zero-to-one value as a fixed-width text bar.</summary>
+        /// <summary>将零至一的值显示为固定宽度的文字进度条。</summary>
         private static string Bar(float normalized)
         {
             int filled = Mathf.Clamp(Mathf.RoundToInt(normalized * BarSegments), 0, BarSegments);
@@ -513,7 +498,7 @@ namespace AdaptiveBossArena.Game
 
         private static string Percent(float normalized) => $"{Mathf.RoundToInt(normalized * 100f),3}%";
 
-        /// <summary>Builds the panel style lazily, since GUI styles are unavailable before first draw.</summary>
+        /// <summary>延迟创建面板样式，因为首次绘制前 GUI 样式不可用。</summary>
         private void EnsureStyle()
         {
             if (_style != null)

@@ -7,18 +7,15 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Builds the settings panel and its live-applying menu component.
+    /// 构建设置面板及其即时应用菜单组件。
     /// </summary>
     /// <remarks>
-    /// Shared by the heads-up display and the title screen so the settings look and behave identically
-    /// wherever they are opened from, and so the panel is only described once. Every control is wired
-    /// to its menu method with a persistent listener, the only kind that survives being baked into a
-    /// scene from an editor script.
+    /// HUD 与标题页共用，确保从各处打开时外观和行为一致，面板只描述一次。
+    /// 各控件用持久监听器连接菜单方法，只有这种监听器能从编辑器脚本烘焙进场景并保留。
     /// </remarks>
     internal static class SettingsMenuBuilder
     {
-        // Very nearly opaque. At the 0.85 it started on, the bright title and buttons behind it bled
-        // through and made the panel look like a bug rather than a screen.
+        // 几乎完全不透明。起初 0.85 时，背后的亮标题和按钮透出，使面板像错误而非界面。
         private static readonly Color PanelColor = new Color(0.03f, 0.03f, 0.05f, 0.985f);
         private static readonly Color Accent = new Color(0.45f, 0.85f, 0.95f);
         private static readonly Color ToggleAccent = new Color(0.55f, 0.9f, 0.6f);
@@ -26,50 +23,49 @@ namespace AdaptiveBossArena.Editor
 
         private const float LabelX = -150f;
         private const float ControlX = 150f;
-        /// <summary>Was 58; tightened when the camera rows arrived, so the panel still ends above the screen's edge.</summary>
+        /// <summary>原为 58；添加镜头设置行时收紧，确保面板仍在屏幕边缘内。</summary>
         private const float RowSpacing = 46f;
 
-        /// <summary>Builds the panel under a canvas and returns the wired menu.</summary>
-        /// <param name="root">Canvas transform to build under.</param>
-        /// <param name="actions">Shared input actions asset, for rebinding overrides.</param>
-        /// <returns>The settings menu, with its panel hidden.</returns>
+        /// <summary>在画布下构建面板，返回已连接菜单。</summary>
+        /// <param name="root">构建所用画布 Transform。</param>
+        /// <param name="actions">用于重绑覆盖的共享输入动作资产。</param>
+        /// <returns>面板隐藏的设置菜单。</returns>
         public static SettingsMenu Build(Transform root, InputActionAsset actions)
         {
             GameObject panel = CreateFullScreenPanel(root, "SettingsPanel");
 
-            Text title = UiBuilder.CreateText(panel.transform, "Title", "SETTINGS", 56, TextAnchor.MiddleCenter);
+            Text title = UiBuilder.CreateText(panel.transform, "Title", "设置", 56, TextAnchor.MiddleCenter);
             title.rectTransform.anchoredPosition = new Vector2(0f, 460f);
             title.fontStyle = FontStyle.Bold;
 
             float y = 350f;
 
-            Slider master = LabelledSlider(panel.transform, "Master Volume", ref y);
-            Slider music = LabelledSlider(panel.transform, "Music Volume", ref y);
-            Slider effects = LabelledSlider(panel.transform, "Effects Volume", ref y);
-            Slider shake = LabelledSlider(panel.transform, "Screen Shake", ref y);
-            Toggle reducedFlashing = LabelledToggle(panel.transform, "Reduced Flashing", ref y);
-            Toggle extendedTell = LabelledToggle(panel.transform, "Longer Boss Tells", ref y);
+            Slider master = LabelledSlider(panel.transform, "Master Volume", "总音量", ref y);
+            Slider music = LabelledSlider(panel.transform, "Music Volume", "音乐音量", ref y);
+            Slider effects = LabelledSlider(panel.transform, "Effects Volume", "音效音量", ref y);
+            Slider shake = LabelledSlider(panel.transform, "Screen Shake", "画面震动", ref y);
+            Toggle reducedFlashing = LabelledToggle(panel.transform, "Reduced Flashing", "减少闪烁", ref y);
+            Toggle extendedTell = LabelledToggle(panel.transform, "Longer Boss Tells", "延长策略提示时长", ref y);
 
-            // How fast the camera turns, a quarter to two and a half times the default.
-            Slider sensitivity = LabelledSlider(panel.transform, "Camera Sensitivity", ref y);
+            // 摄像机转动速度，范围为默认的四分之一到两倍半。
+            Slider sensitivity = LabelledSlider(panel.transform, "Camera Sensitivity", "镜头灵敏度", ref y);
             sensitivity.minValue = Core.Services.LookSettings.MinimumSensitivity;
             sensitivity.maxValue = Core.Services.LookSettings.MaximumSensitivity;
             sensitivity.value = Core.Services.LookSettings.DefaultSensitivity;
-            Toggle invertLook = LabelledToggle(panel.transform, "Invert Look", ref y);
+            Toggle invertLook = LabelledToggle(panel.transform, "Invert Look", "反转视角", ref y);
 
-            // Low, Medium and High, in whole steps, with the one in effect named beside it.
+            // Low、Medium、High 按整数步长，旁边标示当前生效档位。
             float qualityRow = y;
-            Slider quality = LabelledSlider(panel.transform, "Graphics Quality", ref y);
+            Slider quality = LabelledSlider(panel.transform, "Graphics Quality", "画质", ref y);
             quality.minValue = 0f;
             quality.maxValue = 2f;
             quality.wholeNumbers = true;
-            Text qualityLabel = UiBuilder.CreateText(panel.transform, "GraphicsQualityValue", "Medium", 20, TextAnchor.MiddleLeft);
+            Text qualityLabel = UiBuilder.CreateText(panel.transform, "GraphicsQualityValue", "中", 20, TextAnchor.MiddleLeft);
             qualityLabel.rectTransform.anchoredPosition = new Vector2(ControlX + 250f, qualityRow);
             qualityLabel.rectTransform.sizeDelta = new Vector2(180f, 30f);
             qualityLabel.color = MutedText;
 
-            // The menu must exist before the rebind rows, because each row holds a reference to it and
-            // the sliders' change callbacks are wired to it here.
+            // 菜单必须在重绑行之前存在，因为每行持有其引用，滑杆回调也在此连接。
             var menu = root.gameObject.AddComponent<SettingsMenu>();
             menu.Bind(
                 panel, master, music, effects, shake, reducedFlashing, extendedTell, actions,
@@ -87,81 +83,80 @@ namespace AdaptiveBossArena.Editor
 
             BuildRebindSection(panel.transform, menu, ref y);
 
-            UiBuilder.CreateButton(panel.transform, "Back", "Back", new Vector2(0f, -470f), menu.Close);
+            UiBuilder.CreateButton(panel.transform, "Back", "返回", new Vector2(0f, -470f), menu.Close);
 
             panel.SetActive(false);
             return menu;
         }
 
-        /// <summary>Creates a right-aligned label and a slider on one row, advancing the cursor.</summary>
-        private static Slider LabelledSlider(Transform parent, string caption, ref float y)
+        /// <summary>在同一行创建右对齐文字和滑杆，并推进位置。</summary>
+        private static Slider LabelledSlider(Transform parent, string name, string caption, ref float y)
         {
-            RowLabel(parent, caption, y);
-            Slider slider = UiBuilder.CreateSlider(parent, caption, new Vector2(ControlX, y), Accent);
+            RowLabel(parent, name, caption, y);
+            Slider slider = UiBuilder.CreateSlider(parent, name, new Vector2(ControlX, y), Accent);
             y -= RowSpacing;
             return slider;
         }
 
-        /// <summary>Creates a right-aligned label and a toggle on one row, advancing the cursor.</summary>
-        private static Toggle LabelledToggle(Transform parent, string caption, ref float y)
+        /// <summary>在同一行创建右对齐文字和开关，并推进位置。</summary>
+        private static Toggle LabelledToggle(Transform parent, string name, string caption, ref float y)
         {
-            RowLabel(parent, caption, y);
-            Toggle toggle = UiBuilder.CreateToggle(parent, caption, new Vector2(ControlX - 150f, y), ToggleAccent);
+            RowLabel(parent, name, caption, y);
+            Toggle toggle = UiBuilder.CreateToggle(parent, name, new Vector2(ControlX - 150f, y), ToggleAccent);
             y -= RowSpacing;
             return toggle;
         }
 
-        /// <summary>Places a right-aligned caption for a row.</summary>
-        private static void RowLabel(Transform parent, string caption, float y)
+        /// <summary>为一行放置右对齐说明文字。</summary>
+        private static void RowLabel(Transform parent, string name, string caption, float y)
         {
-            Text label = UiBuilder.CreateText(parent, $"{caption} Label", caption, 26, TextAnchor.MiddleRight);
+            Text label = UiBuilder.CreateText(parent, $"{name} Label", caption, 26, TextAnchor.MiddleRight);
             label.rectTransform.anchoredPosition = new Vector2(LabelX, y);
             label.rectTransform.sizeDelta = new Vector2(280f, 40f);
         }
 
-        /// <summary>Builds the rebindable-control rows, a fixed-control reference, and a reset button.</summary>
+        /// <summary>构建可重绑控制行、固定控制参考和重置按钮。</summary>
         private static void BuildRebindSection(Transform parent, SettingsMenu menu, ref float y)
         {
             y -= 22f;
 
             Text header = UiBuilder.CreateText(
-                parent, "ControlsHeader", "CONTROLS  —  click a key to rebind", 24, TextAnchor.MiddleCenter);
+                parent, "ControlsHeader", "操作设置 — 点击按键重新绑定", 24, TextAnchor.MiddleCenter);
             header.rectTransform.anchoredPosition = new Vector2(0f, y);
             header.fontStyle = FontStyle.Bold;
             header.color = MutedText;
             y -= 46f;
 
-            RebindRow(parent, "Dash", "Dash", menu, ref y);
-            RebindRow(parent, "Guard / Deflect", "Guard", menu, ref y);
-            RebindRow(parent, "Special", "Special", menu, ref y);
-            RebindRow(parent, "Heal", "Heal", menu, ref y);
-            RebindRow(parent, "Swap Weapon", "SwapWeapon", menu, ref y);
+            RebindRow(parent, "Dash", "闪避", "Dash", menu, ref y);
+            RebindRow(parent, "Guard / Deflect", "格挡 / 弹反", "Guard", menu, ref y);
+            RebindRow(parent, "Special", "特殊攻击", "Special", menu, ref y);
+            RebindRow(parent, "Heal", "治疗", "Heal", menu, ref y);
+            RebindRow(parent, "Swap Weapon", "切换武器", "SwapWeapon", menu, ref y);
 
-            // The controls that are not rebindable — movement, the mouse attacks and the camera keys —
-            // shown for reference so the panel is a complete controls list, not only a rebind menu.
+            // 不可重绑的移动、鼠标攻击和摄像机按键也作参考显示，让面板是完整操作列表而不只是重绑菜单。
             Text fixedControls = UiBuilder.CreateText(
                 parent, "FixedControls",
-                "Move  WASD     Light  Left Mouse     Heavy  Shift + Left Mouse     Guard  Right Mouse     " +
-                "Parry  Q     Lock On  Tab / Middle Mouse     Camera  C     Pause  Esc",
+                "移动 WASD  轻攻击 鼠标左键  重攻击 Shift + 鼠标左键  格挡 鼠标右键  " +
+                "招架 Q  锁定 Tab / 鼠标中键  镜头 C  暂停 Esc",
                 19, TextAnchor.MiddleCenter);
             fixedControls.rectTransform.anchoredPosition = new Vector2(0f, y - 4f);
             fixedControls.rectTransform.sizeDelta = new Vector2(1400f, 28f);
             fixedControls.color = MutedText;
             y -= 44f;
 
-            UiBuilder.CreateButton(parent, "ResetControls", "Reset Controls", new Vector2(0f, y - 4f), menu.ResetControls);
+            UiBuilder.CreateButton(parent, "ResetControls", "重置按键", new Vector2(0f, y - 4f), menu.ResetControls);
             y -= 44f;
         }
 
-        /// <summary>Builds one rebindable row: a caption and a button whose label shows the current key.</summary>
+        /// <summary>构建一行重绑定：说明文字和显示当前按键的按钮。</summary>
         private static void RebindRow(
-            Transform parent, string caption, string actionName, SettingsMenu menu, ref float y)
+            Transform parent, string name, string caption, string actionName, SettingsMenu menu, ref float y)
         {
-            Text label = UiBuilder.CreateText(parent, $"{caption} Label", caption, 22, TextAnchor.MiddleRight);
+            Text label = UiBuilder.CreateText(parent, $"{name} Label", caption, 22, TextAnchor.MiddleRight);
             label.rectTransform.anchoredPosition = new Vector2(LabelX, y);
             label.rectTransform.sizeDelta = new Vector2(280f, 32f);
 
-            var buttonObject = new GameObject($"{caption} Rebind", typeof(Image), typeof(Button));
+            var buttonObject = new GameObject($"{name} Rebind", typeof(Image), typeof(Button));
             buttonObject.transform.SetParent(parent, false);
 
             var rect = buttonObject.GetComponent<RectTransform>();
@@ -178,7 +173,7 @@ namespace AdaptiveBossArena.Editor
 
             var rebind = buttonObject.AddComponent<RebindButton>();
 
-            // Binding index 0 is the keyboard binding: the generator adds keyboard first, then gamepad.
+            // 绑定索引 0 是键盘，因为生成器先添加键盘，再添加手柄。
             rebind.Configure(actionName, 0, key, menu);
 
             UnityEventTools.AddPersistentListener(buttonObject.GetComponent<Button>().onClick, rebind.OnClick);
@@ -186,7 +181,7 @@ namespace AdaptiveBossArena.Editor
             y -= 44f;
         }
 
-        /// <summary>Creates a panel covering the whole screen with a dark backing.</summary>
+        /// <summary>创建带深色背景的全屏面板。</summary>
         private static GameObject CreateFullScreenPanel(Transform parent, string name)
         {
             var panel = new GameObject(name, typeof(RectTransform), typeof(Image));

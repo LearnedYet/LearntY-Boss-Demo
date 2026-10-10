@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests that light baked in the opening phase's colours follows the arena into later phases.
+    /// 测试开场阶段配色烘焙的光照会随竞技场进入后续阶段变化。
     /// </summary>
     [TestFixture]
     public sealed class ProbeTintTests
@@ -61,7 +61,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void NoProbeFallsBelowTheRoomsAmbientLight()
         {
-            // A probe baked behind the wall, darker than the ambient light the scene had before any bake.
+            // 墙后烘焙的探针，比场景尚未烘焙时的环境光更暗。
             var dim = new SphericalHarmonicsL2();
             dim.AddAmbientLight(new Color(0.02f, 0.02f, 0.02f));
 

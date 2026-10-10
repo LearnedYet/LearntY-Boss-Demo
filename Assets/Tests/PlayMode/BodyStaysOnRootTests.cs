@@ -10,26 +10,24 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Asserts a fighter's body plays every travelling clip over its own root, never away from it.
+    /// 断言战斗者身体播放所有位移动画时始终位于自身根节点之上，不会远离根节点。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The Mixamo attack and roll clips carry their travel across the floor. Baked into the pose, that travel
-    /// carried the body metres away from the root the motor moves and the hurtbox rides on: a slide attack put the
-    /// brute's hips metres ahead of where it could be hit, the body lunged twice - once by the motor, once by the
-    /// clip - and snapped back when the clip ended. That was the sliding and popping the player reported.
+    /// Mixamo 攻击和翻滚片段携带地面位移。该位移烘焙进姿势后，
+    /// 使身体离开由移动器驱动且承载受击框的根节点数米：滑行攻击让巨兽髋部远在可受击位置前方，
+    /// 身体突进两次，一次来自移动器、一次来自动画；片段结束时又跳回。这正是玩家报告的滑动和跳变。
     /// </para>
     /// <para>
-    /// Posed at runtime through the real Animator, because that is where the travel either is or is not: an editor
-    /// sample of the same clip applies root motion by different rules.
+    /// 运行时通过真实 Animator 摆姿势，因为实际位移是否存在取决于此路径；
+    /// 编辑器采样同一片段时使用不同的根运动规则。
     /// </para>
     /// </remarks>
     [TestFixture]
     public sealed class BodyStaysOnRootTests
     {
         /// <summary>
-        /// How far the hips may lean out from the root. A lunge or a crouch shifts them a little; a baked slide
-        /// carried them metres.
+        /// 髋部可偏离根节点的距离。突进或下蹲会使它少量偏移，烘焙的滑行却使它移动数米。
         /// </summary>
         private const float MaxHipsOffset = 0.9f;
 
@@ -67,7 +65,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
             Animator animator = root.GetComponentInChildren<Animator>();
             Assume.That(animator != null && animator.isHuman, "Not rigged.");
 
-            // Nothing else may drive the pose while it is being measured.
+            // 测量姿势期间，不能有其它模块驱动姿势。
             foreach (MonoBehaviour behaviour in root.GetComponentsInChildren<MonoBehaviour>())
             {
                 behaviour.enabled = false;

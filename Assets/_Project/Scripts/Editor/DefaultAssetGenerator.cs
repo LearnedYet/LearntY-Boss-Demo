@@ -13,25 +13,20 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Generates the project's default configuration assets and wires them together.
+    /// 生成项目默认配置资产，并连接它们的引用。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Most field values come from the initialisers on the configuration types themselves, so this
-    /// generator concerns itself with what those cannot express: the per-asset differences between
-    /// attacks, and the references that connect assets to one another.
+    /// 多数数值来自配置类型自身的初始化器，因此生成器主要处理初始化器无法表达的内容：
+    /// 每个攻击资产的差异，以及连接资产之间的引用。
     /// </para>
     /// <para>
-    /// Existing assets are loaded rather than replaced, so running this after tuning values by hand
-    /// will not discard that work. Delete an asset to have it regenerated from defaults.
+    /// 已有资产会加载而非替换，因此手动调参后再运行不会丢失修改。删除资产才会按默认值重新生成。
     /// </para>
     /// <para>
-    /// That safety has a cost: changing a number in this file has no effect on an asset that already
-    /// exists, so a tuning pass written here would silently do nothing. "Retune Generated Assets"
-    /// exists for exactly that case. It rewrites tuning values into the assets already on disk
-    /// rather than recreating them, which matters because recreating an asset gives it a new GUID
-    /// and leaves every reference to it dangling - a failure that has already cost this project a
-    /// debugging session in which the boss silently stopped attacking.
+    /// 这种保护也有代价：修改本文件数值不会影响已有资产，所以此处调参可能悄然无效。
+    /// “Retune Generated Assets”正用于此情况，它把调参数值写入磁盘上的已有资产而非重建；
+    /// 重建会生成新 GUID，让所有引用悬空。本项目曾因此经历首领悄然停止攻击的排查。
     /// </para>
     /// </remarks>
     public static class DefaultAssetGenerator
@@ -43,25 +38,23 @@ namespace AdaptiveBossArena.Editor
         private const string WeaponFolder = EditorMenus.GeneratedAssetFolder + "/Weapons";
 
         /// <summary>
-        /// When true, tuning values are written even to assets that already exist.
+        /// 为 true 时，即使资产已经存在也写入调参数值。
         /// </summary>
         /// <remarks>
-        /// A field rather than a parameter because it has to reach a dozen private helpers that
-        /// otherwise share no call path. It is set and cleared within a single synchronous call, so
-        /// it is never observable in an inconsistent state.
+        /// 使用字段而非参数，因为它需要传达给十多个没有共同调用路径的私有辅助方法。
+        /// 在同一次同步调用中设置并清除，不会暴露不一致状态。
         /// </remarks>
         private static bool _rewriteTuning;
 
-        /// <summary>Whether tuning values should be written for an asset with this creation state.</summary>
+        /// <summary>根据资产创建状态判断是否应写入调参数值。</summary>
         private static bool ShouldWriteTuning(bool created) => created || _rewriteTuning;
 
         /// <summary>
-        /// Rewrites the tuning values of every generated asset from the numbers in this file.
+        /// 用本文件中的数值重写所有生成资产的调参内容。
         /// </summary>
         /// <remarks>
-        /// Deliberately a separate, explicitly chosen action rather than part of the normal run.
-        /// Anything adjusted in the inspector is discarded by this, so it must never happen as a
-        /// side effect of regenerating the project.
+        /// 刻意设为独立、明确选择的操作，不属于正常流程。它会丢弃 Inspector 中的调整，
+        /// 绝不能作为重建项目的副作用发生。
         /// </remarks>
         [MenuItem(EditorMenus.Setup + "Retune Generated Assets", priority = EditorMenus.SetupPriorityGenerateAssets + 2)]
         public static void RetuneGeneratedAssets()
@@ -80,15 +73,13 @@ namespace AdaptiveBossArena.Editor
             Debug.Log("[Adaptive Boss Arena] Generated assets retuned from code defaults.");
         }
 
-        /// <summary>Creates every default configuration asset that does not already exist.</summary>
+        /// <summary>创建所有尚不存在的默认配置资产。</summary>
         [MenuItem(EditorMenus.Setup + "2. Generate Default Assets", priority = EditorMenus.SetupPriorityGenerateAssets)]
         public static void GenerateDefaultAssets()
         {
-            // Deliberately not wrapped in StartAssetEditing/StopAssetEditing. Batching imports is a
-            // worthwhile optimisation for hundreds of assets, but it also suspends importing, so
-            // assets created inside the block cannot be loaded back until it closes. This generator
-            // creates a few dozen assets that reference one another, so correctness matters far more
-            // than the milliseconds batching would save.
+            // 刻意不使用 StartAssetEditing/S topAssetEditing 包裹。数百资产时批量导入有价值，
+            // 但也会暂停导入，使块内新资产直到结束后才能加载。此生成器只有数十个互相引用的资产，
+            // 正确性比节省的几毫秒重要得多。
             try
             {
                 AssetAuthoring.EnsureFolderExists(ConfigFolder);
@@ -119,7 +110,7 @@ namespace AdaptiveBossArena.Editor
             Debug.Log($"[Adaptive Boss Arena] Default assets generated under '{EditorMenus.GeneratedAssetFolder}'.");
         }
 
-        /// <summary>The player's attack set, grouped for wiring into the player configuration.</summary>
+        /// <summary>玩家攻击集，分组以连接到玩家配置。</summary>
         private readonly struct PlayerAttacks
         {
             public PlayerAttacks(AttackDefinition[] lightChain, AttackDefinition heavy, AttackDefinition special)
@@ -136,7 +127,7 @@ namespace AdaptiveBossArena.Editor
             public AttackDefinition Special { get; }
         }
 
-        /// <summary>The boss's attack set, grouped by the phase each becomes available in.</summary>
+        /// <summary>首领攻击集，按各攻击开放的阶段分组。</summary>
         private readonly struct BossAttacks
         {
             public BossAttacks(
@@ -177,25 +168,25 @@ namespace AdaptiveBossArena.Editor
 
             public AttackDefinition Jab { get; }
 
-            /// <summary>The unblockable "perilous" overhead — must be dodged, never blocked.</summary>
+            /// <summary>无法格挡的危险下劈，必须闪避，不能格挡。</summary>
             public AttackDefinition Perilous { get; }
 
-            /// <summary>The arena-wide unblockable shockwave for phase transitions and the gambit.</summary>
+            /// <summary>用于阶段转换和决心豪赌的全场不可格挡冲击波。</summary>
             public AttackDefinition PhaseShockwave { get; }
 
-            /// <summary>The held overhead that punishes dodging on reflex.</summary>
+            /// <summary>惩罚条件反射闪避的蓄停下劈。</summary>
             public AttackDefinition DelayedOverhead { get; }
 
-            /// <summary>The spinning cleave that covers every side at once.</summary>
+            /// <summary>同时覆盖所有方向的旋转斩。</summary>
             public AttackDefinition Spin { get; }
 
-            /// <summary>The boot that breaks a held guard.</summary>
+            /// <summary>打破持续格挡的蹬踢。</summary>
             public AttackDefinition Kick { get; }
 
-            /// <summary>The seize: neither blockable nor parryable, so only distance answers it.</summary>
+            /// <summary>抓取：既不能格挡也不能招架，只能靠距离应对。</summary>
             public AttackDefinition Grab { get; }
 
-            /// <summary>The leap that closes the arena and scars where it lands.</summary>
+            /// <summary>跨越竞技场并在落点留下伤痕的跃击。</summary>
             public AttackDefinition Leap { get; }
         }
 
@@ -219,14 +210,12 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Creates the two procedural-animation configs, one per combatant.
+        /// 创建双方各自的程序动画配置。
         /// </summary>
         /// <remarks>
-        /// Two assets rather than one shared asset because the whole point is that they feel
-        /// different: the player is snappy and light, the boss heavy and deliberate. The player's
-        /// asset rides entirely on the type's own field defaults; the boss's asset overrides a
-        /// handful of magnitudes to add mass. Both are magnitudes only — neither can change when a
-        /// hitbox opens.
+        /// 使用两个资产而非共享一个，因为手感必须不同：玩家轻快敏捷，首领沉重坚定。
+        /// 玩家资产完全采用类型字段默认值；首领覆盖少量幅度值来增加质量感。两者仅影响幅度，
+        /// 都不能改变命中框开放时机。
         /// </remarks>
         private static void CreateAnimationConfigs()
         {
@@ -239,11 +228,10 @@ namespace AdaptiveBossArena.Editor
             AssignStrikers();
         }
 
-        /// <summary>Which attack state each of the player's attacks plays.</summary>
+        /// <summary>玩家各攻击播放的攻击状态。</summary>
         /// <remarks>
-        /// The three-hit chains take the library's three-part sword combo in order, so a chain reads as
-        /// one continuous string of blows rather than the same swing three times. Heavies and specials
-        /// fall back by damage type and need no entry.
+        /// 三段连击依次使用动作库三段剑术组合，使连击表现为一串连续打击而非同一挥击重复三次。
+        /// 重攻击和特殊攻击按伤害类型回退，无需条目。
         /// </remarks>
         private static readonly (string Attack, string State)[] PlayerClipBindings =
         {
@@ -251,16 +239,14 @@ namespace AdaptiveBossArena.Editor
             ("GreatswordLight1", "Light1"), ("GreatswordLight2", "Light3"),
             ("EnergyLight1", "Light1"), ("EnergyLight2", "Light2"), ("EnergyLight3", "Light3"), ("EnergyLight4", "Light1"),
             ("EnergyHeavy", "Dash"),
-            // The execution is a thrust driven in with both hands, not another passing slash.
+            // 处决是双手驱动的刺击，不是又一次掠过目标的斩击。
             ("PlayerExecution", "Riposte")
         };
 
-        /// <summary>Which attack state each of the boss's attacks plays.</summary>
+        /// <summary>首领各攻击播放的攻击状态。</summary>
         /// <remarks>
-        /// Chosen so the attack reads from the body, which is how its telegraph now works for everything
-        /// except the slams and waves: a wide sweep swings wide, the jab is a short hook, the charge is a
-        /// driving lunge, the slam brings the weapon down, and the two shockwaves are a gathering cast that
-        /// releases outward, so the ground warning and the body tell the same story.
+        /// 使攻击能从身体动作读取，除砸地和冲击波外都以此作为预警：横扫大幅挥动、刺探短促勾斩、
+        /// 冲锋猛烈突进、砸地将武器落下、两种冲击波蓄势后向外释放，让地面警告和身体动作表达相同信息。
         /// </remarks>
         private static readonly (string Attack, string State)[] BossClipBindings =
         {
@@ -268,22 +254,20 @@ namespace AdaptiveBossArena.Editor
             ("BossShockwave", "Cast"), ("BossJab", "Hook"), ("BossPerilousOverhead", "Heavy"),
             ("BossPhaseShockwave", "Cast"),
 
-            // The held overhead wears the same raised blade as the perilous one and is stretched over its
-            // longer wind-up by the time-warp, which is the whole read: the pose is familiar, the timing is not.
+            // 蓄停下劈与危险下劈采用相同高举刀刃姿态，通过时间扭曲拉长前摇。这正是辨识重点：姿势熟悉，
+            // 时机不同。
             ("BossDelayedOverhead", "Heavy"), ("BossSpinCleave", "Spin"), ("BossKick", "Kick"),
             ("BossGrab", "Grab"), ("BossLeapSmash", "Leap")
         };
 
-        /// <summary>Which parts of the body each attack strikes with.</summary>
+        /// <summary>各攻击使用的身体部位。</summary>
         /// <remarks>
         /// <para>
-        /// Every cut is decided by the blade, the kick by the foot, the grab by both hands, the leap by the body
-        /// landing. What is left out stays on its authored volume on purpose: the slam and the shockwaves are
-        /// area attacks whose area is drawn on the floor, and the specials are whirlwinds around the knight.
+        /// 斩击按刀刃判定，踢击按脚，抓取按双手，跃击按身体落地。未列出的攻击刻意继续使用设定体积：
+        /// 砸地和冲击波是范围攻击，区域已画在地面；特殊攻击是围绕骑士的旋风。
         /// </para>
         /// <para>
-        /// The charge drives the blade and the body in together, so the knight is caught by either. In the
-        /// frenzy the brute has no blade, and every weapon attack lands with its fists instead.
+        /// 冲锋同时带动刀刃与身体，任一都能击中骑士。狂暴时巨兽没有刀刃，所有武器攻击改由拳头命中。
         /// </para>
         /// </remarks>
         private static readonly (string Attack, StrikerParts Parts)[] StrikerBindings =
@@ -306,7 +290,7 @@ namespace AdaptiveBossArena.Editor
             ("BossLeapSmash", StrikerParts.Body)
         };
 
-        /// <summary>The parts an attack strikes with, by asset name; none for one not in the table.</summary>
+        /// <summary>按资产名返回攻击部位；不在表中时不指定部位。</summary>
         private static StrikerParts StrikersFor(string attackName)
         {
             foreach ((string name, StrikerParts parts) in StrikerBindings)
@@ -321,11 +305,11 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Writes which parts each attack strikes with.
+        /// 写入各攻击使用的部位。
         /// </summary>
         /// <remarks>
-        /// Structural, so written on every run like the clip bindings, not only when an asset is created: an
-        /// attack left on its volume after this table named a part would silently go on hurting at a distance.
+        /// 属于结构，因此像片段绑定一样每次都写入，不仅在新建资产时写。
+        /// 若表中已指定部位而攻击仍使用体积判定，就会悄然继续造成远距离伤害。
         /// </remarks>
         private static void AssignStrikers()
         {
@@ -346,18 +330,16 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Points both characters at the imported rig, its controller, a scale and their clip bindings.
+        /// 为双方角色配置导入骨架、控制器、缩放和片段绑定。
         /// </summary>
         /// <remarks>
-        /// References, not tuning, so they are written on every run: a missing reference is a broken
-        /// asset that should heal itself. When the imported art is absent the fields are left empty and
-        /// the generated primitive bodies are built exactly as before.
+        /// 这些是引用而非调参，因此每次都写入：缺少引用是应自动修复的资产错误。
+        /// 没有导入美术时字段保持空，基础身体仍按以前方式生成。
         /// </remarks>
         private static void AssignRigs()
         {
-            // The licensed Mixamo knight and brute when this checkout has them; otherwise the CC0 mannequin for
-            // both, which a clone of the public repository always has. The brute's fallback scale makes one
-            // skeleton read as a head-and-a-half taller body.
+            // 工作副本有许可资源时使用 Mixamo 骑士和巨兽，
+            // 否则双方使用公开仓库克隆总会具备的 CC0 人偶。巨兽回退缩放让同一骨架看起来高出一个半头。
             bool licensed = Art.LicensedArtPostprocessor.Available;
 
             Art.CharacterClipTable knight = licensed ? Art.CharacterClipTable.Knight : Art.CharacterClipTable.Fallback("KnightController", 1f);
@@ -365,7 +347,7 @@ namespace AdaptiveBossArena.Editor
 
             AssignRig("DefaultPlayerAnimation", knight, PlayerClipBindings);
 
-            // The brute alone has a second form: the same rig, fighting bare-handed in its last phase.
+            // 仅巨兽有第二形态：同一骨架，在最后阶段徒手战斗。
             AssignRig(
                 "DefaultBossAnimation", brute, BossClipBindings,
                 licensed ? Art.CharacterClipTable.BruteFrenzy : null);
@@ -412,7 +394,7 @@ namespace AdaptiveBossArena.Editor
                 entry.FindPropertyRelative("_contactFraction").floatValue =
                     Art.ClipContactMeasure.ContactFor(table, bindings[i].State, bone);
 
-                // The frenzy has no blade, so a weapon attack there is timed off the fist that throws it.
+                // 狂暴形态没有刀刃，武器攻击按挥出的拳头计时。
                 entry.FindPropertyRelative("_frenzyContactFraction").floatValue = frenzyTable != null
                     ? Art.ClipContactMeasure.ContactFor(frenzyTable, bindings[i].State, bone)
                     : 0f;
@@ -422,15 +404,14 @@ namespace AdaptiveBossArena.Editor
             EditorUtility.SetDirty(config);
         }
 
-        /// <summary>Creates or retunes a single animation config.</summary>
+        /// <summary>创建或重新调整单个动画配置。</summary>
         private static void CreateAnimationConfig(string assetName, string id, bool isBoss)
         {
             var config = AssetAuthoring.CreateOrLoad<CharacterAnimationConfig>(
                 $"{ConfigFolder}/{assetName}.asset", out bool created);
 
-            // The player takes the type's defaults wholesale. The boss overrides only the values
-            // that make it read as heavier: slower easing, a deeper wind-up, a longer lunge and a
-            // more emphatic heavy multiplier, while being thrown less by a hit.
+            // 玩家全部采用类型默认值。首领仅覆盖使其更沉重的数值：更慢平滑、更深前摇、更长突进、
+            // 更明显的重攻击倍率，同时受击位移更小。
             bool writeBossTuning = isBoss && ShouldWriteTuning(created);
 
             if (!created && !writeBossTuning)
@@ -462,13 +443,12 @@ namespace AdaptiveBossArena.Editor
             }
         }
 
-        /// <summary>Cool tint for the player's swings, so both sides read as distinct at a glance.</summary>
+        /// <summary>玩家挥击采用冷色，使双方一眼可分。</summary>
         private static readonly Color PlayerSwingColor = new Color(0.55f, 0.85f, 1f, 0.6f);
 
         private static PlayerAttacks CreatePlayerAttacks()
         {
-            // A rising combo: each step commits further and rewards more, so continuing the chain is
-            // a real decision rather than a free follow-up.
+            // 递进连击：每一步投入更多、回报更高，让继续连击成为真正的决策，而不是免费的后续攻击。
             AttackDefinition light1 = CreateAttack(
                 "PlayerLight1", "Slash", DamageType.Light,
                 damage: 12f, startup: 0.09f, active: 0.07f, recovery: 0.20f,
@@ -484,8 +464,7 @@ namespace AdaptiveBossArena.Editor
                 damage: 22f, startup: 0.12f, active: 0.09f, recovery: 0.34f,
                 range: 2.4f, arc: 130f, poise: 22f, knockback: 4.5f, hitStop: 0.075f, trauma: 0.22f, overlayColor: PlayerSwingColor);
 
-            // Long recovery is the point: a whiffed heavy must be punishable, which is what gives the
-            // boss's parry adaptation something meaningful to counter.
+            // 长后摇是设计重点：挥空重攻击必须可被惩罚，首领的招架适应才有值得针对的内容。
             AttackDefinition heavy = CreateAttack(
                 "PlayerHeavy", "Overhead", DamageType.Heavy,
                 damage: 42f, startup: 0.34f, active: 0.10f, recovery: 0.52f,
@@ -503,14 +482,11 @@ namespace AdaptiveBossArena.Editor
 
         private static BossAttacks CreateBossAttacks()
         {
-            // Ground warnings are reserved for the attacks that strike the ground or cannot be blocked:
-            // the slam, both shockwaves and the perilous overhead. Every ordinary swing now reads from
-            // the animated body, the way the genre's bosses are read - a coloured wedge under a sweep
-            // taught the player to watch the floor instead of the boss.
-            // 120 degrees, down from 160. At 4 m reach a 160-degree wedge covered nearly everything
-            // in front of the boss, so the only answer to it was to back out of range - spacing
-            // mattered but position did not. At 120 there is a flank to move to, which is the read
-            // the fight is built around.
+            // 地面警告仅用于攻击地面或无法格挡的攻击：砸地、两种冲击波和危险下劈。
+            // 普通挥击改由身体动画辨识，符合该类型首领的观察方式；
+            // 横扫下方彩色扇形会教玩家盯地板而非首领。角度从 160降至 120 度。
+            // 四米范围的 160 度扇形几乎覆盖首领正面，只能退到范围外，距离重要而方位不重要；
+            // 120 度留出可以移动到的侧翼，这是战斗辨识的基础。
             AttackDefinition sweep = CreateAttack(
                 "BossSweep", "Wide Sweep", DamageType.BossMelee,
                 damage: 12f, startup: 0.45f, active: 0.12f, recovery: 0.45f,
@@ -525,8 +501,7 @@ namespace AdaptiveBossArena.Editor
                 leavesHazard: true, hazardRadius: 3f, hazardDamagePerTick: 3f, hazardDuration: 3.5f,
                 reaction: ImpactReaction.Knockdown);
 
-            // The gap-closer. Adopted in force against players the boss has learned keep their
-            // distance, which is the design's stated answer to a kiting player.
+            // 拉近距离的攻击。对已被首领识别为保持距离的玩家频繁采用，作为设计中应对风筝打法的方案。
             AttackDefinition charge = CreateAttack(
                 "BossCharge", "Charge", DamageType.BossMelee,
                 damage: 15f, startup: 0.55f, active: 0.30f, recovery: 0.55f,
@@ -542,18 +517,16 @@ namespace AdaptiveBossArena.Editor
                 leavesHazard: true, hazardRadius: 3.5f, hazardDamagePerTick: 3f, hazardDuration: 4f,
                 reaction: ImpactReaction.Knockback);
 
-            // Fast and cheap, with a short wind-up. On its own it is barely a threat; its purpose is
-            // to be the quick beat a combo string opens or closes on, so a chain has a rhythm rather
-            // than being two heavy swings back to back.
+            // 快速、低成本、短前摇。单独几乎无威胁，作用是作为连击开头或结尾的快拍，
+            // 让连击有节奏而不是连续两次重挥。
             AttackDefinition jab = CreateAttack(
                 "BossJab", "Jab", DamageType.BossMelee,
                 damage: 8f, startup: 0.28f, active: 0.08f, recovery: 0.32f,
                 range: 3f, arc: 70f, poise: 12f, knockback: 3f, hitStop: 0.05f, trauma: 0.18f,
                 telegraph: false);
 
-            // The perilous overhead: a long, deliberately-telegraphed unblockable that punishes the
-            // reflex to hold guard. Its slow wind-up is fair — there is time to read the red pulse and
-            // roll — and its heavy poise damage makes eating it while blocking a serious mistake.
+            // 危险下劈：长前摇、明确预警、不可格挡，惩罚本能持续持盾。缓慢前摇是公平的，
+            // 玩家有时间看懂红色脉冲并翻滚；高架势伤害让持盾硬吃成为严重错误。
             AttackDefinition perilous = CreateAttack(
                 "BossPerilousOverhead", "Perilous Overhead", DamageType.BossMelee,
                 damage: 26f, startup: 0.85f, active: 0.12f, recovery: 0.72f,
@@ -561,9 +534,8 @@ namespace AdaptiveBossArena.Editor
                 stagger: StaggerStrength.Interrupt, telegraph: true, unblockable: true,
                 reaction: ImpactReaction.Knockdown);
 
-            // The set-piece: an arena-wide, unblockable shockwave with a long, honest wind-up, thrown
-            // on a phase transition and as the Resolve gambit. It scars the ground it lands on, so the
-            // fight's biggest beats compose the mix-up read and the spatial pressure into one moment.
+            // 演出大招：全场不可格挡冲击波，带长而真实的前摇，用于阶段转换和 Resolve 豪赌。
+            // 在落点留下地面伤痕，将战斗最强节拍中的招式辨识和空间压迫结合起来。
             AttackDefinition phaseShockwave = CreateAttack(
                 "BossPhaseShockwave", "Cataclysmic Wave", DamageType.BossProjectile,
                 damage: 22f, startup: 0.95f, active: 0.40f, recovery: 0.70f,
@@ -572,9 +544,8 @@ namespace AdaptiveBossArena.Editor
                 leavesHazard: true, hazardRadius: 4f, hazardDamagePerTick: 3f, hazardDuration: 4.5f,
                 reaction: ImpactReaction.Launch);
 
-            // The answer to dodging on reflex. The wind-up is the perilous overhead's, held nearly half a
-            // second longer at its peak before the blade falls fast: a player who rolls when the arms go up
-            // is on the floor recovering when it lands. It is blockable, so reading it has two answers.
+            // 应对条件反射闪避。前摇与危险下劈相同，但在最高点多停近半秒再快速落刃。
+            // 玩家见手臂抬起就翻滚，会在命中时仍处于恢复状态。它可以格挡，因此正确辨识后有两种应对。
             AttackDefinition delayedOverhead = CreateAttack(
                 "BossDelayedOverhead", "Held Overhead", DamageType.BossMelee,
                 damage: 22f, startup: 1.15f, active: 0.10f, recovery: 0.62f,
@@ -582,17 +553,16 @@ namespace AdaptiveBossArena.Editor
                 stagger: StaggerStrength.Interrupt, telegraph: true,
                 reaction: ImpactReaction.Knockdown);
 
-            // The answer to circling. A sweep leaves a flank to move to; this one does not, so the player
-            // has to leave its reach rather than walk around it. Its long active window is the cost: the
-            // brute is committed to the spin for a quarter of a second and is open behind it.
+            // 应对绕圈。普通横扫留有侧翼，这次没有，玩家必须退出范围而非绕到旁边。长有效窗口是代价：
+            // 巨兽投入旋转四分之一秒，之后暴露破绽。
             AttackDefinition spin = CreateAttack(
                 "BossSpinCleave", "Spin Cleave", DamageType.BossMelee,
                 damage: 14f, startup: 0.52f, active: 0.26f, recovery: 0.62f,
                 range: 3.8f, arc: 360f, poise: 28f, knockback: 6f, hitStop: 0.07f, trauma: 0.32f,
                 telegraph: false, reaction: ImpactReaction.Knockback);
 
-            // The answer to holding guard. It barely cuts, and it takes half a stance: a player who waits
-            // behind the shield is opened by it rather than killed by it, which is the trade it is for.
+            // 应对持续格挡。生命伤害很小，却削减一半架势：盾后等待的玩家会被打开防御而非直接击杀，
+            // 这是它提供的交换。
             AttackDefinition kick = CreateAttack(
                 "BossKick", "Guard Breaker", DamageType.BossMelee,
                 damage: 6f, startup: 0.34f, active: 0.08f, recovery: 0.44f,
@@ -600,8 +570,7 @@ namespace AdaptiveBossArena.Editor
                 stagger: StaggerStrength.Interrupt, telegraph: false,
                 reaction: ImpactReaction.Knockback);
 
-            // The answer to standing in its face. Neither blockable nor parryable, so the only counter is
-            // not being there - and its short reach and long recovery mean backing off always beats it.
+            // 应对贴脸站立。不可格挡、不可招架，唯一办法是离开该位置；短范围和长后摇确保后退总能应对。
             AttackDefinition grab = CreateAttack(
                 "BossGrab", "Seize", DamageType.BossMelee,
                 damage: 24f, startup: 0.55f, active: 0.12f, recovery: 0.95f,
@@ -609,8 +578,7 @@ namespace AdaptiveBossArena.Editor
                 lungeSpeed: 7f, stagger: StaggerStrength.Interrupt, telegraph: true,
                 unblockable: true, unparryable: true, reaction: ImpactReaction.Launch);
 
-            // The answer to running. It crosses the arena in one jump and scars the floor where it lands,
-            // so distance stops being safety without the brute having to sprint the whole way.
+            // 应对逃跑。一跳跨越竞技场，并在落点留下地面伤痕，让距离不再等于安全，而不必让巨兽全程冲刺。
             AttackDefinition leap = CreateAttack(
                 "BossLeapSmash", "Leap Smash", DamageType.BossMelee,
                 damage: 20f, startup: 0.78f, active: 0.16f, recovery: 0.82f,
@@ -690,17 +658,15 @@ namespace AdaptiveBossArena.Editor
                     .Float("_hazardDamagePerTick", hazardDamagePerTick)
                     .Float("_hazardDurationSeconds", hazardDuration);
 
-                // Only written for a box, whose extents are the whole hitbox. Every other shape
-                // reads its size from range and arc, and would be given a misleading box to look at
-                // in the inspector for no benefit.
+                // 仅为盒形写入，其 extents 代表完整命中框。其他形状根据范围和角度计算大小，
+                // 额外显示误导性的盒子没有益处。
                 if (shape == AttackShape.Box && boxHalfExtents.HasValue)
                 {
                     writer.Vector3("_boxHalfExtents", boxHalfExtents.Value);
                 }
 
-                // An arc reads only the height from the offset - it centres on the attacker by
-                // design, so writing a forward component would be misleading rather than wrong.
-                // A box is placed entirely by it.
+                // 弧形只读取偏移中的高度，按设计以攻击者为中心，因此写入前向分量会误导但不影响行为。
+                // 盒形则完全按偏移定位。
                 if (offset.HasValue)
                 {
                     writer.Vector3("_offset", offset.Value);
@@ -717,13 +683,12 @@ namespace AdaptiveBossArena.Editor
 
         private static CounterStrategy[] CreateCounterStrategies()
         {
-            // Each of these answers a habit named in the design brief. Thresholds are starting points
-            // for tuning, not tested values.
+            // 每种策略都应对设计说明中的一种习惯。阈值只是调参起点，并非已经验证的数值。
             CounterStrategy delayAttacks = CreateStrategy(
                 "CounterPostDodgeAggression",
                 BehaviorFeature.PostDodgeAggression, FeatureComparison.AtOrAbove, threshold: 0.6f,
                 phase: 1, weight: 1.4f,
-                tell: "It waits for your opening now.",
+                tell: "它开始等待你露出破绽。",
                 (BossTuningParameter.AttackDelay, 0.35f),
                 (BossTuningParameter.FeintChance, 0.3f));
 
@@ -731,7 +696,7 @@ namespace AdaptiveBossArena.Editor
                 "CounterKiting",
                 BehaviorFeature.PreferredDistance, FeatureComparison.AtOrAbove, threshold: 0.65f,
                 phase: 1, weight: 1.2f,
-                tell: "It refuses to let you breathe.",
+                tell: "它不再给你喘息的机会。",
                 (BossTuningParameter.GapCloserWeight, 0.8f),
                 (BossTuningParameter.PreferredRange, 1.8f),
                 (BossTuningParameter.Aggression, 0.75f));
@@ -740,21 +705,21 @@ namespace AdaptiveBossArena.Editor
                 "CounterHeavySpam",
                 BehaviorFeature.HeavyAttackRatio, FeatureComparison.AtOrAbove, threshold: 0.55f,
                 phase: 2, weight: 1.5f,
-                tell: "It has started reading your heavy swing.",
+                tell: "它开始预判你的重攻击。",
                 (BossTuningParameter.ParryChance, 0.45f));
 
             CounterStrategy predictDodge = CreateStrategy(
                 "CounterPredictableDodge",
                 BehaviorFeature.DashDirectionBias, FeatureComparison.AtOrAbove, threshold: 0.55f,
                 phase: 2, weight: 1.3f,
-                tell: "It knows which way you will roll.",
+                tell: "它已经看穿了你的翻滚方向。",
                 (BossTuningParameter.DodgePredictionStrength, 0.7f));
 
             CounterStrategy areaDenial = CreateStrategy(
                 "CounterEvasive",
                 BehaviorFeature.EvasionSuccess, FeatureComparison.AtOrAbove, threshold: 0.7f,
                 phase: 3, weight: 1.6f,
-                tell: "It stops aiming and starts covering ground.",
+                tell: "它改用大范围攻击封锁你的退路。",
                 (BossTuningParameter.AreaDenialWeight, 0.85f),
                 (BossTuningParameter.ComboExtensionChance, 0.5f));
 
@@ -762,66 +727,59 @@ namespace AdaptiveBossArena.Editor
                 "CounterPassivity",
                 BehaviorFeature.AttackFrequency, FeatureComparison.AtOrBelow, threshold: 0.25f,
                 phase: 1, weight: 1f,
-                tell: "It presses the advantage.",
+                tell: "它正在步步紧逼。",
                 (BossTuningParameter.Aggression, 0.85f),
                 (BossTuningParameter.ComboExtensionChance, 0.6f));
 
-            // A player who heals often is telling the boss when they are briefly helpless. The answer
-            // is not a new move but the willingness to spend one closing the gap and pressing, so the
-            // heal has to be earned rather than taken for free.
+            // 经常治疗的玩家会暴露短暂无力应对的时刻。首领的回应不是新招，
+            // 而是愿意用已有招式拉近距离并施压，让治疗需要争取而非免费获得。
             CounterStrategy punishHealing = CreateStrategy(
                 "CounterHealing",
                 BehaviorFeature.HealFrequency, FeatureComparison.AtOrAbove, threshold: 0.5f,
                 phase: 1, weight: 1.1f,
-                tell: "It lunges the instant you falter.",
+                tell: "它会在你露出破绽时立刻突进。",
                 (BossTuningParameter.Aggression, 0.8f),
                 (BossTuningParameter.GapCloserWeight, 0.6f));
 
-            // The dangerous player: one whose perfect dodges land on the exact frame, fight after
-            // fight. Feinting is the only honest answer — a telegraph the boss shows and cancels turns
-            // that flawless timing against itself, because a dodge spent on a blow that never comes
-            // leaves nothing to answer the one that does.
+            // 危险玩家每场都在精确帧完成完美闪避。佯攻才是公平回应：展示并取消攻击预警，
+            // 反过来利用其完美时机判断；为不存在的攻击消耗闪避后，就无法应对真正到来的攻击。
             CounterStrategy baitRhythmicDodge = CreateStrategy(
                 "CounterRhythmicDodge",
                 BehaviorFeature.DodgeTimingConsistency, FeatureComparison.AtOrAbove, threshold: 0.5f,
                 phase: 2, weight: 1.35f,
-                tell: "It fakes the blow you time so well.",
+                tell: "它开始用佯攻扰乱你熟悉的节奏。",
                 (BossTuningParameter.FeintChance, 0.6f),
                 (BossTuningParameter.AttackDelay, 0.2f));
 
-            // A player who whiffs often is panicking, and every wasted swing is a recovery the boss can
-            // step into. The answer is pure commitment — press, close the gap, and string the punish —
-            // which also raises the boss's own commitment, so a swing that then misses because the
-            // player has stopped flailing overbalances it in turn. That reversal is the whole point.
+            // 经常挥空的玩家在慌乱，每次空挥的后摇都是首领可切入的机会。回应是投入攻击：施压、近身、
+            // 连续惩罚；这也提高首领自己的投入。玩家一旦停止乱挥使其攻击落空，首领反而失衡，
+            // 这种逆转正是设计重点。
             CounterStrategy punishWhiffing = CreateStrategy(
                 "CounterWhiffPunish",
                 BehaviorFeature.WhiffRatio, FeatureComparison.AtOrAbove, threshold: 0.5f,
                 phase: 1, weight: 1.2f,
-                tell: "It punishes your wasted swings.",
+                tell: "它开始抓住你空挥后的破绽。",
                 (BossTuningParameter.Aggression, 0.8f),
                 (BossTuningParameter.GapCloserWeight, 0.7f),
                 (BossTuningParameter.ComboExtensionChance, 0.5f));
 
-            // A player who answers everything with the guard has told the boss something it can act
-            // on honestly: the guard only works on attacks that respect it. Reaching more often for
-            // the perilous attacks it already owns turns that habit into a liability, and because a
-            // perilous wind-up is the most heavily telegraphed thing in the fight, the answer stays
-            // fair — the player is being asked to dodge, not being denied a defence.
+            // 用格挡回应一切的玩家暴露了首领可以公平利用的信息：格挡只对尊重防御的攻击有效。
+            // 更常使用已有危险攻击会把习惯变成负担；危险攻击前摇是战斗中预警最充分的动作，
+            // 因此仍然公平，只是要求玩家闪避而非剥夺防御。
             CounterStrategy punishTurtling = CreateStrategy(
                 "CounterGuardReliance",
                 BehaviorFeature.GuardReliance, FeatureComparison.AtOrAbove, threshold: 0.55f,
                 phase: 1, weight: 1.3f,
-                tell: "It stops respecting your guard.",
+                tell: "它不再顾忌你的防御。",
                 (BossTuningParameter.UnblockableWeight, 0.9f));
 
-            // The parry master is a different problem from the turtle. Their timing is the thing to
-            // attack, so the boss shows blows it never throws and mixes in attacks the guard cannot
-            // answer at all — punishing the precision itself rather than the reliance.
+            // 招架高手与龟缩玩家不同。应针对其时机精度，展示不真正发出的攻击，
+            // 并混入防御无法应对的招式，惩罚精准时机本身而非防御依赖。
             CounterStrategy punishDeflectMastery = CreateStrategy(
                 "CounterDeflectMastery",
                 BehaviorFeature.DeflectSkill, FeatureComparison.AtOrAbove, threshold: 0.6f,
                 phase: 2, weight: 1.45f,
-                tell: "It will not give you a clean beat.",
+                tell: "它不再让你轻易把握弹反的时机。",
                 (BossTuningParameter.FeintChance, 0.55f),
                 (BossTuningParameter.UnblockableWeight, 0.6f));
 
@@ -873,19 +831,16 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Creates or repairs the player configuration.
+        /// 创建或修复玩家配置。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// References are rewritten on every run; tuning values are written only on creation. The
-        /// distinction matters and was learned the hard way. References are derived data — they must
-        /// heal themselves whenever an asset is deleted, moved or regenerated, because a dangling
-        /// reference here means the player's attacks resolve to null and the attack button silently
-        /// does nothing. Tuning values are authored by hand and must survive a re-run.
+        /// 每次重写引用，调参数值仅在创建时写入。这种区别是从实际故障中学到的。引用属于派生数据，
+        /// 资产删除、移动或重建后必须自动修复；悬空引用会让玩家攻击解析为 null，按钮悄然无效。
+        /// 手工编写的调参数值则必须保留。
         /// </para>
         /// <para>
-        /// The previous behaviour skipped existing configs entirely, so regenerating the attack
-        /// assets left both combatants permanently unable to attack, with no error anywhere.
+        /// 旧实现完全跳过已有配置，导致重新生成攻击资产后双方永久无法攻击，且没有任何报错。
         /// </para>
         /// </remarks>
         private static void CreatePlayerConfig(PlayerAttacks attacks, WeaponDefinition[] weapons)
@@ -893,15 +848,12 @@ namespace AdaptiveBossArena.Editor
             var config = AssetAuthoring.CreateOrLoad<PlayerConfig>(
                 $"{ConfigFolder}/DefaultPlayerConfig.asset", out bool created);
 
-            // The execution: a devastating answer to a broken guard, thrown by the riposte state. Its
-            // long active window and deep hit-stop read as a finishing strike, and the encounter
-            // director turns a lethal one into a cinematic beat.
-            // Unparryable, and the only attack in the game that is. The player reaches this swing
-            // by breaking the boss's guard; letting the boss then deflect it would refuse a punish
-            // that has already been paid for, with the same stance that just failed. Note this is
-            // safe to mark only because the execution is its own asset - a weapon's _riposteAttack
-            // is the ordinary heavy, and marking that would make every heavy swing unparryable and
-            // remove the read the boss's parry exists to make.
+            // 处决：由反击状态发动、针对破防的毁灭性回应。长有效窗口和深 hit-stop 表现为终结打击，
+            // 遭遇控制器把致命一击变成电影式演出。它不可被招架，也是全游戏唯一如此的攻击。
+            // 玩家通过打破首领防御赢得这次攻击；再让首领用刚刚失败的架势弹反，
+            // 会拒绝玩家已付出代价的惩罚。只有处决拥有独立资产时才可安全标记：
+            // 武器的 _riposteAttack 使用普通重攻击，标记它会让所有重攻击不可招架，
+            // 破坏首领招架所要求的辨识。
             AttackDefinition execution = CreateAttack(
                 "PlayerExecution", "Execution", DamageType.Heavy,
                 damage: 72f, startup: 0.10f, active: 0.34f, recovery: 0.46f,
@@ -917,36 +869,32 @@ namespace AdaptiveBossArena.Editor
 
                 if (ShouldWriteTuning(created))
                 {
-                    // Blocking has to lose ground faster than deflecting gains it, or turtling
-                    // becomes the correct answer and the deflect window stops mattering.
+                    // 格挡损失架势必须快于弹反带来的收益，否则龟缩会成为正确答案，弹反窗口也失去意义。
                     writer.Float("_blockPostureCost", 22f)
                         .Float("_deflectPostureDamage", 28f)
 
-                        // How far a blow carries the player. Long enough that a heavy hit visibly
-                        // throws them, short enough that control returns within a stride.
+                        // 打击将玩家带走的距离。足够长，让重击可见地抛动角色；也足够短，
+                        // 让控制在一步内恢复。
                         .Float("_impulseHalfLifeSeconds", 0.12f)
                         .Float("_bodyMass", 1f)
 
-                        // Responsiveness. The heavier 0.12 s / 0.16 s / 720 degrees a second tried to add
-                        // weight through the stick, and the player's verdict was "no proper control over the
-                        // character". Weight now comes from animation, hit-stop and momentum through turns
-                        // (the turn speed floor), not from lag between the stick and the body.
+                        // 响应性。此前用较沉的 0.12 秒、0.16 秒和每秒 720 度尝试增加操作重量，
+                        // 玩家评价却是“无法正常控制角色”。现在重量来自动画、
+                        // hit-stop 和转向动量的速度下限，而不是输入与身体之间的延迟。
                         .Float("_accelerationSeconds", 0.07f)
                         .Float("_decelerationSeconds", 0.09f)
                         .Float("_turnSpeedDegreesPerSecond", 1080f)
                         .Float("_turnSpeedFloor", 0.35f)
 
-                        // The dodge is a roll over the same 4.5 m, now 0.32 s: the 0.4 s version spent its last
-                        // tenth of a second barely moving and could not be left. The invincibility stays the
-                        // absolute 0.135 s the boss was tuned against.
+                        // 闪避仍滚动 4.5 米，时长改为 0.32 秒：0.4 秒版本最后十分之一秒几乎不动且不能
+                        // 退出。无敌保持首领调参所依据的绝对 0.135 秒。
                         .Float("_dashDurationSeconds", 0.32f)
                         .Float("_invulnerabilitySeconds", 0.135f)
                         .Float("_dashSteerFraction", 0.2f)
                         .Float("_dashCancelFraction", 0.7f)
 
-                        // Being floored. About 0.7 s in the air, 0.8 s down and 0.6 s rising: long
-                        // enough to read as a big hit, capped at 2.6 s however the boss follows up,
-                        // and 2.5 s of knockdown immunity after so it never happens twice in a row.
+                        // 被击倒：约 0.7 秒腾空、0.8 秒倒地、0.6秒起身，足以表现重击；无论首领如何追击，
+                        // 总时长上限 2 .6 秒，之后有 2.5 秒击倒免疫，避免连续倒地。
                         .Float("_launchUpwardSpeed", 9f)
                         .Float("_maximumAirborneSeconds", 1.2f)
                         .Float("_knockdownSeconds", 0.8f)
@@ -966,35 +914,30 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Creates the three weapon archetypes.
+        /// 创建三种武器原型。
         /// </summary>
         /// <remarks>
-        /// They share the same underlying attack assets for now, differing in defence, handling and
-        /// tuning. That keeps the count of assets manageable while still making the choice matter:
-        /// the greatsword cannot parry at all, the energy blade guards cheaply but for less, and the
-        /// blade sits between them with the tightest, most rewarding deflect.
+        /// 当前共享底层攻击资产，差异在防御、操控和调参。这能控制资产数量并让选择有意义：巨剑不能招架，
+        /// 能量刃格挡成本低但效果弱，长剑介于两者之间，弹反窗口最紧且奖励最高。
         /// </remarks>
         private static WeaponDefinition[] CreateWeapons(PlayerAttacks bladeAttacks)
         {
-            // Each weapon now swings its own moveset, not a shared one. Handling (speed, stamina,
-            // defence) already differed; giving them distinct attacks is what makes the choice change
-            // how the fight is played rather than only how it is defended, and it gives the boss's
-            // weapon-preference learning something real to read.
+            // 现在每件武器使用自己的招式，而非共享招式。操控的速度、耐力、防御已有差异；
+            // 独立攻击让选择改变战斗打法而不仅是防御方式，也让首领的武器偏好学习能读取真实差异。
             PlayerAttacks greatswordAttacks = CreateGreatswordAttacks();
             PlayerAttacks energyAttacks = CreateEnergyBladeAttacks();
 
             WeaponDefinition blade = CreateWeapon(
-                "WeaponBlade", "Blade", new Color(0.55f, 0.85f, 1f, 0.6f),
+                "WeaponBlade", "长剑", new Color(0.55f, 0.85f, 1f, 0.6f),
                 bladeAttacks, CreateBladeEmpoweredSpecial(), DefenceStyle.Deflect,
                 deflectWindow: 0.2f, deflectPosture: 28f,
                 moveMultiplier: 1f, staminaMultiplier: 1f,
                 swingCueId: "swing.blade",
                 bladeLength: 0.95f, bladeWidth: 0.1f, bladeGlows: false);
 
-            // No parry at all. It wins the exchanges it commits to and loses badly when the
-            // commitment was wrong, which is a different kind of decision rather than a worse one.
+            // 完全不能招架。投入正确时赢得交锋，投入错误时惨败；这是另一种决策而不是更差的选择。
             WeaponDefinition greatsword = CreateWeapon(
-                "WeaponGreatsword", "Greatsword", new Color(1f, 0.75f, 0.35f, 0.6f),
+                "WeaponGreatsword", "巨剑", new Color(1f, 0.75f, 0.35f, 0.6f),
                 greatswordAttacks, CreateGreatswordEmpoweredSpecial(), DefenceStyle.HyperArmour,
                 deflectWindow: 0.2f, deflectPosture: 0f,
                 moveMultiplier: 0.82f, staminaMultiplier: 1.35f,
@@ -1002,7 +945,7 @@ namespace AdaptiveBossArena.Editor
                 bladeLength: 1.45f, bladeWidth: 0.19f, bladeGlows: false);
 
             WeaponDefinition energyBlade = CreateWeapon(
-                "WeaponEnergyBlade", "Energy Blade", new Color(0.7f, 1f, 0.8f, 0.6f),
+                "WeaponEnergyBlade", "能量刃", new Color(0.7f, 1f, 0.8f, 0.6f),
                 energyAttacks, CreateEnergyEmpoweredSpecial(), DefenceStyle.SustainedGuard,
                 deflectWindow: 0.28f, deflectPosture: 16f,
                 moveMultiplier: 1.12f, staminaMultiplier: 0.85f,
@@ -1012,14 +955,13 @@ namespace AdaptiveBossArena.Editor
             return new[] { blade, greatsword, energyBlade };
         }
 
-        /// <summary>Violet tint marking a focus-empowered special, matching the focus bar.</summary>
+        /// <summary>用紫色标记专注强化特殊攻击，与专注条一致。</summary>
         private static readonly Color EmpoweredSwingColor = new Color(1f, 0.55f, 1f, 0.7f);
 
-        /// <summary>The blade's empowered special: a wider, harder-hitting whirlwind, focus-free.</summary>
+        /// <summary>长剑强化特殊攻击：更宽、伤害更高的旋风，不额外消耗专注。</summary>
         /// <remarks>
-        /// Empowered specials cost no stamina — the focus meter is their price — and hit markedly
-        /// harder with more poise, so a full meter spent well is a real swing in the exchange and not
-        /// just a recolour. Their violet flash matches the focus bar, so the payoff reads on screen.
+        /// 强化特殊攻击不耗耐力，专注条就是代价；伤害和架势伤害明显提高，让正确消费满条真正扭转交锋，
+        /// 而非只换颜色。紫色闪光与专注条一致，使回报在屏幕上可读。
         /// </remarks>
         private static AttackDefinition CreateBladeEmpoweredSpecial() => CreateAttack(
             "BladeSpecialEmpowered", "Tempest", DamageType.Special,
@@ -1027,7 +969,7 @@ namespace AdaptiveBossArena.Editor
             range: 3.3f, arc: 360f, poise: 52f, knockback: 7f, hitStop: 0.12f, trauma: 0.5f,
             staminaCost: 0f, shape: AttackShape.Sphere, overlayColor: EmpoweredSwingColor);
 
-        /// <summary>The greatsword's empowered special: a devastating, arena-clearing cataclysm.</summary>
+        /// <summary>巨剑强化特殊攻击：毁灭性的清场灾变。</summary>
         private static AttackDefinition CreateGreatswordEmpoweredSpecial() => CreateAttack(
             "GreatswordSpecialEmpowered", "Cataclysm", DamageType.Special,
             damage: 78f, startup: 0.30f, active: 0.28f, recovery: 0.5f,
@@ -1035,22 +977,21 @@ namespace AdaptiveBossArena.Editor
             staminaCost: 0f, shape: AttackShape.Sphere, stagger: StaggerStrength.Interrupt,
             overlayColor: EmpoweredSwingColor);
 
-        /// <summary>The energy blade's empowered special: a longer, faster storm of blades.</summary>
+        /// <summary>能量刃强化特殊攻击：更长、更快的刀刃风暴。</summary>
         private static AttackDefinition CreateEnergyEmpoweredSpecial() => CreateAttack(
             "EnergySpecialEmpowered", "Storm of Blades", DamageType.Special,
             damage: 48f, startup: 0.14f, active: 0.40f, recovery: 0.34f,
             range: 3.1f, arc: 360f, poise: 46f, knockback: 5f, hitStop: 0.09f, trauma: 0.42f,
             staminaCost: 0f, shape: AttackShape.Sphere, overlayColor: EmpoweredSwingColor);
 
-        /// <summary>Amber tint for the greatsword's swings.</summary>
+        /// <summary>巨剑挥击使用琥珀色。</summary>
         private static readonly Color GreatswordSwingColor = new Color(1f, 0.7f, 0.35f, 0.6f);
 
-        /// <summary>Cyan tint for the energy blade's swings.</summary>
+        /// <summary>能量刃挥击使用青色。</summary>
         private static readonly Color EnergySwingColor = new Color(0.6f, 1f, 0.85f, 0.6f);
 
         /// <summary>
-        /// The greatsword's moveset: a slow, heavy two-hit chain that trades speed for reach, poise
-        /// damage and a genuinely frightening committed swing.
+        /// 巨剑招式：缓慢沉重的两段连击，以速度换取范围、架势伤害和令人畏惧的投入挥击。
         /// </summary>
         private static PlayerAttacks CreateGreatswordAttacks()
         {
@@ -1083,8 +1024,7 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// The energy blade's moveset: a rapid four-hit flurry, short-reach and low-damage per hit,
-        /// that rewards staying on top of the boss and rarely staggers anything.
+        /// 能量刃招式：快速四段连击，范围短、单次伤害低，奖励贴近首领，通常难以造成硬直。
         /// </summary>
         private static PlayerAttacks CreateEnergyBladeAttacks()
         {
@@ -1112,12 +1052,10 @@ namespace AdaptiveBossArena.Editor
                 range: 2.1f, arc: 120f, poise: 18f, knockback: 3.5f, hitStop: 0.06f, trauma: 0.18f,
                 overlayColor: EnergySwingColor);
 
-            // The only box in the game, and the one attack that should be. A 40-degree cone at 3.4 m
-            // is a wedge wide enough to catch someone standing well off to the side, which is not
-            // what a lunge looks like. A narrow box along +Z hits what the animation points at and
-            // misses what it does not, so sidestepping a thrust works the way it should.
-            // Centred at z = 2.0 with a 1.4 m half-depth, the box spans 0.6 m to 3.4 m ahead: it
-            // reaches exactly as far as the arc did, without the dead zone inside the guard.
+            // 游戏唯一盒形命中框，也是唯一适合这种形状的攻击。
+            // 3 .4 米处 40 度锥形足以打到明显站在侧边的人，不符合刺击外观。
+            // 沿 +Z 的窄盒只命中动画所指位置，让侧步避刺符合预期。中心 z = 2. 0、半深 1.4 米，
+            // 覆盖前方 0.6 至 3 .4 米，与弧形同样远，却没有防御内侧的死区。
             AttackDefinition thrust = CreateAttack(
                 "EnergyHeavy", "Lunge Thrust", DamageType.Heavy,
                 damage: 30f, startup: 0.22f, active: 0.08f, recovery: 0.4f,
@@ -1156,15 +1094,14 @@ namespace AdaptiveBossArena.Editor
             var weapon = AssetAuthoring.CreateOrLoad<WeaponDefinition>(
                 $"{WeaponFolder}/{assetName}.asset", out bool created);
 
-            // Generated from the weapon's own signature colour and proportions, and assigned below
-            // with the references rather than the tuning: a missing model is a broken asset that
-            // should heal itself on the next run, not a value someone may have adjusted by hand.
+            // 根据武器标志颜色和比例生成，在下方与引用一起赋值而非作为调参：
+            // 模型缺失是下次运行应自动修复的资产错误，不是可能被手动调整的值。
             GameObject model = WeaponModelBuilder.GetOrCreate(
                 assetName, signature, bladeLength, bladeWidth, bladeGlows);
 
             using (AssetAuthoring.AssetWriter writer = AssetAuthoring.Edit(weapon))
             {
-                // References always repaired; tuning only written on creation or a retune.
+                // 始终修复引用；调参仅在创建或重新调参时写入。
                 writer.ReferenceArray("_lightComboChain", attacks.LightChain)
                     .Reference("_heavyAttack", attacks.Heavy)
                     .Reference("_specialAttack", attacks.Special)
@@ -1199,8 +1136,7 @@ namespace AdaptiveBossArena.Editor
 
             using (AssetAuthoring.AssetWriter writer = AssetAuthoring.Edit(config))
             {
-                // Always repaired: a dangling attack reference leaves the boss with an empty
-                // catalogue, which makes it circle the arena forever without ever attacking.
+                // 始终修复：悬空攻击引用使首领目录为空，不断绕竞技场却从不攻击。
                 writer.Reference("_reactionProfile", reactionProfile)
                     .Reference("_phaseShockwave", attacks.PhaseShockwave)
                     .ReferenceArray("_counterStrategies", strategies);
@@ -1212,13 +1148,10 @@ namespace AdaptiveBossArena.Editor
 
                 if (ShouldWriteTuning(created))
                 {
-                    // Written explicitly rather than left to the C# field defaults, which only apply
-                    // at the moment an asset is first created and are unreachable afterwards.
-                    // 900 against a player dealing roughly 25 a second is about 36 seconds of pure
-                    // uptime - which, spent between dodging, waiting out recoveries and healing, is the
-                    // three-to-five-minute winning fight this slice is aimed at. It was 650, tuned when
-                    // the brute had six moves and no second form; with eleven moves and the frenzy it
-                    // ran out of fight before it ran out of ideas. The 1000 it started at read as a sponge.
+                    // 显式写入而不依赖仅在首次创建资产时有效的C# 字段默认值。
+                    // 900 生命面对约每秒 25 伤害，相当于纯输出 36秒；再加闪避、等待后摇和治疗，
+                    // 即目标为三至五分钟的获胜战斗。此前六招且无第二形态时设为 650；十一招加狂暴后，
+                    // 首领还未展尽思路就死了。初版 1000 则像伤害海绵。
                     writer.Float("_maxHealth", 900f)
                         .Float("_maxPoise", 100f)
                         .Float("_poiseRegenPerSecond", 12f)
@@ -1226,31 +1159,29 @@ namespace AdaptiveBossArena.Editor
                         .Float("_resolveBuildPerSecond", 3.2f)
                         .Float("_resolveBuildPerWhiff", 14f)
 
-                        // The parry stance: a tight window to beat and a long tail to punish. The
-                        // window is deliberately shorter than the blade's 0.2s deflect, because the
-                        // player chooses when to swing and the boss only guesses. 24 posture mirrors
-                        // what a clean deflect takes off the boss, slightly under it.
+                        // 招架姿态：短窗口供玩家突破，长尾段供惩罚。窗口刻意短于长剑 0.2 秒弹反，
+                        // 因为玩家主动选择挥击时机，首领只能猜测。
+                        // 24 点姿态损失与玩家成功弹反对首领造成的损失接近，略低。
                         .Float("_baselineParryChance", 0.12f)
                         .Float("_parryWindowSeconds", 0.18f)
                         .Float("_parryTailSeconds", 0.45f)
                         .Float("_parryPostureDamage", 24f)
                         .Float("_parryCooldownSeconds", 1.2f)
 
-                        // The boss is heavy and sheds a shove faster than the player does.
+                        // 首领很重，受推后的速度衰减比玩家更快。
                         .Float("_impulseHalfLifeSeconds", 0.08f)
 
-                        // A fresh stance absorbs most of a blow; a broken one is thrown by all of it.
-                        // Weight becomes something the player wears down rather than a fixed wall.
+                        // 完整架势吸收多数冲击，破碎架势承受全部位移。重量成为玩家能够逐步削弱的东西，
+                        // 而非固定墙壁。
                         .Float("_knockbackResistanceAtFullPoise", 0.85f)
                         .Float("_knockbackResistanceWhenBroken", 0f)
 
-                        // Four times the knight: leaning into the boss shoves it a little and throws
-                        // the knight back a lot, and a charge drives the knight before it.
+                        // 质量为骑士四倍：顶住首领只轻推它，却大幅推回骑士；冲锋则把骑士推到前方。
                         .Float("_bodyMass", 4f)
 
-                        // Presence. It stalks at a third of its speed, walks the last stretch to a blow and
-                        // runs only across real distance; it takes 0.6 s to reach speed and eases into turns.
-                        // The player asked for "slow and heavy walks", not a fast, twitchy boss.
+                        // 存在感。以三分之一速度逼近、步行完成攻击前的最后距离，仅在真正远距离时跑动；
+                        // 达到速度需 0.6 秒，转向平滑。玩家要求的是“缓慢沉重的行走”，
+                        // 不是快速抽动的首领。
                         .Float("_accelerationSeconds", 0.6f)
                         .Float("_stalkSpeedFraction", 0.35f)
                         .Float("_approachRunDistance", 6f)
@@ -1258,8 +1189,7 @@ namespace AdaptiveBossArena.Editor
                         .Float("_turnSmoothingSeconds", 0.25f)
                         .Float("_lungeBrakeDeceleration", 120f)
 
-                        // A charge the player sidesteps into a wall is the brute's own mistake, and
-                        // costs it an interruption and about a third of its stance.
+                        // 玩家侧步使冲锋撞墙，是巨兽自己的失误，应中断攻击并损失约三分之一架势。
                         .Float("_wallImpactSpeed", 9f)
                         .Float("_wallImpactPoiseDamage", 45f);
                 }
@@ -1286,13 +1216,10 @@ namespace AdaptiveBossArena.Editor
                     attacks.Sweep, attacks.Slam, attacks.Charge, attacks.Shockwave, attacks.Jab, attacks.Perilous,
                     attacks.DelayedOverhead, attacks.Spin, attacks.Kick, attacks.Grab, attacks.Leap);
 
-                // Last Stand: the desperation phase. It flows through the same escalation beat as the
-                // others — roar, shockwave, invulnerable rear-up — but arrives with the fullest
-                // moveset, the shortest recovery and the fastest adaptation the boss can reach, so the
-                // final stretch of the fight is its most dangerous and its most legible at once.
-                // Frenzied: it throws the sword away and fights with its hands, faster and with no recovery
-                // worth the name. At a quarter of its health rather than a seventh, so the last form is a
-                // stretch of the fight rather than a flourish at the end of it.
+                // Last Stand 是绝望阶段，沿用其他阶段的咆哮、冲击波、无敌后仰演出，但具有最完整招式、
+                // 最短后摇和最快学习，让最终阶段同时最危险且最清晰。Frenzied 形态丢剑徒手，速度更快，
+                // 几乎没有后摇。在四分之一生命而非七分之一时进入，
+                // 让最后形态成为完整一段战斗而非收尾装饰。
                 WritePhase(
                     phases.GetArrayElementAtIndex(3), ShouldWriteTuning(created), "Frenzied", threshold: 0.25f,
                     moveMultiplier: 1.55f, cooldown: 0.4f, adaptationRate: 2.5f,
@@ -1313,9 +1240,8 @@ namespace AdaptiveBossArena.Editor
             AttackDefinition signature,
             params AttackDefinition[] attacks)
         {
-            // Tuning values are only written on creation so a designer's adjustments survive a
-            // re-run. The attack list and signature below are always rewritten, because they are
-            // derived data — a dangling attack reference would leave the phase silent.
+            // 调参数值仅在创建时写入，保留设计者修改。下方攻击列表和标志招式则始终重写，
+            // 因为属于派生数据；悬空攻击引用会让阶段失去攻击。
             if (writeTuningValues)
             {
                 phase.FindPropertyRelative("_name").stringValue = name;
@@ -1350,10 +1276,8 @@ namespace AdaptiveBossArena.Editor
 
                 if (ShouldWriteTuning(created))
                 {
-                    // Written rather than left to the C# field default, which only applies at the
-                    // moment an asset is first created. This asset already exists, so a default set
-                    // in code would never reach it and the flag would read as unset in the
-                    // inspector while behaving as set.
+                    // 显式写入而非依赖仅在首次创建资产时生效的 C # 默认值。此资产已存在，
+                    // 代码默认值永远无法更新它，可能让 Inspector 标志未设置而行为像已设置。
                     writer.Bool("_clashEnabled", true);
                 }
             }

@@ -8,18 +8,15 @@ using UnityEngine.SceneManagement;
 namespace AdaptiveBossArena.UI
 {
     /// <summary>
-    /// Suspends the fight and shows the pause panel.
+    /// 暂停战斗并显示暂停面板。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Pausing goes through <see cref="ITimeService"/> rather than writing
-    /// <c>Time.timeScale</c> directly. That single indirection is what stops the classic bug where
-    /// unpausing during a hit-stop restores the wrong speed and leaves the game running in
-    /// permanent slow motion.
+    /// 通过<see cref="ITimeService"/>暂停，不直接写<c>Time.timeScale</c>，
+    /// 避免打击停顿中解除暂停后恢复错误速度，导致永久慢动作。
     /// </para>
     /// <para>
-    /// The panel itself ticks on unscaled time, so it still animates and responds while the world
-    /// behind it is frozen.
+    /// 面板使用未缩放时间，世界冻结时仍能动画和响应。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -67,10 +64,10 @@ namespace AdaptiveBossArena.UI
         private bool _isPaused;
         private bool _isSuppressed;
 
-        /// <summary>True while the game is paused by this menu.</summary>
+        /// <summary>游戏被该菜单暂停时为true。</summary>
         public bool IsPaused => _isPaused;
 
-        /// <summary>Raised when the player asks to abandon the attempt.</summary>
+        /// <summary>玩家请求放弃本次尝试时触发。</summary>
         public event Action RestartRequested;
 
         private void Start()
@@ -97,9 +94,8 @@ namespace AdaptiveBossArena.UI
                 return;
             }
 
-            // Settings is built onto the canvas root, so it is a sibling of the pause panel rather
-            // than a child of it. Without this the pause key would hide the pause panel, resume the
-            // fight, and leave the near-opaque settings panel sitting over a live boss.
+            // 设置面板在Canvas根节点，是暂停面板的同级对象。否则暂停键可能隐藏暂停、恢复战斗，
+            // 却留下不透明设置界面盖住正在行动的Boss。
             if (_settingsMenu != null && _settingsMenu.IsOpen)
             {
                 _settingsMenu.Close();
@@ -109,8 +105,8 @@ namespace AdaptiveBossArena.UI
             SetPaused(!_isPaused);
         }
 
-        /// <summary>Pauses or resumes the fight.</summary>
-        /// <param name="paused">True to pause.</param>
+        /// <summary>暂停或继续战斗。</summary>
+        /// <param name="paused">true表示暂停。</param>
         public void SetPaused(bool paused)
         {
             if (_isPaused == paused)
@@ -126,13 +122,12 @@ namespace AdaptiveBossArena.UI
         }
 
         /// <summary>
-        /// Prevents pausing, for use once the fight has ended.
+        /// 禁止暂停，用于战斗结束后。
         /// </summary>
         /// <remarks>
-        /// Without this a player could pause over the victory screen, and unpausing would resume a
-        /// fight whose participants are already dead.
+        /// 否则玩家能在胜利界面上暂停，解除后让已经死亡的双方继续战斗。
         /// </remarks>
-        /// <param name="suppressed">True to ignore the pause input.</param>
+        /// <param name="suppressed">true表示忽略暂停输入。</param>
         public void SetSuppressed(bool suppressed)
         {
             _isSuppressed = suppressed;
@@ -143,18 +138,15 @@ namespace AdaptiveBossArena.UI
             }
         }
 
-        /// <summary>Resumes the fight. Bound to the panel's resume button.</summary>
+        /// <summary>继续战斗，绑定面板继续按钮。</summary>
         public void Resume() => SetPaused(false);
 
         /// <summary>
-        /// Abandons the fight and returns to the title. Bound to the panel's main-menu button.
+        /// 放弃战斗返回标题，绑定主菜单按钮。
         /// </summary>
         /// <remarks>
-        /// Unpauses before loading, without which the freshly loaded title would inherit a zero
-        /// time scale and sit there apparently hung. The challenge modifiers live on the title
-        /// screen, so without this route they are unreachable for the rest of the session once the
-        /// first fight begins — and in a browser, where quitting does nothing, this is the only way
-        /// out of the arena at all.
+        /// 加载前解除暂停，避免新标题继承零时间缩放而像卡死。标题中有挑战选项，
+        /// 返回路径让开战后仍能修改；浏览器不能退出应用，因此这是离开竞技场的唯一途径。
         /// </remarks>
         public void ReturnToMenu()
         {
@@ -162,7 +154,7 @@ namespace AdaptiveBossArena.UI
             SceneManager.LoadScene(_mainMenuSceneName);
         }
 
-        /// <summary>Abandons the attempt and asks for a restart. Bound to the panel's restart button.</summary>
+        /// <summary>放弃本次尝试并请求重开，绑定重新开始按钮。</summary>
         public void Restart()
         {
             SetPaused(false);
@@ -170,15 +162,12 @@ namespace AdaptiveBossArena.UI
         }
 
         /// <summary>
-        /// Quits the application, or leaves play mode in the editor.
+        /// 退出应用，或在编辑器中结束运行模式。
         /// </summary>
         /// <remarks>
-        /// A browser tab cannot be closed by the page inside it, so on WebGL
-        /// <see cref="Application.Quit"/> does nothing at all. The button is therefore hidden at
-        /// runtime on that platform rather than left on screen doing nothing — hidden at runtime and
-        /// not at generation time, because the scene is generated by an editor script that has no
-        /// idea which platform the build will target. Returning to the title is the meaningful exit
-        /// in a browser.
+        /// 网页无法自行关闭浏览器标签，WebGL上的<see cref="Application.Quit"/>无效，
+        /// 因此在运行时隐藏退出按钮。场景生成时不知道目标平台，不能在生成阶段隐藏；
+        /// 浏览器中的有效退出路径是返回标题。
         /// </remarks>
         public void Quit()
         {
@@ -192,7 +181,7 @@ namespace AdaptiveBossArena.UI
         }
 
         /// <summary>
-        /// Whether quitting is meaningful on this platform, so a dead button is never shown.
+        /// 当前平台退出是否有意义，避免显示无效按钮。
         /// </summary>
         public static bool CanQuit
         {
@@ -203,13 +192,13 @@ namespace AdaptiveBossArena.UI
 #endif
         }
 
-        /// <summary>Assigns the references. Used by the interface generator.</summary>
-        /// <param name="actions">Input actions asset.</param>
-        /// <param name="panel">Root object shown while paused.</param>
-        /// <param name="pauseStateChannel">Channel carrying the paused state.</param>
-        /// <param name="settingsMenu">Settings menu this pause menu opens, so it can be closed again.</param>
-        /// <param name="quitButton">Quit button, hidden where quitting is meaningless.</param>
-        /// <param name="mainMenuSceneName">Title scene to return to.</param>
+        /// <summary>指定引用，供界面生成器使用。</summary>
+        /// <param name="actions">输入动作资源。</param>
+        /// <param name="panel">暂停时显示的根对象。</param>
+        /// <param name="pauseStateChannel">传递暂停状态的通道。</param>
+        /// <param name="settingsMenu">暂停菜单打开的设置菜单，用于随后关闭。</param>
+        /// <param name="quitButton">退出按钮，退出无效的平台隐藏。</param>
+        /// <param name="mainMenuSceneName">返回的标题场景。</param>
         public void Bind(
             InputActionAsset actions,
             GameObject panel,
@@ -239,8 +228,7 @@ namespace AdaptiveBossArena.UI
             InputActionMap map = _actions.FindActionMap(_actionMapName, throwIfNotFound: false);
             _pauseAction = map?.FindAction(_pauseActionName, throwIfNotFound: false);
 
-            // Enabled explicitly. The gameplay map is enabled by the player's input reader, but the
-            // menu must keep working even if the player object is disabled or destroyed.
+            // 显式启用。玩家输入读取器启用玩法映射，但玩家对象禁用或销毁时菜单仍必须可用。
             _pauseAction?.Enable();
         }
 
@@ -251,9 +239,8 @@ namespace AdaptiveBossArena.UI
                 _panel.SetActive(_isPaused);
             }
 
-            // Covers every other way the fight can resume — the Resume button, restarting, or the
-            // suppression that fires when the fight ends. Settings must never outlive the pause it
-            // was opened from.
+            // 覆盖继续按钮、重开和战斗结束禁用暂停等恢复路径；
+            // 从暂停打开的设置不能在暂停结束后继续存在。
             if (!_isPaused && _settingsMenu != null && _settingsMenu.IsOpen)
             {
                 _settingsMenu.Close();

@@ -1,72 +1,67 @@
 namespace AdaptiveBossArena.Core.Services
 {
     /// <summary>
-    /// The single owner of game time, including hit-stop, slow-motion and pause.
+    /// 游戏时间的唯一管理者，涵盖命中停顿、慢动作和暂停。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// No other type in the project may write <c>Time.timeScale</c>. Hit-stop, the perfect-dodge
-    /// slow-motion reward, and the pause menu all want to control time, and letting them each set
-    /// the global scale directly produces the classic bug where unpausing restores the wrong speed
-    /// because a hit-stop was in flight. Funnelling every request through one service makes those
-    /// effects compose instead of collide.
+    /// 项目中其他类型不能写入 <c>Time.timeScale</c>。命中停顿、完美闪避慢动作和暂停菜单都要控制时间；
+    /// 若各自直接设置全局倍率，就会出现解除暂停时因停顿仍在进行而恢复错误速度的经典问题。
+    /// 所有请求统一经过一个服务，使效果能够组合而非冲突。
     /// </para>
     /// <para>
-    /// Consumers pick a clock deliberately: combat logic ticks on <see cref="DeltaTime"/> so it
-    /// freezes during hit-stop, while UI, camera shake and the pause menu tick on
-    /// <see cref="UnscaledDeltaTime"/> so they keep animating.
+    /// 调用者应明确选择时钟：战斗逻辑使用 <see cref="DeltaTime"/>，因此命中停顿时冻结；UI、
+    /// 相机震动和暂停菜单使用 <see cref="UnscaledDeltaTime"/>，因此继续播放动画。
     /// </para>
     /// </remarks>
     public interface ITimeService
     {
-        /// <summary>Frame delta after hit-stop, slow-motion and pause are applied.</summary>
+        /// <summary>应用命中停顿、慢动作和暂停后的帧时间差。</summary>
         float DeltaTime { get; }
 
-        /// <summary>Frame delta unaffected by any time manipulation.</summary>
+        /// <summary>不受任何时间操作影响的帧时间差。</summary>
         float UnscaledDeltaTime { get; }
 
-        /// <summary>Physics step after time manipulation is applied.</summary>
+        /// <summary>应用时间操作后的物理步长。</summary>
         float FixedDeltaTime { get; }
 
         /// <summary>
-        /// Seconds of scaled time elapsed since the fight began.
+        /// 战斗开始后经过的缩放时间秒数。
         /// </summary>
         /// <remarks>
-        /// This is the clock every player observation is stamped with, so perception latency is
-        /// measured in the same time frame that combat happens in. A hit-stop therefore pauses the
-        /// boss's perception too, rather than silently handing it fresher data.
+        /// 全部玩家观察使用此时钟加时间戳，因此感知延迟与战斗处于相同时间尺度。
+        /// 命中停顿也会暂停Boss 感知，而非悄悄提供更新数据。
         /// </remarks>
         float CombatTime { get; }
 
-        /// <summary>Current multiplier applied to real time.</summary>
+        /// <summary>当前应用到真实时间的倍率。</summary>
         float TimeScale { get; }
 
-        /// <summary>True while the game is paused.</summary>
+        /// <summary>游戏暂停期间为 true。</summary>
         bool IsPaused { get; }
 
         /// <summary>
-        /// Freezes time briefly to sell the weight of an impact.
+        /// 短暂冻结时间，表现命中的重量感。
         /// </summary>
         /// <remarks>
-        /// Requests do not queue. A longer request supersedes a shorter one already in flight, so a
-        /// heavy hit landing during a light hit's freeze extends it rather than being swallowed.
+        /// 请求不会排队。较长请求覆盖正在进行的较短请求，使轻击停顿期间的重击能延长冻结而不被吞掉。
         /// </remarks>
-        /// <param name="seconds">Real-time duration of the freeze.</param>
+        /// <param name="seconds">冻结持续的真实时间。</param>
         void RequestHitStop(float seconds);
 
-        /// <summary>Slows time for a fixed duration, used to reward a perfect dodge.</summary>
-        /// <param name="scale">Multiplier to apply, where one is normal speed.</param>
-        /// <param name="durationSeconds">Real-time duration of the effect.</param>
+        /// <summary>在固定时长内减慢时间，用于奖励完美闪避。</summary>
+        /// <param name="scale">要应用的倍率，一表示正常速度。</param>
+        /// <param name="durationSeconds">效果持续的真实时间。</param>
         void RequestSlowMotion(float scale, float durationSeconds);
 
-        /// <summary>Cancels any hit-stop or slow-motion currently in effect.</summary>
+        /// <summary>取消当前生效的命中停顿或慢动作。</summary>
         void ClearTimeEffects();
 
-        /// <summary>Pauses or resumes the game.</summary>
-        /// <param name="paused">True to pause.</param>
+        /// <summary>暂停或恢复游戏。</summary>
+        /// <param name="paused">为 true 时暂停。</param>
         void SetPaused(bool paused);
 
-        /// <summary>Restarts the combat clock, for example when a fight is retried.</summary>
+        /// <summary>重置战斗时钟，例如重试战斗时。</summary>
         void ResetCombatClock();
     }
 }

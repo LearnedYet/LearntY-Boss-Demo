@@ -7,27 +7,24 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts that copying a hit description does not quietly lose any of it.
+    /// 断言复制命中描述不会悄然丢失字段。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <see cref="DamageInfo"/> is init-only and C# 9 has no <c>with</c> for structs, so every copy
-    /// is written out by hand in one private helper. Its own documentation says a field added later
-    /// must not be forgotten there — and nothing enforced that. Every hit in the game passes through
-    /// <c>AtPoint</c> on its way to a hurtbox, so a field missing from the copy is a field that
-    /// silently does nothing, everywhere, while still compiling and still reading correctly at the
-    /// declaration site.
+    /// <see cref="DamageInfo"/> 仅可初始化，C# 9 对结构体还没有 <c>with</c> ，
+    /// 因此每次复制都在私有辅助方法手工写出。其文档要求新增字段别遗漏，但此前无人约束。
+    /// 游戏每次命中到受击框前都经过<c>AtPoint</c> ，复制遗漏字段就会让它在所有地方悄然失效，
+    /// 尽管仍可编译且声明处正确。
     /// </para>
     /// <para>
-    /// Written against the property list by reflection rather than field by field, so it covers
-    /// fields that do not exist yet. That is the whole point: the next person to add one should not
-    /// have to remember this file exists.
+    /// 通过反射检查属性列表，而非逐字段编写，因此也覆盖未来字段。下一位新增字段的人不必记得此测试存在，
+    /// 正是目的。
     /// </para>
     /// </remarks>
     [TestFixture]
     public sealed class DamageInfoCopyTests
     {
-        /// <summary>The three fields callers are allowed to change, which are excluded from checks.</summary>
+        /// <summary>调用者允许修改的三个字段，排除检查。</summary>
         private static readonly HashSet<string> DeliberatelyVaried = new HashSet<string>
         {
             nameof(DamageInfo.Amount),
@@ -35,7 +32,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             nameof(DamageInfo.HitDirection)
         };
 
-        /// <summary>A hit with every field set away from its default, so a dropped one shows up.</summary>
+        /// <summary>每个字段都偏离默认值的命中数据，便于发现丢失。</summary>
         private static DamageInfo Distinctive() => new DamageInfo
         {
             Amount = 37f,
@@ -71,7 +68,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             }
         }
 
-        /// <summary>Boxes the struct once so reflection reads the same instance for every property.</summary>
+        /// <summary>结构体仅装箱一次，让反射对每个属性读取同一实例。</summary>
         private static object BoxOf(in DamageInfo damage) => damage;
 
         [Test]
@@ -103,9 +100,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void UnparryableSurvivesTheCopyEveryHitMakes()
         {
-            // Named separately because it is the field this test was written for: the executor calls
-            // AtPoint on the way to every hurtbox, so an unparryable execution that lost the flag
-            // here would be deflectable in play while looking correct in the asset.
+            // 单独命名，因为测试就是为此字段编写：执行器到每个受击框前都调用 AtPoint，
+            // 处决若在此丢失不可招架标志，会在游戏中可被弹反，资产却看似正确。
             Assert.IsTrue(Distinctive().AtPoint(Vector3.zero, Vector3.forward).Unparryable);
         }
     }

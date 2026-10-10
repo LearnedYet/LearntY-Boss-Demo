@@ -5,13 +5,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the single owner of hit-stop, slow-motion and pause.
+    /// 测试命中停顿、慢动作与暂停的唯一管理者。
     /// </summary>
     /// <remarks>
-    /// The composition rules matter more than any individual effect. The classic failure is a pause
-    /// entered while a hit-stop is in flight, which on resume restores the wrong time scale and
-    /// leaves the game running in permanent slow-motion. These tests pin the precedence order that
-    /// prevents it.
+    /// 组合规则比单个效果更重要。典型故障是在命中停顿生效时进入暂停，恢复后还原错误时间倍率，
+    /// 使游戏永久处于慢动作。这些测试固定避免该故障的优先级顺序。
     /// </remarks>
     [TestFixture]
     public sealed class TimeServiceTests
@@ -25,8 +23,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [SetUp]
         public void CaptureEngineTimeState()
         {
-            // The service writes global engine state, so it is restored afterwards to keep these
-            // tests from affecting anything that runs later in the session.
+            // 服务会写入全局引擎状态，因此随后还原，避免影响本次会话后续运行的任何测试。
             _originalTimeScale = Time.timeScale;
             _originalFixedDeltaTime = Time.fixedDeltaTime;
         }
@@ -41,8 +38,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void HitStop_LeavesThePhysicsStepAtItsBaseSize()
         {
-            // The step used to follow the time scale down to about 1.7e-6 s. Harmless while nothing
-            // used Rigidbodies; a ragdoll handed that step would stop resolving its joints.
+            // 步长原先会随时间倍率降低至约 1.7e-6 秒。尚未使用 Rigidbody时无害，
+            // 布娃娃使用该步长则会停止正确解析关节。
             var service = new TimeService(Frame);
             service.RequestHitStop(0.1f);
 
@@ -55,7 +52,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void Pause_NeverHandsTheEngineAZeroPhysicsStep()
         {
-            // Pausing used to write exactly zero, which the engine does not accept as a step.
+            // 暂停原先直接写入零值，而引擎不接受零步长。
             var service = new TimeService(Frame);
 
             service.SetPaused(true);
@@ -67,8 +64,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void SlowMotion_ShrinksThePhysicsStepWithTheClock()
         {
-            // Kept from the original behaviour: in slow-motion physics stays as smooth on screen as
-            // at full speed, rather than turning visibly coarse.
+            // 保留原先行为：慢动作中的物理在屏幕上仍与正常速度同样平滑，而非明显变得粗糙。
             var service = new TimeService(Frame);
             service.RequestSlowMotion(0.5f, 1f);
 
@@ -137,7 +133,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             service.Tick(Frame);
             service.RequestHitStop(0.03f);
 
-            // A light hit landing during a heavy hit's freeze must not cut the heavier impact short.
+            // 重击冻结期间到来的轻击不能缩短较重冲击的停顿。
             for (int i = 0; i < 4; i++)
             {
                 service.Tick(Frame);
@@ -201,8 +197,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             service.SetPaused(false);
             service.Tick(Frame);
 
-            // The bug this guards against is unpausing to full speed and discarding the slow-motion,
-            // or worse, unpausing into a stale scale that never clears.
+            // 此测试防止恢复暂停后直接全速并丢弃慢动作，更糟的是恢复为永不清除的过期倍率。
             Assert.AreEqual(0.4f, service.TimeScale, Tolerance);
         }
 
@@ -239,8 +234,8 @@ namespace AdaptiveBossArena.Tests.EditMode
                 service.Tick(Frame);
             }
 
-            // Observation timestamps ride this clock, so a hit-stop must freeze the boss's
-            // perception too rather than handing it fresher data than the fight has produced.
+            // 观察时间戳使用此时钟，因此命中停顿也必须冻结首领感知，
+            // 不能交给它比战斗实际产生的信息更新的数据。
             Assert.AreEqual(afterNormalFrame, service.CombatTime, 0.001f);
         }
 

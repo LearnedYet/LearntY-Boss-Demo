@@ -6,12 +6,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the smoothing primitive that governs how quickly the boss adapts.
+    /// 测试控制首领适应速度的平滑基础算法。
     /// </summary>
     /// <remarks>
-    /// The half-life contract is a design promise, not just an implementation detail. If a
-    /// half-life of ten seconds did not actually halve a value's influence in ten seconds, every
-    /// adaptation timing tuned against it would be wrong in a way no play test could diagnose.
+    /// 半衰期约定属于设计承诺，而非仅仅实现细节。若十秒半衰期并未在十秒内将数值影响减半，
+    /// 所有依据它调节的适应时机都会出错，且试玩无法诊断原因。
     /// </remarks>
     [TestFixture]
     public sealed class EwmaTests
@@ -42,8 +41,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             average.AddSample(0.8f, 0.5f);
 
-            // Blending the first sample against the implicit zero would bias every behaviour feature
-            // downward for the opening seconds of a fight.
+            // 将首次采样与隐含零值混合，会在战斗开头数秒使每个行为特征都偏低。
             Assert.AreEqual(0.8f, average.Value, Tolerance);
         }
 
@@ -56,7 +54,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             average.AddSample(0f, 0f);
             average.AddSample(1f, halfLife);
 
-            // Half the distance from the old value to the new one should have been closed.
+            // 从旧值到新值的距离应已缩短一半。
             Assert.AreEqual(0.5f, average.Value, Tolerance);
         }
 
@@ -84,8 +82,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             average.DecayToward(0f, halfLife);
 
-            // A habit the player abandons has to fade, or the boss keeps countering a tactic that
-            // is no longer being used.
+            // 玩家放弃的习惯必须淡出，否则首领会持续反制已不再使用的战术。
             Assert.AreEqual(0.5f, average.Value, Tolerance);
         }
 
@@ -114,13 +111,11 @@ namespace AdaptiveBossArena.Tests.EditMode
     }
 
     /// <summary>
-    /// Tests for the direction histogram that decides whether the player's movement is exploitable.
+    /// 测试判断玩家移动是否可利用的方向直方图。
     /// </summary>
     /// <remarks>
-    /// Predictability gates the counter-strategy that leads attacks toward a favoured dodge
-    /// direction. Were it to report a high value for evenly distributed movement, the boss would
-    /// appear to predict dodges it had no basis to predict, which is precisely the impression of
-    /// cheating the design forbids.
+    /// 可预测性决定是否允许针对偏好闪避方向提前瞄准的反制策略。若均匀分布移动也被报告为高值，
+    /// 首领就会像在预测没有依据的闪避，这恰是设计禁止的作弊印象。
     /// </remarks>
     [TestFixture]
     public sealed class DirectionHistogramTests
@@ -192,7 +187,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void BinForDirection_AtTheAngleSeam_StaysInRange()
         {
-            // Directions just either side of pi are the case naive rounding pushes out of range.
+            // 紧邻 pi 两侧的方向，是朴素舍入会推出有效范围的情况。
             for (float degrees = -180f; degrees <= 180f; degrees += 7.5f)
             {
                 float radians = degrees * Mathf.Deg2Rad;

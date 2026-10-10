@@ -5,21 +5,19 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the geometry that decides whether a swing reaches a body.
+    /// 测试决定挥击能否触及身体的几何规则。
     /// </summary>
     /// <remarks>
-    /// These exist because of a fault a play-tester felt long before anyone found it: swings that
-    /// visibly overlapped the boss did not register. The angle was measured to the target's centre
-    /// and compared against the arc directly, which quietly required the target's axis to be inside
-    /// the wedge and discarded everything between that axis and the near edge of its body.
+    /// 源于试玩者早已感觉到的故障：视觉上与首领重叠的挥击不命中。原算法测目标中心角并直接对比扇形，
+    /// 要求目标轴位于扇区内，忽略目标中心轴到身体近缘之间的部分。
     /// </remarks>
     [TestFixture]
     public sealed class ArcHitTests
     {
-        /// <summary>The boss's hurtbox radius, the case the fault was worst against.</summary>
+        /// <summary>首领受击框半径，是受此故障影响最大的情况。</summary>
         private const float BossRadius = 0.85f;
 
-        /// <summary>The player's hurtbox radius.</summary>
+        /// <summary>玩家受击框半径。</summary>
         private const float PlayerRadius = 0.38f;
 
         private static Vector3 AtAngle(float degrees, float distance) =>
@@ -28,9 +26,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ABodyOverlappingTheWedgeIsHit_EvenWhenItsCentreIsOutside()
         {
-            // The exact failure. A 90-degree swing reaches 45 degrees off-axis; a boss centred at 55
-            // degrees and 2.5 metres away still has most of its body inside the wedge, because at
-            // that range its 0.85 m radius spans roughly 19 degrees either side of its centre.
+            // 准确复现故障：90 度挥击覆盖轴两侧 45 度；中心位于55 度、
+            // 2.5 米外的首领仍有多数身体在扇区内，因为此距离上 0.85 米半径向中心两侧各展开约 19 度。
             bool hit = AttackHitDetector.IsWithinArc(
                 Vector3.forward, AtAngle(55f, 2.5f), BossRadius, arcDegrees: 90f);
 
@@ -40,8 +37,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ABodyFullyOutsideTheWedgeIsMissed()
         {
-            // Far enough off-axis that even the near edge is clear of the wedge. The fix must not
-            // turn every arc into a circle.
+            // 偏离足够远，使近缘也不在扇区内。修复不能让每个弧形都变成圆。
             bool hit = AttackHitDetector.IsWithinArc(
                 Vector3.forward, AtAngle(85f, 2.5f), BossRadius, arcDegrees: 90f);
 
@@ -60,10 +56,8 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void AWiderBodyIsReachedFromFurtherOffAxis()
         {
-            // The correction has to scale with the target's size, which is why this matters far more
-            // for the player hitting the boss than the other way round.
-            // Between the two thresholds: the boss's 0.85 m body reaches about 65 degrees off-axis
-            // at this range, the player's 0.38 m body only about 54.
+            // 修正必须随目标尺寸变化，因此玩家攻击首领时影响更大。在两阈值之间：
+            // 该距离下首领 0.85米身体覆盖偏轴约 65 度，玩家 0.38米身体只覆盖约 54 度。
             const float offAxis = 58f;
             const float distance = 2.5f;
 
@@ -81,8 +75,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheSameBodyIsHarderToReachFromFurtherAway()
         {
-            // A body subtends less angle the further off it stands, so a swing that catches its edge
-            // up close should miss the same edge at range.
+            // 身体越远，占据角度越小。近处能擦到边缘的挥击，远处应错过同一边缘。
             Assert.IsTrue(
                 AttackHitDetector.IsWithinArc(Vector3.forward, AtAngle(60f, 1.2f), BossRadius, 90f));
 
@@ -93,12 +86,11 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void APointBlankTargetIsAlwaysHit()
         {
-            // No meaningful direction to reject, and a miss at zero range reads as a bug.
+            // 没有有意义的方向可拒绝，零距离未命中会像错误。
             Assert.IsTrue(
                 AttackHitDetector.IsWithinArc(Vector3.forward, Vector3.zero, BossRadius, 40f));
 
-            // A body wider than its own distance encloses the attacker, so a narrow swing still
-            // connects with something pressed against them regardless of which way they face.
+            // 身体半径大于自身距离时包围攻击者，窄挥击也应命中贴身对象，与朝向无关。
             Assert.IsTrue(
                 AttackHitDetector.IsWithinArc(
                     Vector3.forward, AtAngle(170f, 0.4f), BossRadius, 40f));
@@ -107,8 +99,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void AZeroWidthTargetFallsBackToTheCentreTest()
         {
-            // With no width the behaviour must be exactly the old one, so the change is provably an
-            // extension rather than a loosening.
+            // 宽度为零时必须完全保持旧行为，证明改动是扩展而非放松判定。
             Assert.IsTrue(
                 AttackHitDetector.IsWithinArc(Vector3.forward, AtAngle(44f, 2.5f), 0f, 90f));
 

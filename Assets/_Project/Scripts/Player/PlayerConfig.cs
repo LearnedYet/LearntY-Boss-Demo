@@ -5,12 +5,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Player
 {
     /// <summary>
-    /// Every tunable value describing how the player character handles.
+    /// 描述玩家角色操控的全部可调值。
     /// </summary>
     /// <remarks>
-    /// Kept as an asset so the feel of the character can be tuned while the game is running and the
-    /// result kept, which is the only practical way to arrive at good movement values. No field here
-    /// is read by the boss; the AI has no reference to this type or the assembly containing it.
+    /// 保存为资源，使运行时可调角色手感并保留结果，这是获得良好移动参数的实际方式。
+    /// Boss 不读取这里任何字段；AI 没有此类型或其程序集的引用。
     /// </remarks>
     [CreateAssetMenu(
         fileName = "PlayerConfig",
@@ -232,144 +231,143 @@ namespace AdaptiveBossArena.Player
                  "punish a heal it saw start.")]
         private float _healChannelSeconds = 0.9f;
 
-        /// <summary>Maximum health.</summary>
+        /// <summary>最大生命值。</summary>
         public float MaxHealth => _maxHealth;
 
-        /// <summary>Maximum stamina.</summary>
+        /// <summary>最大体力。</summary>
         public float MaxStamina => _maxStamina;
 
-        /// <summary>Stamina restored per second.</summary>
+        /// <summary>每秒恢复的体力。</summary>
         public float StaminaRegenPerSecond => _staminaRegenPerSecond;
 
-        /// <summary>Delay after spending before stamina regeneration resumes.</summary>
+        /// <summary>消耗体力后恢复再生前的延迟。</summary>
         public float StaminaRegenDelaySeconds => _staminaRegenDelaySeconds;
 
-        /// <summary>Top movement speed.</summary>
+        /// <summary>最高移动速度。</summary>
         public float MoveSpeed => _moveSpeed;
 
-        /// <summary>Time to reach top speed.</summary>
+        /// <summary>达到最高速度的时长。</summary>
         public float AccelerationSeconds => _accelerationSeconds;
 
-        /// <summary>Time to come to rest.</summary>
+        /// <summary>减速到静止的时长。</summary>
         public float DecelerationSeconds => _decelerationSeconds;
 
-        /// <summary>Half-life of an imposed shove such as knockback.</summary>
+        /// <summary>击退等外加冲量的半衰期。</summary>
         public float ImpulseHalfLifeSeconds => _impulseHalfLifeSeconds;
 
-        /// <summary>Upward speed of a launch.</summary>
+        /// <summary>击飞的向上速度。</summary>
         public float LaunchUpwardSpeed => _launchUpwardSpeed;
 
-        /// <summary>Ceiling on time spent airborne.</summary>
+        /// <summary>空中停留时长上限。</summary>
         public float MaximumAirborneSeconds => _maximumAirborneSeconds;
 
-        /// <summary>Time spent on the floor.</summary>
+        /// <summary>倒地停留时长。</summary>
         public float KnockdownSeconds => _knockdownSeconds;
 
-        /// <summary>Time spent rising from the floor.</summary>
+        /// <summary>从地面起身的时长。</summary>
         public float GetUpSeconds => _getUpSeconds;
 
-        /// <summary>How long after standing knockdowns and launches are downgraded.</summary>
+        /// <summary>站起后击倒和击飞被降级的保护时长。</summary>
         public float KnockdownImmunitySeconds => _knockdownImmunitySeconds;
 
-        /// <summary>Multiplier on knockback for a hit whose reaction is knockback.</summary>
+        /// <summary>反应类型为击退时的击退倍率。</summary>
         public float KnockbackReactionMultiplier => _knockbackReactionMultiplier;
 
-        /// <summary>Shove speed into a wall that staggers.</summary>
+        /// <summary>外力推动撞墙导致硬直的速度阈值。</summary>
         public float WallImpactSpeed => _wallImpactSpeed;
 
-        /// <summary>Stagger from a hard wall impact.</summary>
+        /// <summary>猛烈撞墙造成的硬直。</summary>
         public float WallImpactStaggerSeconds => _wallImpactStaggerSeconds;
 
-        /// <summary>Fraction of top speed kept when reversing outright at a sprint.</summary>
+        /// <summary>全速反向时保留的最高速度比例。</summary>
         public float TurnSpeedFloor => _turnSpeedFloor;
 
-        /// <summary>Relative mass in body contact.</summary>
+        /// <summary>身体接触时的相对质量。</summary>
         public float BodyMass => _bodyMass;
 
-        /// <summary>Turn rate in degrees per second.</summary>
+        /// <summary>每秒转向角度。</summary>
         public float TurnSpeedDegreesPerSecond => _turnSpeedDegreesPerSecond;
 
-        /// <summary>Distance covered by a dash.</summary>
+        /// <summary>一次闪避覆盖的距离。</summary>
         public float DashDistance => _dashDistance;
 
-        /// <summary>Duration of a dash.</summary>
+        /// <summary>一次闪避持续的时长。</summary>
         public float DashDurationSeconds => _dashDurationSeconds;
 
-        /// <summary>Lockout after a dash before another may begin.</summary>
+        /// <summary>闪避结束后再次闪避前的锁定时间。</summary>
         public float DashCooldownSeconds => _dashCooldownSeconds;
 
-        /// <summary>Stamina consumed per dash.</summary>
+        /// <summary>每次闪避消耗的体力。</summary>
         public float DashStaminaCost => _dashStaminaCost;
 
-        /// <summary>Duration of dodge invulnerability, in seconds from the start of the roll.</summary>
+        /// <summary>闪避无敌时长，从翻滚开始计秒。</summary>
         /// <remarks>
-        /// Capped at the roll's own length, so a roll tuned shorter than its invincibility never
-        /// leaves the player invincible after it has ended.
+        /// 不超过翻滚本身时长，因此将翻滚调短于无敌时间时，也不会在结束后继续无敌。
         /// </remarks>
         public float InvulnerabilitySeconds => Mathf.Min(_invulnerabilitySeconds, _dashDurationSeconds);
 
-        /// <summary>Fraction of the roll during which the stick can still steer it.</summary>
+        /// <summary>翻滚中仍允许摇杆调整方向的比例。</summary>
         public float DashSteerFraction => _dashSteerFraction;
 
-        /// <summary>Fraction of the roll after which a buffered attack may cancel it.</summary>
+        /// <summary>翻滚达到此比例后，缓存攻击可取消翻滚。</summary>
         public float DashCancelFraction => _dashCancelFraction;
 
 
-        /// <summary>Weapons the player can switch between.</summary>
+        /// <summary>玩家可切换的武器。</summary>
         public WeaponDefinition[] Weapons => _weapons;
 
-        /// <summary>Light attack chain in execution order, used when no weapon is equipped.</summary>
+        /// <summary>按执行顺序排列的轻击连招，未装备武器时使用。</summary>
         public AttackDefinition[] LightComboChain => _lightComboChain;
 
-        /// <summary>The heavy attack.</summary>
+        /// <summary>重击。</summary>
         public AttackDefinition HeavyAttack => _heavyAttack;
 
-        /// <summary>The special ability attack.</summary>
+        /// <summary>特殊技能攻击。</summary>
         public AttackDefinition SpecialAttack => _specialAttack;
 
-        /// <summary>Cooldown on the special ability.</summary>
+        /// <summary>特殊技能冷却。</summary>
         public float SpecialCooldownSeconds => _specialCooldownSeconds;
 
-        /// <summary>Stronger special used when focus is full, or null to reuse the normal special.</summary>
+        /// <summary>专注充满时使用的强化特殊技能，null 表示复用普通技能。</summary>
         public AttackDefinition EmpoweredSpecialAttack => _empoweredSpecialAttack;
 
-        /// <summary>Focus needed to empower a special.</summary>
+        /// <summary>强化特殊技能所需专注。</summary>
         public float MaxFocus => _maxFocus;
 
-        /// <summary>Focus gained from a clean deflect.</summary>
+        /// <summary>精准弹反获得的专注。</summary>
         public float FocusPerDeflect => _focusPerDeflect;
 
-        /// <summary>Focus gained from a perfect dodge.</summary>
+        /// <summary>完美闪避获得的专注。</summary>
         public float FocusPerPerfectDodge => _focusPerPerfectDodge;
 
-        /// <summary>Strike used to punish a broken guard.</summary>
+        /// <summary>惩罚被击破防线的攻击。</summary>
         public AttackDefinition RiposteAttack => _riposteAttack;
 
-        /// <summary>The execution used to punish a broken guard, or null to reuse the riposte.</summary>
+        /// <summary>惩罚被击破防线的处决，null 表示复用反击。</summary>
         public AttackDefinition ExecutionAttack => _executionAttack;
 
-        /// <summary>Posture capacity.</summary>
+        /// <summary>架势容量。</summary>
         public float MaxPosture => _maxPosture;
 
-        /// <summary>Posture recovered per second.</summary>
+        /// <summary>每秒恢复的架势。</summary>
         public float PostureRegenPerSecond => _postureRegenPerSecond;
 
-        /// <summary>Posture cost of a late block.</summary>
+        /// <summary>较晚格挡消耗的架势。</summary>
         public float BlockPostureCost => _blockPostureCost;
 
-        /// <summary>Fraction of damage that gets through a late block.</summary>
+        /// <summary>较晚格挡仍穿透的伤害比例。</summary>
         public float BlockChipFraction => _blockChipFraction;
 
-        /// <summary>Posture a clean deflect deals to the attacker.</summary>
+        /// <summary>精准弹反对攻击者造成的架势伤害。</summary>
         public float DeflectPostureDamage => _deflectPostureDamage;
 
-        /// <summary>Health restored per heal.</summary>
+        /// <summary>每次治疗恢复的生命值。</summary>
         public float HealAmount => _healAmount;
 
-        /// <summary>Heal uses available per attempt.</summary>
+        /// <summary>每次挑战可用的治疗次数。</summary>
         public int HealCharges => _healCharges;
 
-        /// <summary>Channel time before a heal lands.</summary>
+        /// <summary>治疗生效前的引导时间。</summary>
         public float HealChannelSeconds => _healChannelSeconds;
     }
 }

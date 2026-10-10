@@ -7,11 +7,10 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.AI
 {
-    /// <summary>Everything that changes about the boss when it enters a new phase.</summary>
+    /// <summary>Boss 进入新阶段时改变的全部内容。</summary>
     /// <remarks>
-    /// Phases escalate by widening the repertoire and raising the adaptation rate, never by handing
-    /// the boss information it did not have. A phase-three boss reacts faster and commits harder,
-    /// but it still sees only what a phase-one boss saw.
+    /// 阶段升级通过扩展招式和提高适应速度实现，绝不提供原本没有的信息。第三阶段 Boss 反应更快、
+    /// 投入更深，但仍只能看见第一阶段可见的信息。
     /// </remarks>
     [Serializable]
     public struct BossPhaseDefinition
@@ -49,35 +48,34 @@ namespace AdaptiveBossArena.AI
         [Tooltip("Multiplier on how quickly the boss adopts new counter-strategies in this phase.")]
         private float _adaptationRateMultiplier;
 
-        /// <summary>Name shown in debug tooling.</summary>
+        /// <summary>调试工具显示的名称。</summary>
         public string Name => _name;
 
-        /// <summary>Health fraction at or below which this phase begins.</summary>
+        /// <summary>生命比例低于或等于此值时进入阶段。</summary>
         public float HealthThreshold => _healthThreshold;
 
-        /// <summary>Attacks available during this phase.</summary>
+        /// <summary>本阶段可用攻击。</summary>
         public AttackDefinition[] Attacks => _attacks;
 
-        /// <summary>The phase's signature attack, weighted up in selection, or null for none.</summary>
+        /// <summary>选择时提高权重的阶段标志攻击，无则为 null。</summary>
         public AttackDefinition SignatureAttack => _signatureAttack;
 
-        /// <summary>Movement speed multiplier for this phase.</summary>
+        /// <summary>本阶段移动速度倍率。</summary>
         public float MoveSpeedMultiplier => _moveSpeedMultiplier;
 
-        /// <summary>Pause between attacks during this phase.</summary>
+        /// <summary>本阶段攻击之间的暂停时长。</summary>
         public float AttackCooldownSeconds => _attackCooldownSeconds;
 
-        /// <summary>Adaptation rate multiplier for this phase.</summary>
+        /// <summary>本阶段适应速度倍率。</summary>
         public float AdaptationRateMultiplier => _adaptationRateMultiplier;
     }
 
     /// <summary>
-    /// Every tunable value describing the boss, its phases and its capacity to learn.
+    /// 描述 Boss、阶段和学习能力的全部可调值。
     /// </summary>
     /// <remarks>
-    /// The baseline tuning values are the boss's behaviour before it has learned anything. The
-    /// adaptation system only ever eases these toward new targets, so this asset also defines what
-    /// the boss reverts to when a habit it was countering disappears.
+    /// 基础调参值描述 Boss 尚未学到任何东西时的行为。适应系统只会逐渐向新目标调整，
+    /// 因此此资源也定义了所反制习惯消失后 Boss 回归的值。
     /// </remarks>
     [CreateAssetMenu(
         fileName = "BossConfig",
@@ -293,125 +291,125 @@ namespace AdaptiveBossArena.AI
         [Tooltip("Willingness to press the attack before it has learned anything.")]
         private float _baselineAggression = 0.5f;
 
-        /// <summary>Maximum health.</summary>
+        /// <summary>最大生命值。</summary>
         public float MaxHealth => _maxHealth;
 
-        /// <summary>Poise capacity.</summary>
+        /// <summary>架势容量。</summary>
         public float MaxPoise => _maxPoise;
 
-        /// <summary>Poise restored per second.</summary>
+        /// <summary>每秒恢复的架势。</summary>
         public float PoiseRegenPerSecond => _poiseRegenPerSecond;
 
-        /// <summary>Parry willingness before the boss has learned anything.</summary>
+        /// <summary>Boss 尚未学习时的招架意愿。</summary>
         public float BaselineParryChance => _baselineParryChance;
 
-        /// <summary>How long the parry stance refuses hits outright.</summary>
+        /// <summary>招架站姿完全拒绝命中的时长。</summary>
         public float ParryWindowSeconds => _parryWindowSeconds;
 
-        /// <summary>How long the boss stays committed after its parry window closes.</summary>
+        /// <summary>招架窗口关闭后 Boss 仍承担动作投入的时长。</summary>
         public float ParryTailSeconds => _parryTailSeconds;
 
-        /// <summary>Posture a successful boss parry deals to the player.</summary>
+        /// <summary>Boss 成功招架对玩家造成的架势伤害。</summary>
         public float ParryPostureDamage => _parryPostureDamage;
 
-        /// <summary>How long before the boss may attempt another parry.</summary>
+        /// <summary>Boss 再次尝试招架前需等待的时长。</summary>
         public float ParryCooldownSeconds => _parryCooldownSeconds;
 
-        /// <summary>Base movement speed.</summary>
+        /// <summary>基础移动速度。</summary>
         public float MoveSpeed => _moveSpeed;
 
-        /// <summary>Turn rate in degrees per second.</summary>
+        /// <summary>每秒转向角度。</summary>
         public float TurnSpeedDegreesPerSecond => _turnSpeedDegreesPerSecond;
 
-        /// <summary>Half-life of an imposed shove such as knockback.</summary>
+        /// <summary>击退等外加冲量的半衰期。</summary>
         public float ImpulseHalfLifeSeconds => _impulseHalfLifeSeconds;
 
-        /// <summary>Seconds the boss takes to reach or shed full speed.</summary>
+        /// <summary>Boss 加速到全速或减速到静止所需秒数。</summary>
         public float AccelerationSeconds => _accelerationSeconds;
 
-        /// <summary>Fraction of top speed the boss walks at while circling the player.</summary>
+        /// <summary>绕玩家移动时，Boss 行走速度占最高速度的比例。</summary>
         public float StalkSpeedFraction => _stalkSpeedFraction;
 
-        /// <summary>Distance beyond reach at and past which the boss runs to close in.</summary>
+        /// <summary>超出攻击范围的距离，达到或超过时 Boss 跑动接近。</summary>
         public float ApproachRunDistance => _approachRunDistance;
 
-        /// <summary>Fraction of top speed the boss walks at when its attack is almost in reach.</summary>
+        /// <summary>攻击即将够到目标时，Boss 行走速度占最高速度的比例。</summary>
         public float ApproachWalkFraction => _approachWalkFraction;
 
-        /// <summary>Seconds the boss's turning takes to ease up to speed.</summary>
+        /// <summary>Boss 转向平滑提升到全速所需秒数。</summary>
         public float TurnSmoothingSeconds => _turnSmoothingSeconds;
 
-        /// <summary>Speed a lunge loses per second once its wind-up ends.</summary>
+        /// <summary>前摇结束后突进每秒损失的速度。</summary>
         public float LungeBrakeDeceleration => _lungeBrakeDeceleration;
 
-        /// <summary>Lunge speed into a wall that hurts the boss.</summary>
+        /// <summary>突进撞墙使 Boss 受伤的速度阈值。</summary>
         public float WallImpactSpeed => _wallImpactSpeed;
 
-        /// <summary>Poise lost to a lunge into a wall.</summary>
+        /// <summary>突进撞墙损失的架势。</summary>
         public float WallImpactPoiseDamage => _wallImpactPoiseDamage;
 
-        /// <summary>Fraction of knockback shrugged off with a full stance.</summary>
+        /// <summary>架势完整时抵消的击退比例。</summary>
         public float KnockbackResistanceAtFullPoise => _knockbackResistanceAtFullPoise;
 
-        /// <summary>Fraction of knockback shrugged off while the stance is broken.</summary>
+        /// <summary>架势被击破时抵消的击退比例。</summary>
         public float KnockbackResistanceWhenBroken => _knockbackResistanceWhenBroken;
 
-        /// <summary>Relative mass in body contact.</summary>
+        /// <summary>身体接触时的相对质量。</summary>
         public float BodyMass => _bodyMass;
 
-        /// <summary>Reaction and perception limits.</summary>
+        /// <summary>反应和感知限制。</summary>
         public ReactionProfile ReactionProfile => _reactionProfile;
 
-        /// <summary>Phase definitions in order.</summary>
+        /// <summary>按顺序排列的阶段定义。</summary>
         public BossPhaseDefinition[] Phases => _phases;
 
-        /// <summary>The telegraphed unblockable shockwave for phase transitions and the gambit, or null.</summary>
+        /// <summary>阶段变化和孤注一掷使用的带预警不可格挡冲击波，可为 null。</summary>
         public AttackDefinition PhaseShockwave => _phaseShockwave;
 
-        /// <summary>Counter-strategies available to the boss.</summary>
+        /// <summary>Boss 可用的反制策略。</summary>
         public CounterStrategy[] CounterStrategies => _counterStrategies;
 
-        /// <summary>How often the behaviour profile is recomputed.</summary>
+        /// <summary>重算行为画像的频率。</summary>
         public float AnalysisIntervalSeconds => _analysisIntervalSeconds;
 
-        /// <summary>Minimum gap between adaptations.</summary>
+        /// <summary>适应之间的最短间隔。</summary>
         public float MinSecondsBetweenAdaptations => _minSecondsBetweenAdaptations;
 
-        /// <summary>Half-life of the boss's behavioural memory.</summary>
+        /// <summary>Boss 行为记忆的半衰期。</summary>
         public float MemoryHalfLifeSeconds => _memoryHalfLifeSeconds;
 
-        /// <summary>Resolve required before the gambit is ready.</summary>
+        /// <summary>孤注一掷准备完成所需的决心。</summary>
         public float ResolveThreshold => _resolveThreshold;
 
-        /// <summary>Resolve gained per second of fighting.</summary>
+        /// <summary>战斗每秒获得的决心。</summary>
         public float ResolveBuildPerSecond => _resolveBuildPerSecond;
 
-        /// <summary>Resolve gained each time one of the boss's attacks whiffs.</summary>
+        /// <summary>Boss 每次攻击挥空获得的决心。</summary>
         public float ResolveBuildPerWhiff => _resolveBuildPerWhiff;
 
-        /// <summary>Chance a committed whiff overbalances the boss at full commitment.</summary>
+        /// <summary>全投入时，高投入挥空使 Boss 失衡的概率。</summary>
         public float OverbalanceMaxChance => _overbalanceMaxChance;
 
-        /// <summary>Commitment below which the boss never overbalances.</summary>
+        /// <summary>低于此投入程度时 Boss 永不失衡。</summary>
         public float OverbalanceIntensityThreshold => _overbalanceIntensityThreshold;
 
-        /// <summary>Length of the overbalance stumble at full commitment, in seconds.</summary>
+        /// <summary>全投入时失衡踉跄持续的秒数。</summary>
         public float OverbalanceRecoverySeconds => _overbalanceRecoverySeconds;
 
-        /// <summary>Incoming-poise multiplier while the boss is overbalanced.</summary>
+        /// <summary>Boss 失衡期间承受架势伤害的倍率。</summary>
         public float OverbalancePoiseMultiplier => _overbalancePoiseMultiplier;
 
-        /// <summary>Preferred range before adaptation.</summary>
+        /// <summary>适应前偏好的距离。</summary>
         public float BaselinePreferredRange => _baselinePreferredRange;
 
-        /// <summary>Aggression before adaptation.</summary>
+        /// <summary>适应前的进攻性。</summary>
         public float BaselineAggression => _baselineAggression;
 
         /// <summary>
-        /// Resolves which phase applies at a given health fraction.
+        /// 根据指定生命比例确定适用阶段。
         /// </summary>
-        /// <param name="normalizedHealth">Boss health as a fraction of maximum.</param>
-        /// <returns>Zero-based phase index, clamped to the configured range.</returns>
+        /// <param name="normalizedHealth">Boss 生命占最大值的比例。</param>
+        /// <returns>从零开始的阶段索引，限制在配置范围内。</returns>
         public int ResolvePhaseIndex(float normalizedHealth)
         {
             if (_phases == null || _phases.Length == 0)
@@ -419,8 +417,7 @@ namespace AdaptiveBossArena.AI
                 return 0;
             }
 
-            // Phases are ordered from full health downward, so the last one whose threshold has been
-            // crossed is the active one.
+            // 阶段按生命值从高到低排列，因此最后一个已经越过阈值的阶段就是当前阶段。
             int index = 0;
             for (int i = 0; i < _phases.Length; i++)
             {

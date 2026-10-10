@@ -3,35 +3,33 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// The lifecycle of a ground hazard: a warning, a period that bites, and a fade.
+    /// 地面危险区域生命周期：预警、伤害生效及消退。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Split out from <see cref="HazardZone"/> as pure logic so the two things that make a hazard fair
-    /// — that it warns before it hurts, and that it only ticks damage on a fixed cadence rather than
-    /// every frame — can be pinned by an edit-mode test without a scene. Getting either wrong turns a
-    /// "manage your space" hazard into an unreadable frame-rate-dependent trap.
+    /// 从 <see cref="HazardZone"/> 分离为纯逻辑，让两项公平性要求——伤害前预警、
+    /// 按固定节奏而非逐帧造成伤害——无需场景就能在编辑模式测试中固定。任一项出错，
+    /// “管理空间”的危险区域就会变成不可读、依赖帧率的陷阱。
     /// </para>
     /// <para>
-    /// The first damage tick lands the instant the active period opens, so a zone that forms under a
-    /// standing player bites immediately rather than granting a free interval.
+    /// 生效阶段打开瞬间触发第一次伤害，使区域在静止玩家脚下形成时立即伤害，而非免费多给一个间隔。
     /// </para>
     /// </remarks>
     public sealed class HazardTicker
     {
-        /// <summary>Which part of its life a hazard is in.</summary>
+        /// <summary>危险区域所处的生命周期阶段。</summary>
         public enum Stage
         {
-            /// <summary>Telegraphed but not yet dangerous.</summary>
+            /// <summary>已预警，但尚未危险。</summary>
             Warning,
 
-            /// <summary>Live and dealing damage on its cadence.</summary>
+            /// <summary>已生效，按自身节奏造成伤害。</summary>
             Active,
 
-            /// <summary>Dissipating; no longer dangerous.</summary>
+            /// <summary>正在消散，不再危险。</summary>
             Fading,
 
-            /// <summary>Finished and ready to be recycled.</summary>
+            /// <summary>已结束，可以回收。</summary>
             Expired
         }
 
@@ -43,11 +41,11 @@ namespace AdaptiveBossArena.Combat
         private float _elapsed;
         private float _sinceDamage;
 
-        /// <summary>Creates a ticker for one hazard instance.</summary>
-        /// <param name="warningSeconds">Telegraph before the zone becomes dangerous.</param>
-        /// <param name="activeSeconds">How long the zone deals damage.</param>
-        /// <param name="fadeSeconds">Harmless dissipation after the active period.</param>
-        /// <param name="damageIntervalSeconds">Seconds between damage ticks while active.</param>
+        /// <summary>为一个危险区域实例创建计时器。</summary>
+        /// <param name="warningSeconds">区域变危险前的预警时间。</param>
+        /// <param name="activeSeconds">区域造成伤害的时长。</param>
+        /// <param name="fadeSeconds">生效阶段后的无害消散时间。</param>
+        /// <param name="damageIntervalSeconds">生效时伤害跳之间的秒数。</param>
         public HazardTicker(
             float warningSeconds, float activeSeconds, float fadeSeconds, float damageIntervalSeconds)
         {
@@ -56,29 +54,28 @@ namespace AdaptiveBossArena.Combat
             _fadeSeconds = Mathf.Max(0f, fadeSeconds);
             _damageIntervalSeconds = Mathf.Max(0.01f, damageIntervalSeconds);
 
-            // Primed so the first advance inside the active window fires a tick at once.
+            // 预先准备，使生效窗口内首次推进立即触发伤害跳。
             _sinceDamage = _damageIntervalSeconds;
         }
 
-        /// <summary>Seconds elapsed since the hazard began.</summary>
+        /// <summary>区域开始后经过的秒数。</summary>
         public float Elapsed => _elapsed;
 
-        /// <summary>Total life of the hazard.</summary>
+        /// <summary>区域的总生命周期。</summary>
         public float TotalSeconds => _warningSeconds + _activeSeconds + _fadeSeconds;
 
-        /// <summary>The stage the hazard is currently in.</summary>
+        /// <summary>区域当前所处阶段。</summary>
         public Stage CurrentStage =>
             _elapsed >= TotalSeconds ? Stage.Expired
             : _elapsed < _warningSeconds ? Stage.Warning
             : _elapsed < _warningSeconds + _activeSeconds ? Stage.Active
             : Stage.Fading;
 
-        /// <summary>True once the hazard has finished and may be recycled.</summary>
+        /// <summary>区域结束且可以回收时为 true。</summary>
         public bool IsExpired => CurrentStage == Stage.Expired;
 
         /// <summary>
-        /// A zero-to-one presence value for the visual: rising through the warning, full while active,
-        /// falling through the fade.
+        /// 供视觉使用的零至一存在程度：预警期间上升，生效时满值，消退期间下降。
         /// </summary>
         public float VisualPresence
         {
@@ -100,16 +97,16 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// Advances the hazard and reports whether a damage tick should fire this step.
+        /// 推进区域并报告本步是否应触发伤害跳。
         /// </summary>
-        /// <param name="deltaTime">Elapsed scaled time, so a hazard freezes during hit-stop.</param>
-        /// <returns>True when the caller should apply one tick of damage.</returns>
+        /// <param name="deltaTime">经过缩放的时间增量，使危险区域在顿帧期间冻结。</param>
+        /// <returns>调用者应应用一跳伤害时为 true。</returns>
         public bool Advance(float deltaTime)
         {
             _elapsed += Mathf.Max(0f, deltaTime);
 
-            // Only the active window bites, and the accumulator only runs there, so the warning and
-            // fade never bank up ticks that fire the instant the zone goes live or dies.
+            // 只有生效窗口造成伤害，累加器也只在此时运行，避免预警和消退阶段累计跳数，
+            // 在区域生效或结束瞬间集中触发。
             if (CurrentStage != Stage.Active)
             {
                 return false;

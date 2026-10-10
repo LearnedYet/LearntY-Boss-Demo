@@ -4,18 +4,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Dimensions, spawn placement and camera framing for the arena.
+    /// 竞技场尺寸、出生位置和相机构图配置。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The editor scene builder reads this asset to generate the arena, so the scene is a product of
-    /// these values rather than a hand-placed layout that has quietly drifted from them. Changing the
-    /// radius and regenerating is the whole workflow.
+    /// 编辑器场景构建器读取此资源生成竞技场，因此场景由这些数值产生，而非悄然偏离配置的手动布局。
+    /// 修改半径后重新生成，就是完整流程。
     /// </para>
     /// <para>
-    /// Arena size is a combat-design value, not set dressing. It sets the ceiling on how far the
-    /// player can retreat, which is what gives the boss's preferred-range adaptation something to
-    /// work against.
+    /// 竞技场尺寸属于战斗设计，而非场景装饰。它限定玩家后退的最大距离，
+    /// 使首领的偏好距离适应有明确的应对对象。
     /// </para>
     /// </remarks>
     [CreateAssetMenu(
@@ -99,49 +97,49 @@ namespace AdaptiveBossArena.Game
         [Tooltip("How far the camera biases from the player toward the boss, keeping both framed.")]
         private float _cameraBiasTowardBoss = 0.3f;
 
-        /// <summary>Optional set-dressing prefab instantiated at the arena centre, or null.</summary>
+        /// <summary>在竞技场中心实例化的可选环境预制体，或 null。</summary>
         public GameObject EnvironmentPrefab => _environmentPrefab;
 
-        /// <summary>Whether two simultaneous swings bounce off each other instead of both landing.</summary>
+        /// <summary>两次同时挥击是否互相弹开，而非同时命中。</summary>
         public bool ClashEnabled => _clashEnabled;
 
-        /// <summary>Whether the procedural floor/wall meshes are hidden when an environment is present.</summary>
+        /// <summary>存在环境时，是否隐藏程序化地面和墙面网格。</summary>
         public bool HideProceduralMeshesWithEnvironment => _hideProceduralMeshesWithEnvironment;
 
-        /// <summary>Radius of the fighting surface.</summary>
+        /// <summary>战斗地面的半径。</summary>
         public float Radius => _radius;
 
-        /// <summary>Height of the boundary wall.</summary>
+        /// <summary>边界墙的高度。</summary>
         public float WallHeight => _wallHeight;
 
-        /// <summary>Number of segments approximating the boundary circle.</summary>
+        /// <summary>用于近似圆形边界的分段数。</summary>
         public int WallSegments => _wallSegments;
 
-        /// <summary>Player spawn position relative to the arena centre.</summary>
+        /// <summary>玩家相对于竞技场中心的出生位置。</summary>
         public Vector3 PlayerSpawn => _playerSpawn;
 
-        /// <summary>Boss spawn position relative to the arena centre.</summary>
+        /// <summary>首领相对于竞技场中心的出生位置。</summary>
         public Vector3 BossSpawn => _bossSpawn;
 
-        /// <summary>Height of the camera above the floor.</summary>
+        /// <summary>相机距地面的高度。</summary>
         public float CameraHeight => _cameraHeight;
 
-        /// <summary>Distance the camera sits back from its framing target.</summary>
+        /// <summary>相机位于构图目标后方的距离。</summary>
         public float CameraDistance => _cameraDistance;
 
-        /// <summary>Downward pitch of the camera, in degrees.</summary>
+        /// <summary>相机向下俯仰角，单位为度。</summary>
         public float CameraPitchDegrees => _cameraPitchDegrees;
 
-        /// <summary>Half-life of the camera's follow easing.</summary>
+        /// <summary>相机跟随平滑的半衰期。</summary>
         public float CameraFollowHalfLife => _cameraFollowHalfLife;
 
-        /// <summary>Bias of the camera from the player toward the boss.</summary>
+        /// <summary>相机构图从玩家向首领偏移的程度。</summary>
         public float CameraBiasTowardBoss => _cameraBiasTowardBoss;
 
-        /// <summary>Clamps a world position to remain inside the arena boundary.</summary>
-        /// <param name="position">Position to clamp.</param>
-        /// <param name="agentRadius">Radius of the agent being clamped, kept clear of the wall.</param>
-        /// <returns>A position inside the boundary.</returns>
+        /// <summary>将世界位置限制在竞技场边界内。</summary>
+        /// <param name="position">要限制的位置。</param>
+        /// <param name="agentRadius">被限制角色的半径，确保它与墙保持间距。</param>
+        /// <returns>边界内的位置。</returns>
         public Vector3 ClampToArena(Vector3 position, float agentRadius = 0.5f)
         {
             float usableRadius = Mathf.Max(0f, _radius - agentRadius);

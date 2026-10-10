@@ -4,90 +4,86 @@ using AdaptiveBossArena.Utilities.Collections;
 namespace AdaptiveBossArena.Learning
 {
     /// <summary>
-    /// The boss's recollection of what it has seen the player do.
+    /// 首领对自己观察到的玩家行为的记忆。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A bounded ring buffer of witnessed occurrences plus a few running counts. Bounded because a
-    /// fight of any length must cost the same memory and the same per-frame work, and because a boss
-    /// that remembered the entire encounter equally would never let go of a habit the player
-    /// abandoned five minutes ago.
+    /// 使用有界环形缓冲保存观察事件，并维护少量累计计数。
+    /// 限制容量是为了让任意长度的战斗具有相同的内存和逐帧开销，也因为首领若对整场战斗记忆一视同仁，
+    /// 就永远不会忘记玩家在五分钟前已经放弃的习惯。
     /// </para>
     /// <para>
-    /// This type only records. It draws no conclusions; that is
-    /// <see cref="PatternRecognizer"/>'s job. Keeping the two apart means the recording can run
-    /// every frame while the interpretation runs every few seconds, which is precisely the
-    /// separation that stops the boss reacting to individual actions.
+    /// 此类型只记录，不做推断；推断是<see cref="PatternRecognizer"/> 的职责。将两者分开，
+    /// 记录便可逐帧进行，而解释每隔几秒才执行一次；正是这种分离避免首领针对单个动作立即反应。
     /// </para>
     /// </remarks>
     public sealed class CombatMemory
     {
-        /// <summary>Roughly the last few hundred noteworthy occurrences of a fight.</summary>
+        /// <summary>大致保留战斗中最近数百个值得记录的事件。</summary>
         public const int DefaultCapacity = 256;
 
         private readonly CircularBuffer<CombatEvent> _events;
 
-        /// <summary>Creates a memory with a fixed recall depth.</summary>
-        /// <param name="capacity">Number of occurrences retained.</param>
+        /// <summary>创建具有固定回忆深度的记忆。</summary>
+        /// <param name="capacity">保留的事件数量。</param>
         public CombatMemory(int capacity = DefaultCapacity) =>
             _events = new CircularBuffer<CombatEvent>(capacity);
 
-        /// <summary>Occurrences currently retained, oldest first.</summary>
+        /// <summary>当前保留的事件，按从旧到新排序。</summary>
         public CircularBuffer<CombatEvent> Events => _events;
 
-        /// <summary>Number of occurrences retained.</summary>
+        /// <summary>保留的事件数量。</summary>
         public int Count => _events.Count;
 
-        /// <summary>Total player attacks witnessed since the fight began.</summary>
+        /// <summary>自战斗开始以来观察到的玩家攻击总次数。</summary>
         public int PlayerAttacksThrown { get; private set; }
 
-        /// <summary>Player attacks that were heavy.</summary>
+        /// <summary>玩家发动的重攻击次数。</summary>
         public int PlayerHeavyAttacksThrown { get; private set; }
 
-        /// <summary>Player attacks that touched nothing.</summary>
+        /// <summary>玩家未命中任何目标的攻击次数。</summary>
         public int PlayerAttacksWhiffed { get; private set; }
 
-        /// <summary>Dodges witnessed.</summary>
+        /// <summary>观察到的闪避次数。</summary>
         public int PlayerDodges { get; private set; }
 
-        /// <summary>Dodges timed precisely enough to negate an attack outright.</summary>
+        /// <summary>时机足够精准、完全规避攻击的闪避次数。</summary>
         public int PlayerPerfectDodges { get; private set; }
 
-        /// <summary>Heals the player has begun.</summary>
+        /// <summary>玩家开始治疗的次数。</summary>
         public int PlayerHealsStarted { get; private set; }
 
-        /// <summary>Times the player raised their guard.</summary>
+        /// <summary>玩家举起防御的次数。</summary>
         public int PlayerGuardsRaised { get; private set; }
 
-        /// <summary>Attacks the player turned aside on the exact beat.</summary>
+        /// <summary>玩家精准弹反的攻击次数。</summary>
         public int PlayerDeflects { get; private set; }
 
-        /// <summary>Attacks the player caught late on the guard, taking chip and posture.</summary>
+        /// <summary>玩家较晚格挡、承受削血和姿态伤害的攻击次数。</summary>
         public int PlayerBlocks { get; private set; }
 
-        /// <summary>Broken guards the player punished with a riposte.</summary>
+        /// <summary>玩家对崩溃防御实施反击的次数。</summary>
         public int PlayerRipostes { get; private set; }
 
-        /// <summary>Boss attacks that connected.</summary>
+        /// <summary>首领命中的攻击次数。</summary>
         public int BossAttacksLanded { get; private set; }
 
-        /// <summary>Boss attacks that the player avoided.</summary>
+        /// <summary>被玩家躲开的首领攻击次数。</summary>
         public int BossAttacksEvaded { get; private set; }
 
-        /// <summary>Boss attacks that touched nothing.</summary>
+        /// <summary>首领未命中任何目标的攻击次数。</summary>
         public int BossAttacksWhiffed { get; private set; }
 
-        /// <summary>Player swings the boss met on the beat.</summary>
+        /// <summary>首领精准招架的玩家挥击次数。</summary>
         /// <remarks>
-        /// Statistics only, like everything here. Nothing the boss does may hang off this: the bus
-        /// delivers immediately, so a behaviour wired to it would react without the perception delay
-        /// that keeps the boss honest. If the boss should ever parry more against a player it keeps
-        /// reading correctly, that has to ease a tuning parameter on the slow adaptation tick.
+        /// 这里只做统计，与本类其他内容一致。首领行为不得直接依赖它：总线会立即送达事件，
+        /// 直接接入的行为会绕过维持公平性的感知延迟。如果首领要更频繁地招架自己已反复正确识破的玩家，
+        /// 必须在低频适应更新中逐渐调整行为参数。
         /// </remarks>
         public int BossParries { get; private set; }
 
-        /// <summary>Records an occurrence and updates the running counts.</summary>
-        /// <param name="combatEvent">The occurrence to remember.</param>
+        /// <summary>记录事件并更新累计计数。</summary>
+        /// <param name="combatEvent">要记住的事件。</param>
         public void Record(in CombatEvent combatEvent)
         {
             _events.Add(combatEvent);
@@ -132,9 +128,8 @@ namespace AdaptiveBossArena.Learning
                     PlayerHealsStarted++;
                     break;
 
-                // The defensive half of the fight. These four were published to the bus from the
-                // start and counted by nothing, which left the boss unable to learn anything about
-                // the deflect system the design calls its defining mechanic.
+                // 战斗的防御部分。这四类事件从一开始就发布到总线，却未被任何计数器统计，
+                // 导致首领无法学习设计视为核心机制的弹反系统。
                 case CombatEventKind.GuardRaised:
                     PlayerGuardsRaised++;
                     break;
@@ -169,10 +164,9 @@ namespace AdaptiveBossArena.Learning
                     BossAttacksWhiffed++;
                     break;
 
-                // Published by the attacker's executor with the defender as actor, so a swing the
-                // boss parried arrives here rather than in the player's tally. Getting that backwards
-                // would credit a parried player with a deflect and feed the deflect-mastery read a
-                // number that never happened.
+                // 由攻击者的执行器发布，但行为者是防御方，所以被首领招架的挥击进入这里，
+                // 而不是玩家计数。若弄反，就会把被招架的玩家错误记为成功弹反，
+                // 并给弹反高手画像提供根本没有发生过的数值。
                 case CombatEventKind.Parried:
                     BossParries++;
                     break;
@@ -180,12 +174,12 @@ namespace AdaptiveBossArena.Learning
         }
 
         /// <summary>
-        /// Finds the most recent occurrence of a kind by a given actor.
+        /// 查找指定行为者最近发生的某类事件。
         /// </summary>
-        /// <param name="kind">What to look for.</param>
-        /// <param name="actor">Whose action to look for.</param>
-        /// <param name="found">Receives the occurrence when one exists.</param>
-        /// <returns>True when a matching occurrence was retained.</returns>
+        /// <param name="kind">要查找的事件类型。</param>
+        /// <param name="actor">要查找谁的行为。</param>
+        /// <param name="found">存在匹配事件时接收该事件。</param>
+        /// <returns>保留了匹配事件时返回 true。</returns>
         public bool TryFindMostRecent(CombatEventKind kind, CombatantTeam actor, out CombatEvent found)
         {
             for (int i = _events.Count - 1; i >= 0; i--)
@@ -203,7 +197,7 @@ namespace AdaptiveBossArena.Learning
             return false;
         }
 
-        /// <summary>Clears every recollection, for use when a fight restarts.</summary>
+        /// <summary>清除全部记忆，供战斗重试使用。</summary>
         public void Clear()
         {
             _events.Clear();

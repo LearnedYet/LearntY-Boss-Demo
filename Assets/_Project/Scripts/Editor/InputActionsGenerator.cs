@@ -7,29 +7,28 @@ using UnityEngine.InputSystem;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Generates the project's input actions asset from code.
+    /// 从代码生成项目输入动作资产。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The asset is built in memory through the Input System's own authoring API and then written
-    /// out with <see cref="InputActionAsset.ToJson"/>. Hand-writing the JSON would mean inventing
-    /// binding identifiers by hand and would fail at import if any of them were malformed; letting
-    /// the package serialise its own format makes that class of error impossible.
+    /// 通过 Input System 自身编辑 API 在内存构建资产，再用以下方法写出：
+    /// <see cref="InputActionAsset.ToJson"/>。手写 JSON 需要手工生成绑定标识符，
+    /// 任一格式错误都会导致导入失败；让包序列化自身格式可避免这类错误。
     /// </para>
     /// <para>
-    /// Every binding is authored against the constants in <see cref="InputActionNames"/>, so the
-    /// generator and the runtime reader cannot disagree about what an action is called.
+    /// 所有绑定按以下常量定义： <see cref="InputActionNames"/>，
+    /// 保证生成器和运行时读取器对动作名称一致。
     /// </para>
     /// </remarks>
     public static class InputActionsGenerator
     {
-        /// <summary>Where the generated asset is written.</summary>
+        /// <summary>生成资产的写入位置。</summary>
         public const string AssetPath = "Assets/_Project/Settings/PlayerControls.inputactions";
 
         private const string KeyboardMouseScheme = "Keyboard&Mouse";
         private const string GamepadScheme = "Gamepad";
 
-        /// <summary>Creates or overwrites the input actions asset.</summary>
+        /// <summary>创建或覆盖输入动作资产。</summary>
         [MenuItem(EditorMenus.Setup + "Generate Input Actions", priority = EditorMenus.SetupPriorityGenerateAssets + 1)]
         public static void GenerateInputActions()
         {
@@ -47,8 +46,7 @@ namespace AdaptiveBossArena.Editor
             }
             finally
             {
-                // The in-memory asset was only ever a serialisation vehicle; the file on disk is the
-                // real product, and Unity's importer will construct its own instance from it.
+                // 内存资产仅用于序列化，磁盘文件才是实际产物，Unity 导入器会据此创建自身实例。
                 Object.DestroyImmediate(asset);
             }
 
@@ -56,7 +54,7 @@ namespace AdaptiveBossArena.Editor
             Debug.Log($"[Adaptive Boss Arena] Input actions generated at '{AssetPath}'.");
         }
 
-        /// <summary>Declares the device groups so bindings can be filtered per scheme later.</summary>
+        /// <summary>声明设备分组，便于之后按方案筛选绑定。</summary>
         private static void BuildControlSchemes(InputActionAsset asset)
         {
             asset.AddControlScheme(KeyboardMouseScheme)
@@ -67,7 +65,7 @@ namespace AdaptiveBossArena.Editor
                 .WithRequiredDevice<Gamepad>();
         }
 
-        /// <summary>Builds the in-combat action map and all of its bindings.</summary>
+        /// <summary>构建战斗动作映射及其全部绑定。</summary>
         private static void BuildGameplayMap(InputActionAsset asset)
         {
             InputActionMap map = asset.AddActionMap(InputActionNames.GameplayMap);
@@ -75,31 +73,28 @@ namespace AdaptiveBossArena.Editor
             BuildMoveAction(map);
             BuildLookAction(map);
 
-            // Dash sits on a key the thumb can reach without leaving the movement keys, because it
-            // is pressed under pressure and mid-movement more than any other control.
+            // 闪避绑定在拇指无需离开移动键就可触及的按键，因为它最常在承压和移动中使用。
             BuildButton(map, InputActionNames.Dash, "<Keyboard>/space", "<Gamepad>/buttonEast");
 
-            // Guard is held on the right mouse button, the hand that is already on the mouse: the player asked
-            // for block and deflect under the mouse, and Shift is now the heavy-attack modifier.
+            // 鼠标右键持续格挡，由已握鼠标的手操作；玩家要求鼠标控制格挡和弹反，
+            // Shift 现在改为重攻击修饰键。
             BuildButton(map, InputActionNames.Guard, "<Mouse>/rightButton", "<Gamepad>/leftShoulder");
 
             BuildButton(map, InputActionNames.LightAttack, "<Mouse>/leftButton", "<Gamepad>/buttonWest");
             BuildHeavyAttack(map);
 
-            // The parry: a committed strike of its own, not a well-timed guard, so it has its own key.
+            // 招架是独立投入攻击，不是时机正确的格挡，因此有独立按键。
             BuildButton(map, InputActionNames.Parry, "<Keyboard>/q", "<Gamepad>/rightShoulder");
 
-            // E, not Q: Q is the parry.
+            // 使用 E 而非 Q；Q 用于招架。
             BuildButton(map, InputActionNames.Special, "<Keyboard>/e", "<Gamepad>/buttonNorth");
             BuildButton(map, InputActionNames.Heal, "<Keyboard>/r", "<Gamepad>/dpad/up");
 
-            // Deliberately not Tab, which locks on. Two actions on one key meant swapping weapon and
-            // breaking lock at the same moment, which reads as the game being broken.
+            // 刻意不使用负责锁定的 Tab。两个动作绑定同键会同时切武器和解除锁定，看起来像游戏出错。
             BuildButton(map, InputActionNames.SwapWeapon, "<Keyboard>/v", "<Gamepad>/dpad/right");
             BuildButton(map, InputActionNames.Pause, "<Keyboard>/escape", "<Gamepad>/start");
 
-            // Camera controls live in the asset rather than as keys hard-coded in the camera, so they have a
-            // gamepad binding and can be rebound like everything else.
+            // 摄像机控制定义在资产中而非硬编码按键，因此有手柄绑定，也能像其他动作一样重绑。
             InputAction lockOn = map.AddAction(InputActionNames.LockOn, InputActionType.Button);
             lockOn.AddBinding("<Keyboard>/tab", groups: KeyboardMouseScheme);
             lockOn.AddBinding("<Mouse>/middleButton", groups: KeyboardMouseScheme);
@@ -109,11 +104,11 @@ namespace AdaptiveBossArena.Editor
         }
 
         /// <summary>
-        /// Heavy attack: Shift held with the left mouse button, or the right trigger.
+        /// 重攻击：按住 Shift 加鼠标左键，或手柄右扳机。
         /// </summary>
         /// <remarks>
-        /// A modifier composite, so the same button reads as light or heavy by whether Shift is held. The
-        /// reader drops the light press when the heavy one fires on the same frame, since both see the click.
+        /// 使用修饰键组合，根据是否按住 Shift 将同一按钮解释为轻或重攻击。两者都收到点击，
+        /// 因此读取器在同帧触发重攻击时丢弃轻攻击。
         /// </remarks>
         private static void BuildHeavyAttack(InputActionMap map)
         {
@@ -126,7 +121,7 @@ namespace AdaptiveBossArena.Editor
             heavy.AddBinding("<Gamepad>/rightTrigger", groups: GamepadScheme);
         }
 
-        /// <summary>Camera orbit: raw mouse movement in pixels, or the right stick as a rate.</summary>
+        /// <summary>摄像机环绕：鼠标原始像素位移，或右摇杆控制速率。</summary>
         private static void BuildLookAction(InputActionMap map)
         {
             InputAction look = map.AddAction(
@@ -138,12 +133,12 @@ namespace AdaptiveBossArena.Editor
             look.AddBinding("<Gamepad>/rightStick", groups: GamepadScheme).WithProcessor("stickDeadzone");
         }
 
-        /// <summary>Builds the movement axis with keyboard composites and a gamepad stick.</summary>
+        /// <summary>用键盘组合和手柄摇杆构建移动轴。</summary>
         private static void BuildMoveAction(InputActionMap map)
         {
-            // Note the parameter name: the authoring API calls this the expected control *layout*,
-            // even though the field it serialises to in the .inputactions file is named
-            // expectedControlType. Mixing the two up is a compile error, not a runtime surprise.
+            // 注意参数名称：编辑 API 称其为预期控制 layout，
+            // 但序列化到 .inputactions 的字段名为 expecte dControlType。混用会导致编译错误，
+            // 而不是运行时问题。
             InputAction move = map.AddAction(
                 InputActionNames.Move,
                 InputActionType.Value,
@@ -161,12 +156,12 @@ namespace AdaptiveBossArena.Editor
                 .With("Left", "<Keyboard>/leftArrow", KeyboardMouseScheme)
                 .With("Right", "<Keyboard>/rightArrow", KeyboardMouseScheme);
 
-            // A stick deflected slightly by a worn controller must not creep the character.
+            // 磨损手柄摇杆轻微偏转不得让角色自行移动。
             move.AddBinding("<Gamepad>/leftStick", groups: GamepadScheme)
                 .WithProcessor("stickDeadzone");
         }
 
-        /// <summary>Builds a button action bound to one keyboard or mouse control and one gamepad control.</summary>
+        /// <summary>构建同时绑定一个键鼠控制和一个手柄控制的按钮动作。</summary>
         private static void BuildButton(
             InputActionMap map,
             string actionName,

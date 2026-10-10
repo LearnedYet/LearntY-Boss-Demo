@@ -8,30 +8,25 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.UI
 {
     /// <summary>
-    /// Announces on screen that the boss has changed how it fights.
+    /// 在屏幕上告知Boss改变了战斗方式。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This is the single most important element in the interface, and the reason every
-    /// <see cref="AdaptiveBossArena.Learning.CounterStrategy"/> is required to carry a tell.
+    /// 这是界面中最关键的元素，也是每个<see cref="AdaptiveBossArena.Learning.CounterStrategy"/>都必
+    /// 须有提示的原因。
     /// </para>
     /// <para>
-    /// The boss's adaptations are, by design, gradual and subtle: a slightly longer pause before it
-    /// commits, a slightly tighter preferred range. A player who notices the effect without being
-    /// told the cause will not conclude "it has learned that I always attack after dodging". They
-    /// will conclude it is reading their controller. Announcing the change is what converts a
-    /// suspicion of cheating into the intended experience of being outplayed.
+    /// Boss适应刻意缓慢而细微，例如投入攻击前稍长停顿、更近的偏好距离。没有说明原因时，
+    /// 玩家容易认为Boss读取控制器；告知变化才能把作弊怀疑转化为被对手研究并压制的体验。
     /// </para>
     /// <para>
-    /// The presentation is deliberately restrained: a brief line near the top of the screen, then
-    /// gone. A modal popup would stop the fight to explain itself, which would be worse than saying
-    /// nothing.
+    /// 表现保持克制，在屏幕上方短暂显示一行文字后消失，避免模态弹窗中断战斗。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class AdaptationTellDisplay : MonoBehaviour
     {
-        /// <summary>Longest a queued tell waits before being shown, so it cannot arrive stale.</summary>
+        /// <summary>排队提示显示前的最长等待时间，避免过时。</summary>
         private const float MaxQueueAgeSeconds = 6f;
 
         [Header("Source")]
@@ -64,7 +59,7 @@ namespace AdaptiveBossArena.UI
         private float _visibleFor;
         private bool _isShowing;
 
-        /// <summary>A tell waiting its turn, with the time it was raised.</summary>
+        /// <summary>等待中的提示及其发出时间。</summary>
         private readonly struct QueuedTell
         {
             public QueuedTell(string message, float raisedAt)
@@ -78,7 +73,7 @@ namespace AdaptiveBossArena.UI
             public float RaisedAt { get; }
         }
 
-        /// <summary>Multiplies the hold duration, read from the global accessibility setting.</summary>
+        /// <summary>从全局辅助功能设置读取的停留时长倍率。</summary>
         private static float HoldMultiplier => Mathf.Max(1f, FeedbackSettings.TellHoldMultiplier);
 
         private void OnEnable()
@@ -104,8 +99,7 @@ namespace AdaptiveBossArena.UI
 
         private void Update()
         {
-            // Unscaled, so a tell that lands during a hit-stop or a perfect-dodge slow-motion still
-            // reads at a normal pace.
+            // 使用未缩放时间，让打击停顿和完美闪避慢动作中的提示仍以正常速度阅读。
             float deltaTime = Time.unscaledDeltaTime;
 
             if (_isShowing)
@@ -117,10 +111,10 @@ namespace AdaptiveBossArena.UI
             TryShowNext();
         }
 
-        /// <summary>Assigns the channel and presentation elements. Used by the interface generator.</summary>
-        /// <param name="channel">Channel carrying tell messages.</param>
-        /// <param name="label">Text element to write into.</param>
-        /// <param name="group">Group to fade.</param>
+        /// <summary>指定事件通道和表现组件，供界面生成器使用。</summary>
+        /// <param name="channel">传递提示消息的通道。</param>
+        /// <param name="label">要写入的文字组件。</param>
+        /// <param name="group">用于淡入淡出的CanvasGroup。</param>
         public void Bind(StringEventChannel channel, Text label, CanvasGroup group)
         {
             _adaptationChannel = channel;
@@ -135,8 +129,7 @@ namespace AdaptiveBossArena.UI
                 return;
             }
 
-            // Queued rather than shown immediately. Two adaptations landing close together would
-            // otherwise have the second overwrite the first before it had been read.
+            // 先排队再显示，避免短时间内两次适应让后一个提示覆盖尚未读完的前一个。
             _pending.Enqueue(new QueuedTell(message, Time.unscaledTime));
         }
 
@@ -146,8 +139,7 @@ namespace AdaptiveBossArena.UI
             {
                 QueuedTell next = _pending.Dequeue();
 
-                // A tell that waited too long describes a change the player has already lived
-                // through, so showing it would be actively confusing.
+                // 等待太久的提示描述玩家已经历过的变化，再显示会造成混淆。
                 if (Time.unscaledTime - next.RaisedAt > MaxQueueAgeSeconds)
                 {
                     continue;
@@ -188,7 +180,7 @@ namespace AdaptiveBossArena.UI
             }
         }
 
-        /// <summary>Fades in, holds, then fades out.</summary>
+        /// <summary>淡入、停留，再淡出。</summary>
         private float ResolveAlpha(float totalDuration)
         {
             if (_visibleFor < _fadeSeconds)

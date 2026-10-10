@@ -5,11 +5,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the ground scar a lingering hazard is drawn with.
+    /// 测试持续危险区域使用的地面裂痕表现。
     /// </summary>
     /// <remarks>
-    /// It was a flat red disc with a hard edge, which read as a marker on the floor. The scar must fade out
-    /// before its rim, so no edge of the quad it is drawn on can ever show, and must glow along its cracks.
+    /// 原先它是硬边的平坦红色圆盘，看起来只是地面标记。裂痕必须在外缘前淡出，
+    /// 确保绘制用四边形的边缘永远不可见，并沿裂缝发光。
     /// </remarks>
     [TestFixture]
     public sealed class HazardScarTests

@@ -6,15 +6,15 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Reports what the licensed art actually contains, so clips are chosen from facts rather than from file names.
+    /// 报告许可美术的实际内容，便于依据事实而非文件名选择片段。
     /// </summary>
     /// <remarks>
-    /// Mixamo packs name their variants <c>slash</c>, <c>slash (2)</c>, <c>slash (3)</c>. The lengths and root
-    /// speeds here, with the contact sheet, are what tell a quick cut from a wide spinning swing.
+    /// Mixamo 资源包为变体命名为 <c>slash</c>, <c>slash (2)</c>, <c>slash (3)</c>。这里记录的时长、
+    /// 根节点速度，以及姿势图表，可以区分快斩和大幅旋转挥击。
     /// </remarks>
     public static class LicensedArtInventory
     {
-        /// <summary>Logs one line per clip and per character. Run with <c>-executeMethod</c>.</summary>
+        /// <summary>为每个片段和角色记录一行。使用以下参数运行： <c>-executeMethod</c>.</summary>
         public static void WriteReport()
         {
             if (!LicensedArtPostprocessor.Available)

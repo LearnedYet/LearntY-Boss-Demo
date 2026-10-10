@@ -3,47 +3,45 @@ using UnityEngine;
 namespace AdaptiveBossArena.Learning
 {
     /// <summary>
-    /// Reads the situation right now, as opposed to the player's habits over time.
+    /// 读取当前局势，与长期玩家习惯区分开。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Deliberately separate from <see cref="BehaviorProfile"/>, because the two answer different
-    /// questions. The profile says what this player tends to do; this says how the fight is going at
-    /// this moment. A boss that only had the profile would press a losing exchange because the
-    /// player is usually passive, and a boss that only had the situation would never learn anything.
+    /// 刻意与 <see cref="BehaviorProfile"/> 分开，因为两者回答不同问题：画像描述玩家通常怎么做，
+    /// 这里描述战斗当前进行得如何。只有画像的首领可能因玩家通常被动而在劣势交锋中仍继续追击；
+    /// 只有局势判断的首领则永远无法学习。
     /// </para>
     /// <para>
-    /// Everything it reads is visible: the two health bars, the distance between the combatants, and
-    /// what the player appears to be doing. No hidden state is consulted.
+    /// 读取的信息全部可见：两条生命条、交战距离，以及玩家表面上正在做的动作。不查询隐藏状态。
     /// </para>
     /// </remarks>
     public sealed class ThreatEvaluator
     {
-        /// <summary>Health fraction below which the boss treats its own position as precarious.</summary>
+        /// <summary>首领生命低于此比例时，视为自身处境危险。</summary>
         private const float DesperationThreshold = 0.3f;
 
-        /// <summary>Distance treated as the far end of the arena when normalising.</summary>
+        /// <summary>归一化时视为竞技场最远距离的数值。</summary>
         private const float MaxMeaningfulDistance = 14f;
 
         /// <summary>
-        /// Scores how favourable the current exchange is for the boss, from zero to one.
+        /// 评分当前交锋对首领的有利程度，范围为零至一。
         /// </summary>
-        /// <param name="bossHealthNormalized">Boss health as a fraction of maximum.</param>
-        /// <param name="playerHealthNormalized">Player health as a fraction of maximum, read from their bar.</param>
-        /// <returns>Zero when the boss is losing badly, one when it is comfortably ahead.</returns>
+        /// <param name="bossHealthNormalized">首领生命占最大值的比例。</param>
+        /// <param name="playerHealthNormalized">从生命条读取的玩家生命比例。</param>
+        /// <returns>严重落后时为零，明显领先时为一。</returns>
         public float EvaluateAdvantage(float bossHealthNormalized, float playerHealthNormalized) =>
             Mathf.Clamp01((bossHealthNormalized - playerHealthNormalized) * 0.5f + 0.5f);
 
         /// <summary>
-        /// Scores how much the boss should want to close the gap, from zero to one.
+        /// 评分首领应有多希望缩短距离，范围为零至一。
         /// </summary>
         /// <remarks>
-        /// Combines raw distance with learned aggression, so a boss that has worked out the player
-        /// kites will read the same gap as more urgent than one that has not.
+        /// 结合原始距离与学习得到的进攻性，因此识破玩家保持距离牵制习惯的首领，
+        /// 会比未识破时更急于缩短相同距离。
         /// </remarks>
-        /// <param name="distance">Current separation.</param>
-        /// <param name="learnedAggression">Aggression tuning value.</param>
-        /// <returns>Urgency of closing, from zero to one.</returns>
+        /// <param name="distance">当前间距。</param>
+        /// <param name="learnedAggression">进攻性行为参数。</param>
+        /// <returns>缩短距离的紧迫程度，范围为零至一。</returns>
         public float EvaluateClosingUrgency(float distance, float learnedAggression)
         {
             float distanceFactor = Mathf.Clamp01(distance / MaxMeaningfulDistance);
@@ -51,24 +49,23 @@ namespace AdaptiveBossArena.Learning
         }
 
         /// <summary>
-        /// True when the boss is low enough that it should fight as though it has little to lose.
+        /// 首领生命足够低、应以破釜沉舟的方式战斗时为 true。
         /// </summary>
-        /// <param name="bossHealthNormalized">Boss health as a fraction of maximum.</param>
-        /// <returns>Whether the boss is in a desperate position.</returns>
+        /// <param name="bossHealthNormalized">首领生命占最大值的比例。</param>
+        /// <returns>首领是否处于绝境。</returns>
         public bool IsDesperate(float bossHealthNormalized) =>
             bossHealthNormalized <= DesperationThreshold;
 
         /// <summary>
-        /// True when the player looks committed to something and cannot easily answer a punish.
+        /// 玩家看起来投入某项动作、难以轻易应对反击时为 true。
         /// </summary>
         /// <remarks>
-        /// The only situational read the boss acts on directly, and it is drawn from the delayed
-        /// observation like everything else. It notices that a heavy swing or a heal has been running
-        /// for a while, which is exactly what an attentive opponent would notice.
+        /// 这是首领直接采取行动的唯一局势判断，与其他信息一样来自延迟观察。
+        /// 它注意到重攻击或治疗已持续一段时间，这也是认真观察的对手能够发现的信息。
         /// </remarks>
-        /// <param name="observation">The delayed player snapshot.</param>
-        /// <param name="minimumCommitmentSeconds">How long the action must have been running.</param>
-        /// <returns>Whether an opening appears to be available.</returns>
+        /// <param name="observation">延迟后的玩家快照。</param>
+        /// <param name="minimumCommitmentSeconds">动作必须已经持续的时间。</param>
+        /// <returns>是否看起来存在可利用的破绽。</returns>
         public bool LooksCommitted(
             Core.Perception.PlayerObservation observation,
             float minimumCommitmentSeconds = 0.15f)
@@ -78,10 +75,8 @@ namespace AdaptiveBossArena.Learning
                 return false;
             }
 
-            // Airborne counts: a thrown body cannot dodge or guard, and anyone watching can see it. A
-            // body on the floor does not, although it is just as helpless - it cannot be hurt there,
-            // and treating it as an opening would have the boss swing at it on a rule rather than
-            // discover by whiffing that it gains nothing.
+            // 腾空也算：被抛起的身体无法闪避或防御，任何观察者都能看到。倒地则不算，虽然同样无法行动，
+            // 但此时无法受到伤害；若将其视为破绽，首领就会依据规则攻击，而非通过空挥发现自己无法获利。
             bool isCommittedAction =
                 observation.ActionState == Core.Perception.ObservableActionState.HeavyAttacking ||
                 observation.ActionState == Core.Perception.ObservableActionState.Healing ||

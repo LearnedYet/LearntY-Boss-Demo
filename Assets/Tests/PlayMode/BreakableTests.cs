@@ -12,7 +12,7 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that heavy impacts break the arena's stone, within budget, without touching the fight.
+    /// 测试重冲击在预算内破坏竞技场石材，同时不影响战斗。
     /// </summary>
     [TestFixture]
     public sealed class BreakableTests
@@ -55,8 +55,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator ASlamAtTheWallInFrontOfAColumnBringsTheColumnDown()
         {
-            // The columns stand behind the wall ring, where no blow lands. A heavy one at the wall squarely
-            // in front of a column must still reach it, or the tallest stone in the room could never fall.
+            // 立柱位于墙环后方，没有攻击直接落在那里。柱子正前方墙边的重击仍必须触及它，
+            // 否则房间最高的石结构永远无法倒塌。
             Destructible column = _field.Destructibles.First(d => d.name == "Shaft_0");
             Destructible opposite = _field.Destructibles.First(d => d.name == "Shaft_4");
 

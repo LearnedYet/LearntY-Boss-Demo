@@ -4,19 +4,17 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Captures the mouse during the fight and frees it for menus.
+    /// 战斗期间捕获鼠标，菜单期间释放鼠标。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The camera now orbits with the mouse, which only works with the pointer captured: a free pointer runs off
-    /// the edge of the window and stops turning, or in a browser clicks the page behind the game. A menu needs
-    /// the pointer back, so capture follows what is on screen rather than being set once.
+    /// 相机现在由鼠标控制环绕，因此必须捕获指针：自由指针会跑出窗口边缘而停止转向，
+    /// 或在浏览器中点击游戏背后的页面。菜单需要恢复指针，因此捕获状态跟随屏幕内容，而非只设置一次。
     /// </para>
     /// <para>
-    /// A browser only grants pointer capture after a click, so on the web the first click into the fight is
-    /// what captures it; asking again every frame until then is how Unity's WebGL player expects to be asked.
-    /// Escape releases it in a browser whatever the game says, and Escape also opens the pause menu, so the two
-    /// agree.
+    /// 浏览器只在点击后允许捕获指针，所以网页端进入战斗后的第一次点击才会捕获；在此之前逐帧重试，
+    /// 是 Unity WebGL 播放器要求的方式。无论游戏设置如何，浏览器中的 Escape 都会释放指针，
+    /// 同时也会打开暂停菜单，因此两者保持一致。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -34,21 +32,21 @@ namespace AdaptiveBossArena.Game
         [Tooltip("The settings panel; the pointer is freed while it is open.")]
         private SettingsMenu _settingsMenu;
 
-        /// <summary>Whether the pointer is currently captured by the game.</summary>
+        /// <summary>指针当前是否被游戏捕获。</summary>
         public static bool IsCaptured => Cursor.lockState == CursorLockMode.Locked;
 
-        /// <summary>Whether the fight should hold the pointer, given what is on screen.</summary>
-        /// <param name="paused">The pause menu is open.</param>
-        /// <param name="outcomeShown">The victory or defeat screen is showing.</param>
-        /// <param name="settingsOpen">The settings panel is open.</param>
-        /// <returns>True when nothing on screen needs the pointer.</returns>
+        /// <summary>依据屏幕内容判断战斗是否应该捕获指针。</summary>
+        /// <param name="paused">暂停菜单是否打开。</param>
+        /// <param name="outcomeShown">胜利或失败界面是否显示。</param>
+        /// <param name="settingsOpen">设置面板是否打开。</param>
+        /// <returns>屏幕上没有内容需要指针时为 true。</returns>
         public static bool ShouldCapture(bool paused, bool outcomeShown, bool settingsOpen) =>
             !paused && !outcomeShown && !settingsOpen;
 
-        /// <summary>Assigns the menus that need the pointer. Used by the scene generator.</summary>
-        /// <param name="pauseMenu">The pause menu.</param>
-        /// <param name="endScreen">The outcome screen.</param>
-        /// <param name="settingsMenu">The settings panel.</param>
+        /// <summary>分配需要指针的菜单引用，供场景生成器使用。</summary>
+        /// <param name="pauseMenu">暂停菜单。</param>
+        /// <param name="endScreen">结果界面。</param>
+        /// <param name="settingsMenu">设置面板。</param>
         public void Bind(PauseMenu pauseMenu, EndScreen endScreen, SettingsMenu settingsMenu)
         {
             _pauseMenu = pauseMenu;
@@ -74,7 +72,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        // Leaving the arena - to the title, or on quit - must never strand the pointer captured.
+        // 离开竞技场返回标题或退出时，绝不能让指针仍被捕获。
         private void OnDisable() => Release();
 
         private static void Release()

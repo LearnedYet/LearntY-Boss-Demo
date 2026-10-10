@@ -3,18 +3,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// A part of a body that can strike: a capsule from a base to a tip along this transform's forward.
+    /// 可打击的身体部位：沿此变换前方从根部到尖端形成胶囊体。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Mounted on the bone or weapon it belongs to, so it moves with exactly what the player sees - the blade
-    /// the clip swings, the fist it throws. What hurts is what touched you, rather than a wedge in front of the
-    /// attacker that decided the blow whatever the body did.
+    /// 挂在所属骨骼或武器上，与玩家看到的动作完全一致：动画挥动的刀刃、打出的拳头。
+    /// 伤害来自实际碰到玩家的部位，而非无论身体怎样移动，都由攻击者前方扇形决定命中。
     /// </para>
     /// <para>
-    /// The span along forward is the one the weapon trail already samples, so the smear the player sees and the
-    /// capsule the hit is decided on are one line. Presentation never feeds back into it: this only answers
-    /// where the part is.
+    /// 沿前方的跨度与武器拖尾采样一致，因此可见拖痕与命中胶囊是同一条线。表现绝不回传到判定，
+    /// 这里只回答部位的位置。
     /// </para>
     /// </remarks>
     public sealed class StrikeVolume : MonoBehaviour
@@ -35,35 +33,35 @@ namespace AdaptiveBossArena.Combat
         [Tooltip("Thickness of the part, in metres.")]
         private float _radius = 0.1f;
 
-        /// <summary>Which part of the body this is.</summary>
+        /// <summary>这是哪一身体部位。</summary>
         public StrikerParts Part => _part;
 
-        /// <summary>Thickness of the part.</summary>
+        /// <summary>部位厚度。</summary>
         public float Radius => _radius;
 
         /// <summary>
-        /// When the part last struck with a live blow, in game seconds; negative if it never has.
+        /// 部位最后一次使用有效攻击打击的游戏时间，从未打击时为负。
         /// </summary>
-        /// <remarks>Read only by the hitbox view, to show which parts are live at this moment.</remarks>
+        /// <remarks>仅由判定盒视图读取，显示当前有效的部位。</remarks>
         public float LastLiveTime { get; private set; } = -1f;
 
-        /// <summary>Records that the part is striking with a live blow now.</summary>
-        /// <param name="time">The current game time.</param>
+        /// <summary>记录部位当前正用有效攻击打击。</summary>
+        /// <param name="time">当前游戏时间。</param>
         internal void MarkLive(float time) => LastLiveTime = time;
 
         /// <summary>
-        /// Whether the part is there to strike with.
+        /// 此部位是否可用于打击。
         /// </summary>
         /// <remarks>
-        /// False while its object is hidden: the brute's cleaver in the frenzy, after it has thrown the sword away.
+        /// 对象隐藏时为 false，例如巨兽狂暴阶段丢掉巨剑后的刀刃。
         /// </remarks>
         public bool IsAvailable => isActiveAndEnabled;
 
-        /// <summary>Shapes the part. Used by the prefab generators.</summary>
-        /// <param name="part">Which part of the body this is.</param>
-        /// <param name="baseDistance">Where it begins along forward.</param>
-        /// <param name="tipDistance">Where it ends along forward.</param>
-        /// <param name="radius">Its thickness.</param>
+        /// <summary>配置部位形状，供预制体生成器使用。</summary>
+        /// <param name="part">这是哪一身体部位。</param>
+        /// <param name="baseDistance">沿前方的起始距离。</param>
+        /// <param name="tipDistance">沿前方的结束距离。</param>
+        /// <param name="radius">部位厚度。</param>
         public void Configure(StrikerParts part, float baseDistance, float tipDistance, float radius)
         {
             _part = part;
@@ -72,9 +70,9 @@ namespace AdaptiveBossArena.Combat
             _radius = Mathf.Max(0.01f, radius);
         }
 
-        /// <summary>Where the part is right now, as the two ends of its capsule.</summary>
-        /// <param name="start">The base, in world space.</param>
-        /// <param name="end">The tip, in world space.</param>
+        /// <summary>部位当前位置，用胶囊体两端表示。</summary>
+        /// <param name="start">世界空间根部。</param>
+        /// <param name="end">世界空间尖端。</param>
         public void Segment(out Vector3 start, out Vector3 end)
         {
             Vector3 origin = transform.position;

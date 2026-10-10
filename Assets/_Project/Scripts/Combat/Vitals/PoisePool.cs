@@ -5,19 +5,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Vitals
 {
     /// <summary>
-    /// The hidden pool that decides whether a hit interrupts its target.
+    /// 决定命中是否打断目标的隐藏数值池。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Poise is what makes trading blows a decision instead of a reflex. Because it regenerates
-    /// while the owner is not being hit, scattered chip damage never staggers anything, but a
-    /// committed combo does. The player therefore has to choose between poking safely and
-    /// committing far enough to break the boss's stance.
+    /// 姿态让换血成为决策，而不只是反射动作。由于未受击时会恢复，零散削血不会造成硬直，
+    /// 但投入的连击能够做到。因此玩家必须在安全试探和深入投入以打破首领姿态之间作出选择。
     /// </para>
     /// <para>
-    /// A break empties the pool and starts a recovery period during which no further poise damage
-    /// accumulates. Without that, a combo landing during the stagger would chain breaks together and
-    /// remove the target from the fight entirely.
+    /// 破防会清空池并开始恢复期；在此期间不再累积姿态伤害。否则，硬直期间命中的连击会连续破防，
+    /// 让目标完全无法参与战斗。
     /// </para>
     /// </remarks>
     public sealed class PoisePool : IPoise
@@ -29,11 +26,11 @@ namespace AdaptiveBossArena.Combat.Vitals
         private float _maximum;
         private float _brokenFor;
 
-        /// <summary>Creates a pool at full poise.</summary>
-        /// <param name="maximum">Poise damage required to break the owner's stance. Must be positive.</param>
-        /// <param name="regenPerSecond">Poise recovered per second while not being hit.</param>
-        /// <param name="breakRecoverySeconds">How long a break lasts before poise starts rebuilding.</param>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when the maximum is not positive.</exception>
+        /// <summary>创建满姿态的池。</summary>
+        /// <param name="maximum">打破所属者姿态所需的姿态伤害，必须为正数。</param>
+        /// <param name="regenPerSecond">未受击时，每秒恢复的姿态。</param>
+        /// <param name="breakRecoverySeconds">破防持续多长时间后开始重建姿态。</param>
+        /// <exception cref="ArgumentOutOfRangeException">最大值不是正数时抛出。</exception>
         public PoisePool(float maximum, float regenPerSecond, float breakRecoverySeconds)
         {
             if (maximum <= 0f)
@@ -69,8 +66,7 @@ namespace AdaptiveBossArena.Combat.Vitals
         /// <inheritdoc />
         public bool ApplyPoiseDamage(float amount)
         {
-            // Poise damage during a break is discarded rather than banked. Accumulating it would let
-            // a combo landing on a staggered target chain straight into a second break.
+            // 破防期间的姿态伤害会被丢弃，而不是储存。累积它会让命中硬直目标的连击直接衔接第二次破防。
             if (amount <= 0f || IsBroken)
             {
                 return false;
@@ -91,8 +87,8 @@ namespace AdaptiveBossArena.Combat.Vitals
             return true;
         }
 
-        /// <summary>Advances break recovery, then poise regeneration.</summary>
-        /// <param name="deltaTimeSeconds">Elapsed scaled time.</param>
+        /// <summary>先推进破防恢复，再推进姿态恢复。</summary>
+        /// <param name="deltaTimeSeconds">经过的缩放时间。</param>
         public void Tick(float deltaTimeSeconds)
         {
             if (deltaTimeSeconds <= 0f)
@@ -106,8 +102,8 @@ namespace AdaptiveBossArena.Combat.Vitals
 
                 if (_brokenFor <= 0f)
                 {
-                    // Poise returns full at the end of a break rather than rebuilding from zero, so
-                    // a recovered combatant is not immediately re-breakable by a single light hit.
+                    // 破防结束时姿态直接回满，而不是从零重建，确保恢复后的战斗参与者不会立刻被一次轻
+                    // 击再次破防。
                     _brokenFor = 0f;
                     SetCurrent(_maximum);
                 }
@@ -121,7 +117,7 @@ namespace AdaptiveBossArena.Combat.Vitals
             }
         }
 
-        /// <summary>Restores full poise and clears any break, for use when a fight restarts.</summary>
+        /// <summary>恢复完整姿态并清除破防状态，用于重新开始战斗。</summary>
         public void ResetToFull()
         {
             _brokenFor = 0f;

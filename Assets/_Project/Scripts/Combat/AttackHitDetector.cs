@@ -3,38 +3,36 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// Finds the hurtboxes an attack's volume currently overlaps.
+    /// 查找攻击体积当前重叠的受击盒。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Detection is a query run while the attack is active rather than a trigger callback. Trigger
-    /// events fire on physics steps that need not align with the frames an attack's active window
-    /// spans, which makes short active windows unreliable and near impossible to test. Querying puts
-    /// the timing entirely under the attack's control.
+    /// 检测是攻击生效期间执行的查询，而不是触发器回调。触发器事件在物理步中触发，
+    /// 未必与攻击生效窗口所跨越的帧对齐，这使得短暂的生效窗口不可靠，且几乎无法测试。
+    /// 查询让时序完全由攻击控制。
     /// </para>
     /// <para>
-    /// Buffers are allocated once and reused. The alternative allocates during exactly the frames
-    /// where a garbage collection would be most noticeable.
+    /// 缓冲区只分配一次并重复使用。另一种方案会在垃圾回收最容易被察觉的帧中分配内存。
     /// </para>
     /// </remarks>
     public sealed class AttackHitDetector
     {
-        /// <summary>Ceiling on colliders considered per query. Far above a duel's realistic needs.</summary>
+        /// <summary>每次查询考虑的碰撞体数量上限，远高于决斗的实际需求。</summary>
         public const int MaxOverlaps = 16;
 
         private readonly Collider[] _overlapBuffer = new Collider[MaxOverlaps];
         private readonly Hurtbox[] _resultBuffer = new Hurtbox[MaxOverlaps];
 
-        /// <summary>Hurtboxes found by the most recent query, valid up to the returned count.</summary>
+        /// <summary>最近一次查询发现的受击盒，有效范围由返回数量指定。</summary>
         public Hurtbox[] Results => _resultBuffer;
 
         /// <summary>
-        /// Queries for hurtboxes inside an attack's volume.
+        /// 查询攻击体积内的受击盒。
         /// </summary>
-        /// <param name="attack">Attack supplying the volume shape and dimensions.</param>
-        /// <param name="origin">Transform the volume is positioned and oriented relative to.</param>
-        /// <param name="layerMask">Layers to test against.</param>
-        /// <returns>Number of hurtboxes written into <see cref="Results"/>.</returns>
+        /// <param name="attack">提供体积形状和尺寸的攻击。</param>
+        /// <param name="origin">攻击体积定位和定向所相对的 Transform。</param>
+        /// <param name="layerMask">需要检测的层。</param>
+        /// <returns>写入 <see cref="Results"/> 的受击盒数量。</returns>
         public int Query(AttackDefinition attack, Transform origin, int layerMask)
         {
             int overlapCount = QueryColliders(attack, origin, layerMask);
@@ -61,19 +59,17 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// Records a hurtbox, keeping only the most valuable one per combatant.
+        /// 记录受击盒，每个战斗参与者只保留价值最高的一个。
         /// </summary>
         /// <remarks>
-        /// A boss with a weak point carries several hurtboxes, and a wide swing can overlap more
-        /// than one of them at once. The executor's already-struck set keys on the owner, so only
-        /// the first of those would ever be applied — and physics returns overlaps in no defined
-        /// order, which would make hitting the weak point a coin flip rather than a decision.
-        /// Resolving the choice here, in favour of the highest multiplier, makes aiming for the core
-        /// worth doing: if the swing reached it, it counts.
+        /// 带有弱点的首领具有多个受击盒，宽幅挥击可能同时重叠多个受击盒。
+        /// 执行器已命中集合以所属对象为键，因此只有第一个受击盒会生效——而物理重叠查询没有确定的返回
+        /// 顺序，这会让命中弱点成为掷硬币般的随机结果，而不是玩家决策。在此优先选择最高倍率，
+        /// 使瞄准核心有实际价值：只要挥击触及核心，就算命中核心。
         /// </remarks>
-        /// <param name=hurtbox>The newly found hurtbox.</param>
-        /// <param name=resultCount>How many results have been recorded so far.</param>
-        /// <returns>The new result count.</returns>
+        /// <param name="hurtbox">新发现的受击盒。</param>
+        /// <param name="resultCount">目前已记录的结果数量。</param>
+        /// <returns>更新后的结果数量。</returns>
         private int AddPreferringWeakPoint(Hurtbox hurtbox, int resultCount)
         {
             for (int i = 0; i < resultCount; i++)
@@ -96,7 +92,7 @@ namespace AdaptiveBossArena.Combat
             return resultCount;
         }
 
-        /// <summary>Runs the shape-appropriate physics overlap.</summary>
+        /// <summary>执行与形状对应的物理重叠查询。</summary>
         private int QueryColliders(AttackDefinition attack, Transform origin, int layerMask)
         {
             Vector3 center = origin.TransformPoint(attack.Offset);
@@ -113,9 +109,8 @@ namespace AdaptiveBossArena.Combat
                         QueryTriggerInteraction.Collide);
 
                 case AttackShape.Arc:
-                    // An arc is a sphere centred on the attacker, narrowed afterwards by angle.
-                    // Centring it on the offset instead would place the wedge's apex in front of the
-                    // character and let attacks reach around behind them.
+                    // 扇形先以攻击者为中心做球形查询，再按角度缩小范围。如果改为以偏移位置为中心，
+                    // 扇形顶点就会位于角色前方，让攻击能够触及角色身后。
                     return Physics.OverlapSphereNonAlloc(
                         origin.position + Vector3.up * attack.Offset.y,
                         attack.Range,
@@ -134,14 +129,12 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// Draws an arc exactly where it is tested.
+        /// 在实际检测位置准确绘制扇形。
         /// </summary>
         /// <remarks>
-        /// Arcs used to fall through to the sphere branch, which draws at the attack's offset — a
-        /// metre in front of the character — while the query centres on the character itself. The
-        /// picture and the hitbox disagreed by that whole metre, so anyone tuning reach against the
-        /// gizmo was tuning against a fiction. The wedge lines are drawn too, since an arc's width
-        /// is most of what decides whether it connects.
+        /// 过去，扇形会进入球形分支，在攻击的偏移处绘制——即角色前方一米——而查询以角色自身为中心。
+        /// 图形和命中盒相差整整一米，因此根据辅助图形调整攻击距离的人实际上是在依据虚假的图形调参。
+        /// 这里也绘制扇形边界线，因为扇形宽度是决定能否命中的主要因素。
         /// </remarks>
         private static void DrawArcGizmo(AttackDefinition attack, Transform origin)
         {
@@ -167,11 +160,10 @@ namespace AdaptiveBossArena.Combat
             Gizmos.DrawRay(centre, rightEdge * attack.Range);
         }
 
-        /// <summary>Tests whether a collider falls within an arc's angular width.</summary>
+        /// <summary>检测碰撞体是否位于扇形角宽内。</summary>
         /// <remarks>
-        /// Measured on the horizontal plane only. Including height would make a swing miss a target
-        /// standing slightly above or below the attacker, which reads as the attack passing through
-        /// them.
+        /// 只在水平面测量。如果包含高度，挥击会漏掉略高于或低于攻击者的目标，
+        /// 表现为攻击从目标身体中穿过。
         /// </remarks>
         private static bool IsInsideArc(AttackDefinition attack, Transform origin, Collider target)
         {
@@ -181,8 +173,7 @@ namespace AdaptiveBossArena.Combat
             Vector3 forward = origin.forward;
             forward.y = 0f;
 
-            // The horizontal half-width of the body. For the capsules both combatants use, the two
-            // horizontal extents are the capsule radius.
+            // 身体的水平半宽。双方使用的胶囊体，其两个水平方向范围都等于胶囊半径。
             Vector3 extents = target.bounds.extents;
             float targetRadius = Mathf.Max(extents.x, extents.z);
 
@@ -190,39 +181,35 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// Decides whether a body of a given width falls inside a swing's wedge.
+        /// 判断给定宽度的身体是否落在挥击扇形内。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The angle is measured to the target's centre, but the test allows for the target having
-        /// width. Comparing the centre angle alone against the arc — which is what this did
-        /// originally — silently requires the target's <em>axis</em> to be inside the wedge, and
-        /// throws away everything between the axis and the near edge of the body.
+        /// 角度按目标中心测量，但检测会考虑目标自身具有宽度。
+        /// 只比较中心角和扇形——最初的实现正是如此——会隐式要求目标的<em>轴线</em>位于扇形内，
+        /// 并丢弃轴线到身体近侧边缘之间的所有部分。
         /// </para>
         /// <para>
-        /// That is not a small error. The boss's hurtbox has a radius of 0.85 m, so at 2.5 m it
-        /// spans about 39 degrees; up to 19 of those on each side were being discarded. A swing whose
-        /// wedge visibly overlapped the boss was rejected because its middle did not, which is
-        /// exactly the "that clearly hit it" complaint, and it was worst on the narrow attacks and
-        /// against the largest target.
+        /// 这不是一个小误差。首领受击盒半径为 0.85 米，在 2.5 米距离时，它占据约 39 度；
+        /// 过去每一侧最多有 19 度被丢弃。挥击扇形明明与首领重叠，却因为中心不在其中而被拒绝，
+        /// 这正是“明明打中了”的抱怨来源；窄幅攻击和最大的目标受影响最严重。
         /// </para>
         /// <para>
-        /// Pure and static so the geometry can be tested directly, without a scene, a collider or a
-        /// physics step.
+        /// 采用纯函数和静态方法，让几何计算无需场景、碰撞体或物理步即可直接测试。
         /// </para>
         /// </remarks>
-        /// <param name="forward">Attacker's facing, flattened to the horizontal plane.</param>
-        /// <param name="toTarget">Attacker to target centre, flattened to the horizontal plane.</param>
-        /// <param name="targetRadius">Half-width of the target's body.</param>
-        /// <param name="arcDegrees">Full angular width of the swing.</param>
-        /// <returns>True when any part of the body lies within the wedge.</returns>
+        /// <param name="forward">攻击者朝向，投影到水平面。</param>
+        /// <param name="toTarget">从攻击者到目标中心的方向，投影到水平面。</param>
+        /// <param name="targetRadius">目标身体的半宽。</param>
+        /// <param name="arcDegrees">挥击的完整角宽。</param>
+        /// <returns>身体的任意部分位于扇形内时为 true。</returns>
         public static bool IsWithinArc(
             Vector3 forward, Vector3 toTarget, float targetRadius, float arcDegrees)
         {
             float distance = toTarget.magnitude;
 
-            // Standing on top of the attacker counts as a hit: there is no meaningful direction to
-            // reject, and a miss at point-blank range reads as a bug.
+            // 与攻击者重叠的位置视为命中：此时没有有意义的方向可用于排除目标，
+            // 而贴身距离的未命中会被认为是缺陷。
             if (distance < Mathf.Epsilon)
             {
                 return true;
@@ -230,24 +217,23 @@ namespace AdaptiveBossArena.Combat
 
             float radius = Mathf.Max(0f, targetRadius);
 
-            // A body wider than its own distance encloses the attacker, so there is no direction it
-            // could be swung at that would not meet it. Left to the arithmetic below this saturates
-            // at a quarter turn instead, which would reject a swing at something pressed against and
-            // slightly behind the attacker while it was demonstrably overlapping them.
+            // 身体半宽大于自身距离时，会包围攻击者，因此朝任何方向挥击都不可能避开它。
+            // 如果只依赖下方计算，结果会饱和到四分之一圈，导致一个紧贴攻击者且略在其身后的目标被排除，
+            // 即使它明显与攻击者重叠。
             if (radius >= distance)
             {
                 return true;
             }
 
-            // How far off-axis the body's near edge reaches.
+            // 身体近侧边缘偏离轴线的角度。
             float subtendedHalfAngle = Mathf.Asin(Mathf.Clamp01(radius / distance)) * Mathf.Rad2Deg;
 
             return Vector3.Angle(forward, toTarget) <= (arcDegrees * 0.5f) + subtendedHalfAngle;
         }
 
-        /// <summary>Draws the attack volume for debugging, in the editor only.</summary>
-        /// <param name="attack">Attack supplying the volume.</param>
-        /// <param name="origin">Transform the volume is relative to.</param>
+        /// <summary>仅在编辑器中绘制攻击体积用于调试。</summary>
+        /// <param name="attack">提供攻击体积的攻击。</param>
+        /// <param name="origin">攻击体积所相对的 Transform。</param>
         public static void DrawGizmo(AttackDefinition attack, Transform origin)
         {
 #if UNITY_EDITOR

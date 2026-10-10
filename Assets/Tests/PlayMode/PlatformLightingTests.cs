@@ -9,7 +9,7 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that each platform gets its own lighting: the roof's shadow on desktop, fainter shafts on the web.
+    /// 测试各平台获得独立光照：桌面有屋顶阴影，网页使用较淡光束。
     /// </summary>
     [TestFixture]
     public sealed class PlatformLightingTests
@@ -55,8 +55,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator TheRoofsShadowIsAnAccentNotACover()
         {
-            // The first cookie blocked most of the sun and, measured in a running build, took the whole frame
-            // from 0.38 to 0.21 mean luminance - the arena read as dusk. The crossing is open to the sky.
+            // 最初的光照遮罩阻挡大部分日光，在运行构建中测得整帧平均亮度从 0.38降至 0.21，
+            // 使竞技场像黄昏。交叉厅上方应直通天空。
             _lighting.Apply(web: false);
 
             yield return null;
@@ -79,7 +79,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator SteppingQualityBackUpRestoresTheFullScene()
         {
-            // Quality can change mid-fight now, in both directions. Low used to be a one-way cut at load.
+            // 现在战斗中可双向切换画质。低画质原先仅在加载时单向削减。
             _lighting.Apply(Core.Services.GraphicsQuality.Low);
             yield return null;
             _lighting.Apply(Core.Services.GraphicsQuality.High);
@@ -112,7 +112,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
                     .Any(l => l.type == LightType.Point && l.enabled && l.name.StartsWith("CandleLight")),
                 "A candle still lights the web build per pixel.");
 
-            // Beside the shafts: impact bursts have "Dust" children of their own.
+            // 光束旁边：冲击爆发也有自己的“Dust”子对象。
             ParticleSystem dust = shafts.parent.Find("Dust").GetComponent<ParticleSystem>();
             Assert.LessOrEqual(dust.main.maxParticles, PlatformLighting.WebDustParticles, "The web keeps all the dust.");
         }
@@ -120,7 +120,7 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator TheWebDrawsFainterShaftsAndNoCookie()
         {
-            // Found under its own parent: the columns have a Shaft_0 of their own.
+            // 在自身父对象下查找：立柱也有自己的 Shaft_0。
             Renderer shaft = GameObject.Find("LightShafts").transform.GetChild(0).GetComponent<Renderer>();
             float desktopAlpha = shaft.sharedMaterial.GetColor("_BaseColor").a;
 

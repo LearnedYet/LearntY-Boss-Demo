@@ -3,19 +3,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Core.Events
 {
     /// <summary>
-    /// Base for asset-backed event channels that decouple broadcasters from listeners.
+    /// 基于资源的事件通道基类，用于解耦广播者与监听者。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A channel is an asset, so a broadcaster and a listener each reference the channel and never
-    /// each other. That is what lets the heads-up display show boss health without the UI assembly
-    /// knowing the boss exists, and what lets the victory screen react to a death it never
-    /// subscribed to directly.
+    /// 通道是一个资源，因此广播者和监听者各自引用通道，而不互相引用。
+    /// 这使 HUD 无需 UI程序集了解 Boss 也能显示其生命，使胜利界面能够响应从未直接订阅的死亡事件。
     /// </para>
     /// <para>
-    /// Use channels for cross-system and user-interface signals that fire occasionally. Do not use
-    /// them for per-frame combat traffic such as hitbox overlap results; those go through direct
-    /// C# events on interfaces, where the extra indirection is not worth its cost.
+    /// 通道用于跨系统和 UI 的低频信号。攻击区域重叠结果等每帧战斗数据应通过接口上的直接 C # 事件传递
+    /// ，额外间接层在这里不值得其成本。
     /// </para>
     /// </remarks>
     public abstract class EventChannelBase : ScriptableObject
@@ -29,11 +26,11 @@ namespace AdaptiveBossArena.Core.Events
         [Tooltip("Log every raise to the console. Useful when a signal appears not to arrive.")]
         private bool _logRaises;
 
-        /// <summary>Whether raises should be written to the console.</summary>
+        /// <summary>是否将事件触发写入控制台。</summary>
         protected bool LogRaises => _logRaises;
 
 #if UNITY_EDITOR
-        /// <summary>Editor-only description of the channel's purpose.</summary>
+        /// <summary>仅供编辑器使用的通道用途描述。</summary>
         public string Description => _description;
 #endif
     }

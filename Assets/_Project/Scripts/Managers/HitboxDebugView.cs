@@ -6,18 +6,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Draws every striking part and every hurtbox in the fight, for checking a hit against what was seen.
+    /// 绘制战斗中的全部打击部位和受击盒，用于对照视觉检查命中。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Off unless asked for, with <c>-debugHits</c> on the command line or <c>?debughits</c> in the browser's
-    /// address. The player reported blows that hurt without touching them; now that hits are decided by the parts
-    /// that swing, this is how anyone - the player, or a frame capture - can see the capsule a blow was decided on
-    /// at the moment it landed.
+    /// 默认关闭；命令行传入 <c>-debugHits</c> 或浏览器地址携带 <c>?debughits</c>才启用。
+    /// 玩家曾反馈攻击没有碰到自己却造成伤害；现在命中由实际挥动的部位决定，
+    /// 此视图让玩家或逐帧截图看到命中发生时用于判定的胶囊体。
     /// </para>
     /// <para>
-    /// A striking part shows red while its blow is live and grey otherwise; hurtboxes show green. Presentation
-    /// only: it reads positions and never touches combat.
+    /// 攻击有效时打击部位显示红色，否则为灰色；受击盒为绿色。仅负责表现：读取位置，不接触战斗逻辑。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -26,7 +24,7 @@ namespace AdaptiveBossArena.Game
         private const string CommandLineFlag = "-debugHits";
         private const string QueryFlag = "debughits";
 
-        /// <summary>How long after its last live frame a part still shows as live, so a one-frame blow is visible.</summary>
+        /// <summary>最后一帧有效攻击后继续高亮的时间，确保单帧攻击也可见。</summary>
         private const float LiveHoldSeconds = 0.12f;
 
         private static readonly Color LiveColour = new Color(1f, 0.15f, 0.1f, 0.65f);
@@ -40,10 +38,10 @@ namespace AdaptiveBossArena.Game
         private readonly List<(StrikeVolume Part, Renderer Shape)> _parts = new List<(StrikeVolume, Renderer)>();
         private MaterialPropertyBlock _block;
 
-        /// <summary>Whether the view was asked for.</summary>
-        /// <param name="arguments">The process's command line.</param>
-        /// <param name="url">The page address, in the browser.</param>
-        /// <returns>True when either carries the flag.</returns>
+        /// <summary>是否请求启用此视图。</summary>
+        /// <param name="arguments">进程命令行参数。</param>
+        /// <param name="url">浏览器页面地址。</param>
+        /// <returns>任一处携带启用标记时为 true。</returns>
         public static bool IsRequested(string[] arguments, string url)
         {
             if (arguments != null)
@@ -62,8 +60,8 @@ namespace AdaptiveBossArena.Game
             return query >= 0 && url.Substring(query).IndexOf(QueryFlag, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        /// <summary>Assigns the material. Used by the scene generator.</summary>
-        /// <param name="material">A translucent unlit material.</param>
+        /// <summary>分配材质，供场景生成器使用。</summary>
+        /// <param name="material">半透明无光照材质。</param>
         public void SetMaterial(Material material) => _material = material;
 
         private void Awake()
@@ -105,7 +103,7 @@ namespace AdaptiveBossArena.Game
                 Vector3 along = end - start;
                 float length = along.magnitude;
 
-                // A capsule primitive is two units tall along its own up, one wide.
+                // 胶囊原始体沿自身向上方向高两个单位，宽一个单位。
                 shape.transform.SetPositionAndRotation(
                     (start + end) * 0.5f,
                     length > 0.0001f ? Quaternion.FromToRotation(Vector3.up, along / length) : Quaternion.identity);
@@ -117,7 +115,7 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Draws a hurtbox's collider in place, parented so it follows its owner.</summary>
+        /// <summary>原位绘制受击盒碰撞体，并设为子对象以跟随拥有者。</summary>
         private void ShowHurtbox(Hurtbox hurtbox)
         {
             switch (hurtbox.GetComponent<Collider>())
@@ -151,7 +149,7 @@ namespace AdaptiveBossArena.Game
             GameObject shape = GameObject.CreatePrimitive(type);
             shape.name = "[Debug] " + shapeName;
 
-            // Drawn, never touched: the primitive's own collider would join the physics the fight is decided on.
+            // 只绘制，不参与交互：原始体自身的碰撞体会加入战斗物理判定。
             Destroy(shape.GetComponent<Collider>());
 
             shape.transform.SetParent(parent, false);

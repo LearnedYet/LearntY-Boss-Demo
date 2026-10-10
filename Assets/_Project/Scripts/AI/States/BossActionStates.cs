@@ -9,59 +9,53 @@ using UnityEngine;
 namespace AdaptiveBossArena.AI.States
 {
     /// <summary>
-    /// Performing an attack, including the lead the boss puts on it.
+    /// 执行攻击，包括 Boss 对目标位置的提前量。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Aim is committed during startup and then locked. The boss turns to face where it expects the
-    /// player to be, and once the swing is live it cannot correct. That is the property that makes
-    /// the whole encounter dodgeable: an attack that tracked its target through its active frames
-    /// could not be evaded by moving, only by invincibility.
+    /// 瞄准在前摇期间确定，之后锁定。Boss 转向预计玩家将到达的位置，挥击生效后无法修正。
+    /// 这使整场战斗可通过移动闪避：有效帧仍追踪目标的攻击无法靠移动避开，只能依靠无敌。
     /// </para>
     /// <para>
-    /// The lead itself is where the dodge-prediction adaptation surfaces. At zero prediction
-    /// strength the boss aims at where it last saw the player. As the player's dash directions prove
-    /// lopsided, it begins aiming at where that habit says they are about to be. It is still aiming
-    /// at a guess, and a player who changes direction beats it.
+    /// 提前量体现闪避预测适应。预测强度为零时，Boss瞄准上次观察到的位置。玩家闪避方向出现偏好后，
+    /// 它开始瞄准该习惯暗示的下一位置。它仍在猜测，改变方向的玩家可以胜过预测。
     /// </para>
     /// </remarks>
     public sealed class BossAttackState : StateBase<BossContext>
     {
-        /// <summary>How far ahead the boss leads, in seconds of player movement, at full prediction.</summary>
+        /// <summary>全预测强度时 Boss 瞄准提前的秒数，按玩家运动计算。</summary>
         private const float MaxLeadSeconds = 0.35f;
 
-        /// <summary>Fraction of the wind-up after which a feint is abandoned.</summary>
+        /// <summary>达到此比例的前摇后取消佯攻。</summary>
         /// <remarks>
-        /// Late enough that the player has already committed to their answer, early enough that the
-        /// boss recovers before they can punish the cancellation itself.
+        /// 足够晚以使玩家已投入应对，又足够早，使Boss 在玩家能惩罚取消行为前恢复。
         /// </remarks>
         private const float FeintCancelFraction = 0.6f;
 
         /// <summary>
-        /// Chance each extra combo hit is taken before adaptation, so longer chains grow rarer.
+        /// 适应前继续每个额外连招段的概率，使长连招逐渐更少出现。
         /// </summary>
         /// <remarks>
-        /// The untrained baseline. A boss that has learned to string blows together raises this
-        /// through <see cref="BossTuningParameter.ComboExtensionChance"/>; exposed so tests can state
-        /// the baseline rather than repeat the number.
+        /// 未经训练的基线。学会连续攻击的 Boss 通过
+        /// <see cref="BossTuningParameter.ComboExtensionChance"/>提高此值；
+        /// 暴露它使测试可引用基线而非重复数字。
         /// </remarks>
         public const float BaseComboContinueChance = 0.6f;
 
-        /// <summary>Share of a full cooldown a feint costs, since nothing was committed.</summary>
+        /// <summary>佯攻付出的完整冷却比例，因为没有真正完成投入。</summary>
         private const float FeintCooldownFraction = 0.45f;
 
         private bool _isFeinting;
         private int _comboRemaining;
 
         /// <summary>
-        /// True once the attack — and any combo it grew into — has run its course.
+        /// 攻击及其延伸出的全部连招结束时为 true。
         /// </summary>
         /// <remarks>
-        /// Reports incomplete while a follow-up is still queued, so the state machine does not hand
-        /// control to recovery between the blows of a chain.
+        /// 后续攻击仍排队时报告未完成，避免状态机在连招段之间把控制权交给恢复状态。
         /// </remarks>
-        /// <param name="context">The boss context.</param>
-        /// <returns>Whether the boss may act again.</returns>
+        /// <param name="context">Boss 上下文。</param>
+        /// <returns>Boss 是否可以再次行动。</returns>
         public bool IsComplete(BossContext context) =>
             !context.Attacks.IsRunning && _comboRemaining <= 0;
 
@@ -75,13 +69,11 @@ namespace AdaptiveBossArena.AI.States
                 return;
             }
 
-            // Decided before the swing begins, so the telegraph is genuinely indistinguishable from
-            // a real one. Deciding partway through would let a careful player read the difference.
+            // 在挥击开始前决定，因此预警确实与真攻击无法区分。中途才决定会让细心玩家读出差异。
             _isFeinting = context.Random.NextBool(
                 Mathf.Clamp01(context.Tuning.Get(BossTuningParameter.FeintChance)));
 
-            // A feint is a single beat by definition; only a committed opener grows into a chain. A
-            // boss that has learned to press its combos strings more of them together.
+            // 佯攻按定义只有单段；只有实际投入的起手会延伸为连招。学会连招施压的 Boss 会连接更多攻击。
             _comboRemaining = _isFeinting
                 ? 0
                 : ComboLength(
@@ -90,8 +82,8 @@ namespace AdaptiveBossArena.AI.States
                     BaseComboContinueChance +
                     context.Tuning.Get(BossTuningParameter.ComboExtensionChance));
 
-            // A lunging or unblockable opener is a real commitment the boss can be made to regret if it
-            // misses; a light poke is not. A feint is never a commitment — nothing was thrown.
+            // 突进或不可格挡起手是真正投入，玩家可使挥空的 Boss 付出代价；轻微试探不是。
+            // 佯攻永远不算投入，因为没有真正出招。
             context.LastAttackWasCommitted = !_isFeinting && (attack.LungeSpeed > 0f || attack.Unblockable);
 
             context.Motor.Halt();
@@ -110,9 +102,8 @@ namespace AdaptiveBossArena.AI.States
 
             if (attack != null && context.Attacks.Phase == AttackPhase.Startup)
             {
-                // Tracks early, then commits. The lunge keeps its speed for the whole wind-up, so its
-                // reach is unchanged, but once tracking locks it travels along the committed facing
-                // instead of re-homing every frame - which is what lets a late sidestep escape it.
+                // 早期追踪，然后锁定投入。突进在整个前摇保持速度，因此距离不变；
+                // 锁定后沿既定面向运动而非每帧重新制导，让较晚的侧移仍能避开。
                 if (attack.CanTrack(context.Attacks.Phase, context.Attacks.ElapsedSeconds))
                 {
                     context.Motor.FaceDirection(ResolveAimDirection(context), deltaTime);
@@ -125,8 +116,7 @@ namespace AdaptiveBossArena.AI.States
             }
             else if (attack != null && attack.LungeSpeed > 0f && context.Motor.Speed > context.Motor.CurrentTopSpeed)
             {
-                // A finished wind-up brakes hard rather than sliding metres through its own strike at
-                // the boss's gentle walking deceleration.
+                // 前摇结束后猛烈制动，而非按温和行走减速在自身攻击期间滑行数米。
                 context.Motor.Brake(context.Config.LungeBrakeDeceleration, deltaTime);
             }
             else
@@ -137,8 +127,7 @@ namespace AdaptiveBossArena.AI.States
             context.Motor.Tick(deltaTime);
             context.Attacks.Tick(deltaTime);
 
-            // Chained after the tick, so a swing that has just finished flows straight into its
-            // follow-up without a frame of recovery showing between them.
+            // 在更新后接续，使刚结束的挥击直接进入后续段，中间不显示一帧恢复姿势。
             TryContinueCombo(context);
         }
 
@@ -161,30 +150,26 @@ namespace AdaptiveBossArena.AI.States
         }
 
         /// <summary>
-        /// Works out how long the boss waits before it may swing again.
+        /// 计算 Boss 再次挥击前等待的时长。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// A feint costs less than a committed swing, which is what makes it a threat rather than a
-        /// gift. It still costs something, so a boss that feinted constantly would never actually
-        /// pressure the player.
+        /// 佯攻代价低于实际出招，因此形成威胁而非白送机会。但仍有代价，持续佯攻的 Boss 就无法真正施压。
         /// </para>
         /// <para>
-        /// The learned delay is what gives <c>CounterPostDodgeAggression</c> its teeth. Against a
-        /// player who strikes on reflex the instant a dodge ends, the boss holds back and lets that
-        /// reflex swing fall on empty air — which is precisely what its tell, "It waits for your
-        /// opening now.", claims it is doing. The delay is added rather than scaled so it reads as
-        /// patience layered on the phase's own rhythm instead of a different rhythm.
+        /// 学习后的延迟使 <c>CounterPostDodgeAggression</c> 真正有效。
+        /// 面对闪避结束后立即反射性出招的玩家，Boss 会等待，让那次攻击挥空，
+        /// 正对应“现在它会等待你的破绽”的提示。延迟采用相加而非倍率，使它表现为原阶段节奏上的耐心，
+        /// 而非完全不同的节奏。
         /// </para>
         /// <para>
-        /// Pure and static so the behaviour behind that tell is verified by a test rather than by
-        /// watching the boss and forming an impression.
+        /// 采用纯静态函数，使提示背后的行为由测试验证，而非观察 Boss 后主观判断。
         /// </para>
         /// </remarks>
-        /// <param name="baseCooldownSeconds">The current phase's cooldown between attacks.</param>
-        /// <param name="learnedDelaySeconds">Extra patience the boss has learned, in seconds.</param>
-        /// <param name="isFeint">Whether the swing being recovered from was a feint.</param>
-        /// <returns>Seconds before the boss may attack again.</returns>
+        /// <param name="baseCooldownSeconds">当前阶段攻击之间的冷却。</param>
+        /// <param name="learnedDelaySeconds">Boss 学会的额外等待秒数。</param>
+        /// <param name="isFeint">正在恢复的挥击是否为佯攻。</param>
+        /// <returns>Boss 再次攻击前的秒数。</returns>
         public static float AttackCooldownFor(
             float baseCooldownSeconds, float learnedDelaySeconds, bool isFeint)
         {
@@ -194,24 +179,21 @@ namespace AdaptiveBossArena.AI.States
         }
 
         /// <summary>
-        /// Decides how many extra hits a committed attack strings together.
+        /// 决定高投入攻击连接多少额外命中。
         /// </summary>
         /// <remarks>
-        /// The opening phase throws single, readable strikes. Each later phase adds one to the ceiling
-        /// on extra hits, and each additional hit is a fresh coin-flip, so a two-hit string is common
-        /// by phase two and a three-hit flurry is a rare, dangerous escalation rather than the norm.
-        /// It draws from the same seeded stream as every other boss decision, so a replay is exact —
-        /// which is exactly what the edit-mode test pins down. Static and free of the context so that
-        /// property can be verified without standing up a whole boss.
+        /// 开场阶段只使用单次易读攻击。每个后续阶段将额外段上限增加一，每段再次独立抽取概率，
+        /// 因此第二阶段两段常见，三段爆发则是少见危险升级而非常态。
+        /// 使用与所有 Boss 决策相同的种子随机流，使回放精确且可由编辑模式测试固定验证。
+        /// 静态且不依赖上下文，避免测试需组装完整 Boss。
         /// </remarks>
-        /// <param name="phaseIndex">Zero-based phase; also the ceiling on extra hits.</param>
-        /// <param name="random">Seeded source, so a chain is reproducible.</param>
+        /// <param name="phaseIndex">从零开始的阶段，同时也是额外命中的上限。</param>
+        /// <param name="random">可设种子的随机源，使连招可复现。</param>
         /// <param name="continueChance">
-        /// Chance each further hit is taken. Passed in rather than fixed so a boss that has learned to
-        /// press its combos actually presses them — the behaviour
-        /// <see cref="BossTuningParameter.ComboExtensionChance"/> exists to change.
+        /// 继续每一后续段的概率。作为参数传入而非固定，使学会连招施压的 Boss 确实更积极连接攻击，
+        /// 正是 <see cref="BossTuningParameter.ComboExtensionChance"/>要改变的行为。
         /// </param>
-        /// <returns>Extra hits to chain, from zero to <paramref name="phaseIndex"/>.</returns>
+        /// <returns>要连接的额外命中数，范围零到 <paramref name="phaseIndex"/>。</returns>
         public static int ComboLength(int phaseIndex, IRandomProvider random, float continueChance)
         {
             int maxExtra = Mathf.Max(0, phaseIndex);
@@ -227,14 +209,12 @@ namespace AdaptiveBossArena.AI.States
         }
 
         /// <summary>
-        /// Flows a finished swing into a queued follow-up, if the player is still there to threaten.
+        /// 若玩家仍处于威胁范围，将已结束挥击连接到排队后续段。
         /// </summary>
         /// <remarks>
-        /// The follow-up is drawn from the current phase's own moveset, so a combo can never use an
-        /// attack the boss was not already allowed. It is abandoned the moment the target is out of
-        /// perceived reach, because a boss swinging at empty air reads as broken, not relentless. All
-        /// of this stays behind the perception delay: the boss chains blows on stale information,
-        /// never on the player's live position.
+        /// 后续攻击从当前阶段招式集选择，因此连招不能使用原本不允许的攻击。目标离开感知范围立即放弃，
+        /// 因为对空气持续挥击像损坏而非不懈追击。全部判断仍受感知延迟保护：Boss 根据旧信息连接攻击，
+        /// 绝不读取玩家实时位置。
         /// </remarks>
         private void TryContinueCombo(BossContext context)
         {
@@ -255,13 +235,12 @@ namespace AdaptiveBossArena.AI.States
 
             _comboRemaining--;
 
-            // A follow-up is a commitment by definition — the boss has strung itself into a chain — so
-            // a chain that swings through empty air can overbalance it just as a lunge can.
+            // 后续段按定义属于投入，因为 Boss 已把自己串入连招，因此挥空的连招和突进一样可能使其失衡。
             context.LastAttackWasCommitted = true;
             context.Attacks.Begin(next, context.DistanceToPlayer);
         }
 
-        /// <summary>Chooses a follow-up at random from the current phase's moveset.</summary>
+        /// <summary>从当前阶段招式集中随机选择后续攻击。</summary>
         private static AttackDefinition PickFollowUp(BossContext context)
         {
             AttackDefinition[] moveset = context.CurrentPhase.Attacks;
@@ -275,19 +254,16 @@ namespace AdaptiveBossArena.AI.States
         }
 
         /// <summary>
-        /// Abandons a feinted swing part-way through its wind-up.
+        /// 前摇中途放弃佯攻挥击。
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This is where the deflect system and the learning system finally meet. The boss only
-        /// feints once it has learned that the player answers wind-ups on a rhythm — either
-        /// deflecting or dodging predictably — and the counter to a feint is precisely to stop doing
-        /// that. A player who never developed the habit will never see one.
+        /// 这里弹反系统终于与学习系统相连。Boss只有学到玩家按固定节奏应对前摇，
+        /// 如可预测弹反或闪避时才佯攻；应对佯攻正是停止该习惯。从未形成这种习惯的玩家不会看见佯攻。
         /// </para>
         /// <para>
-        /// It is also the clearest demonstration that perception latency matters: the boss commits
-        /// to feinting before it can possibly know what the player will do, so it is guessing on the
-        /// same terms a human would.
+        /// 这也最清楚地说明感知延迟的意义：Boss在不可能知道玩家下一步动作前就决定佯攻，
+        /// 因此与人类一样进行猜测。
         /// </para>
         /// </remarks>
         private bool TryCancelFeint(BossContext context, AttackDefinition attack)
@@ -310,12 +286,11 @@ namespace AdaptiveBossArena.AI.States
         }
 
         /// <summary>
-        /// Aims at where the player was, adjusted toward where their habits suggest they will go.
+        /// 瞄准玩家之前的位置，并按其习惯预测的去向调整。
         /// </summary>
         /// <remarks>
-        /// The extrapolation uses the perceived velocity, which is itself already stale. The boss is
-        /// therefore predicting from old information, exactly as a human opponent leading a shot
-        /// would be.
+        /// 外推使用感知到的速度，而该速度本身已滞后。因此 Boss 从旧信息预测，
+        /// 正如人类对手计算射击提前量。
         /// </remarks>
         private static Vector3 ResolveAimDirection(BossContext context)
         {
@@ -340,21 +315,19 @@ namespace AdaptiveBossArena.AI.States
     }
 
     /// <summary>
-    /// The pause after an attack, during which the boss is open to punishment.
+    /// 攻击后的暂停，期间 Boss 暴露给玩家惩罚。
     /// </summary>
     /// <remarks>
-    /// This window is the player's entire reward for evading well, so it is a real state rather than
-    /// a flag. Its length comes from the phase definition, which is how later phases become more
-    /// oppressive without any of the boss's attacks changing.
+    /// 该窗口是玩家成功闪避的全部奖励，因此是实际状态而非标志。时长来自阶段定义，使后期阶段更有压迫感，
+    /// 而无需改变攻击本身。
     /// </remarks>
     public sealed class BossRecoverState : StateBase<BossContext>
     {
-        /// <summary>True once the recovery window has closed and any overbalance stumble has passed.</summary>
-        /// <param name="context">The boss context.</param>
-        /// <returns>Whether the boss may act again.</returns>
+        /// <summary>恢复窗口和失衡踉跄均结束时为 true。</summary>
+        /// <param name="context">Boss 上下文。</param>
+        /// <returns>Boss 是否可以再次行动。</returns>
         /// <remarks>
-        /// An overbalanced boss is held here through its stumble, so a swing baited into empty air is a
-        /// real, visible opening rather than something the boss immediately acts out of.
+        /// 失衡 Boss 在这里停留到踉跄结束，使诱骗挥空形成真实可见空当，而非 Boss 立即继续行动。
         /// </remarks>
         public bool IsComplete(BossContext context) =>
             context.AttackCooldownRemaining <= 0f && !context.IsOverbalanced;
@@ -362,8 +335,7 @@ namespace AdaptiveBossArena.AI.States
         /// <inheritdoc />
         protected override void OnTick(BossContext context, float deltaTime)
         {
-            // Facing continues, so the boss does not present its back for free, but it cannot move
-            // or act. Recovery has to be a genuine opening or evasion stops being worth attempting.
+            // 仍会转向，避免免费暴露背后，但不能移动或行动。恢复必须是真正空当，否则闪避不再值得尝试。
             context.Motor.FaceDirection(context.DirectionToPlayer, deltaTime * 0.5f);
             context.Motor.Decelerate(deltaTime);
             context.Motor.Tick(deltaTime);
@@ -371,30 +343,27 @@ namespace AdaptiveBossArena.AI.States
     }
 
     /// <summary>
-    /// Answering an incoming heavy attack with a parry.
+    /// 以招架应对传入重击。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The counter-behaviour the design calls for against a player who leans on heavy attacks. It is
-    /// reached only when the boss has both perceived a heavy wind-up and rolled against its learned
-    /// parry chance, so it appears gradually rather than switching on.
+    /// 设计要求对偏好重击玩家采用的反制。Boss只有感知到重击前摇且通过学习后的招架概率抽取才进入，
+    /// 因此逐渐出现而非突然开启。
     /// </para>
     /// <para>
-    /// It is a commitment, not a shield. The boss stops, and if the read was wrong it has given the
-    /// player a free opening. That symmetry is what keeps the adaptation fair: the boss can be
-    /// baited into parrying nothing.
+    /// 这是一种投入，不是盾牌。Boss 停止行动，判断错误就给玩家免费空当。这种对称使适应公平：
+    /// 玩家可诱使 Boss 招架空气。
     /// </para>
     /// </remarks>
     public sealed class BossParryState : StateBase<BossContext>
     {
-        /// <summary>True once the parry attempt has resolved one way or the other.</summary>
+        /// <summary>招架尝试已成功或失败地结束时为 true。</summary>
         /// <remarks>
-        /// The stance runs for its window plus its tail. It used to be a flat half-second during
-        /// which every hit was refused, which made it something to wait out rather than something
-        /// to beat: there was no moment at which committing to the stance had been the wrong call.
+        /// 站姿持续窗口加尾段。以前整个半秒都拒绝伤害，只需等待而无需克服，
+        /// 因为没有任何时刻能体现选择站姿的错误。
         /// </remarks>
-        /// <param name="context">The boss context.</param>
-        /// <returns>Whether the boss may act again.</returns>
+        /// <param name="context">Boss 上下文。</param>
+        /// <returns>Boss 是否可以再次行动。</returns>
         public bool IsComplete(BossContext context) =>
             TimeInState >= context.Config.ParryWindowSeconds + context.Config.ParryTailSeconds;
 
@@ -404,9 +373,8 @@ namespace AdaptiveBossArena.AI.States
             context.IsParrying = true;
             context.ParryWindowOpen = true;
 
-            // Announced the instant the window opens, and only then. The player has to be able to
-            // see what they are being asked to beat, or a parry they cannot read is indistinguishable
-            // from the boss refusing hits at random.
+            // 窗口打开瞬间提示，且只在此时提示。玩家必须看清要克服的内容，
+            // 否则不可读的招架与 Boss 随机拒绝伤害无法区分。
             context.PublishCombatEvent(CombatEventKind.GuardRaised);
             context.Motor.Halt();
         }
@@ -426,25 +394,24 @@ namespace AdaptiveBossArena.AI.States
             context.IsParrying = false;
             context.ParryWindowOpen = false;
 
-            // On its own timer, not the attack cooldown. A successful parry clears the attack
-            // cooldown to hand the boss the punish it earned - and while the two shared one timer,
-            // that also re-armed the next parry, so a boss that kept guessing right could not be
-            // attacked at all. The old flat 0.4s clamp was papering over exactly this.
+            // 使用独立计时器而非攻击冷却。成功招架清除攻击冷却，提供应得惩罚机会；
+            // 此前共用计时器也重新准备下一次招架，使持续猜对的 Boss 无法被攻击。
+            // 旧的固定 0.4 秒限制只是掩盖了这个问题。
             context.ParryCooldownRemaining =
                 Mathf.Max(context.ParryCooldownRemaining, context.Config.ParryCooldownSeconds);
         }
     }
 
-    /// <summary>Reeling from a poise break.</summary>
+    /// <summary>因架势击破而踉跄。</summary>
     public sealed class BossStaggerState : StateBase<BossContext>
     {
         private float _remainingSeconds;
 
         private StaggerReason _reason;
 
-        /// <summary>True once the interruption has run its course.</summary>
-        /// <param name="context">The boss context.</param>
-        /// <returns>Whether the boss may act again.</returns>
+        /// <summary>中断结束时为 true。</summary>
+        /// <param name="context">Boss 上下文。</param>
+        /// <returns>Boss 是否可以再次行动。</returns>
         public bool IsComplete(BossContext context) => _remainingSeconds <= 0f;
 
         /// <inheritdoc />
@@ -457,10 +424,8 @@ namespace AdaptiveBossArena.AI.States
 
             context.Motor.Halt();
 
-            // Announced only when the guard actually broke. PoiseBroken throws the loudest burst and
-            // cue in the game, and firing it for a parry recoil would tell the player they had won
-            // something they had not - the parry has its own, quieter feedback at the moment of
-            // contact.
+            // 只有防线真正崩溃才提示。PoiseBroken触发最强烈特效和音效，若招架反震也触发，
+            // 会错误告知玩家赢得架势击破；招架已在接触时拥有更轻的独立反馈。
             if (_reason == StaggerReason.PoiseBreak)
             {
                 context.PublishCombatEvent(CombatEventKind.PoiseBroken);
@@ -475,9 +440,8 @@ namespace AdaptiveBossArena.AI.States
                 _remainingSeconds = Mathf.Max(_remainingSeconds, context.RequestedStaggerSeconds);
                 context.StaggerRequested = false;
 
-                // A poise break arriving on the same frame as a parry recoil must not be downgraded
-                // to one. Clearing the reason afterwards matters as much: left set, the next
-                // ordinary stagger would inherit it and announce the wrong thing.
+                // 同帧到来的架势击破不能降级为招架反震。之后清除原因也同样重要，
+                // 否则下一次普通硬直会继承旧原因并发出错误提示。
                 if (context.RequestedStaggerReason > _reason)
                 {
                     _reason = context.RequestedStaggerReason;
@@ -500,13 +464,12 @@ namespace AdaptiveBossArena.AI.States
         /// <inheritdoc />
         protected override void OnExit(BossContext context)
         {
-            // Leaving a stagger with no cooldown would let the boss retaliate the instant it
-            // recovers, erasing the punish window the player earned.
+            // 若硬直结束没有冷却，Boss 会立即报复，抹去玩家赢得的惩罚窗口。
             context.AttackCooldownRemaining = Mathf.Max(context.AttackCooldownRemaining, 0.5f);
         }
     }
 
-    /// <summary>Defeated. A terminal state with no outgoing transitions.</summary>
+    /// <summary>被击败。没有离开转移的终止状态。</summary>
     public sealed class BossDeadState : StateBase<BossContext>
     {
         /// <inheritdoc />

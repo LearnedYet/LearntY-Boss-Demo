@@ -6,11 +6,11 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Pins the control layout the player chose, in the generated input actions.
+    /// 在生成的输入动作中固定玩家选择的操作布局。
     /// </summary>
     /// <remarks>
-    /// Mouse block and parry: left click attacks, Shift with left click is heavy, right mouse guards, Tab or the
-    /// middle button locks on, and the mouse turns the camera. Every action also has a gamepad binding.
+    /// 鼠标格挡和招架：左键攻击，Shift 加左键重击，右键防御，Tab 或中键锁定，鼠标转动相机。
+    /// 每个动作也有手柄绑定。
     /// </remarks>
     [TestFixture]
     public sealed class InputLayoutTests

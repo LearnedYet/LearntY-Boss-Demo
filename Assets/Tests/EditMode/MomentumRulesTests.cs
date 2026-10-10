@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the rule that gives a moving body mass when it changes direction.
+    /// 测试身体转向时产生重量感的规则。
     /// </summary>
     [TestFixture]
     public sealed class MomentumRulesTests
@@ -16,7 +16,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void StartingFromRestCostsNothing()
         {
-            // Weight must not become sluggishness: a standing character goes wherever it is told.
+            // 重量感不能变成迟钝：静止角色应前往玩家指定的任何方向。
             float factor = MomentumRules.TargetSpeedFactor(Vector3.zero, Vector3.back, TopSpeed, Floor);
 
             Assert.AreEqual(1f, factor, 0.001f);

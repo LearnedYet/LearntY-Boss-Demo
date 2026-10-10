@@ -4,25 +4,21 @@ using System.Collections.Generic;
 namespace AdaptiveBossArena.Core.StateMachine
 {
     /// <summary>
-    /// Finite state machine with per-state and global transition tables.
+    /// 带每状态转移表和全局转移表的有限状态机。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Transitions live in the machine rather than inside the states, so behaviour can be rewired
-    /// without touching the states themselves. That matters for the boss: a counter-strategy that
-    /// starts parrying heavy attacks registers a transition at runtime, and the existing attack
-    /// states are unaware anything changed.
+    /// 转移由状态机持有而非放在状态内部，因此可不修改状态便重连行为。这对 Boss很重要：
+    /// 开始招架重击的反制策略在运行时注册转移，现有攻击状态无需感知变化。
     /// </para>
     /// <para>
-    /// Global transitions are evaluated before per-state ones, so conditions that must always win,
-    /// such as death or a poise break, do not need duplicating across every state.
+    /// 全局转移优先于每状态转移，因此死亡或架势击破等始终应获胜的条件无需在每个状态重复。
     /// </para>
     /// <para>
-    /// Ticking is allocation-free once built. The current state's transition list is cached on
-    /// entry rather than looked up in a dictionary every frame.
+    /// 构建完成后更新不产生分配。进入状态时缓存转移列表，而非每帧查字典。
     /// </para>
     /// </remarks>
-    /// <typeparam name="TContext">Data and services the machine and its states operate on.</typeparam>
+    /// <typeparam name="TContext">状态机及状态操作的数据和服务。</typeparam>
     public sealed class StateMachine<TContext>
     {
         private static readonly List<ITransition<TContext>> EmptyTransitions =
@@ -38,10 +34,10 @@ namespace AdaptiveBossArena.Core.StateMachine
 
         private List<ITransition<TContext>> _currentTransitions = EmptyTransitions;
 
-        /// <summary>Creates a machine and enters its initial state.</summary>
-        /// <param name="context">Context handed to every state callback.</param>
-        /// <param name="initialState">State to begin in.</param>
-        /// <exception cref="ArgumentNullException">Thrown when no initial state is supplied.</exception>
+        /// <summary>创建状态机并进入初始状态。</summary>
+        /// <param name="context">传递给各状态回调的上下文。</param>
+        /// <param name="initialState">初始状态。</param>
+        /// <exception cref="ArgumentNullException">未提供初始状态时抛出。</exception>
         public StateMachine(TContext context, IState<TContext> initialState)
         {
             _context = context;
@@ -49,22 +45,22 @@ namespace AdaptiveBossArena.Core.StateMachine
             CurrentState.Enter(_context);
         }
 
-        /// <summary>The state the machine currently occupies.</summary>
+        /// <summary>状态机当前所处的状态。</summary>
         public IState<TContext> CurrentState { get; private set; }
 
-        /// <summary>Seconds spent in the current state, in scaled time.</summary>
+        /// <summary>当前状态已经过的缩放时间秒数。</summary>
         public float TimeInCurrentState { get; private set; }
 
         /// <summary>
-        /// Raised after a transition completes, with the state left and the state entered.
+        /// 转移完成后触发，携带离开的状态和进入的状态。
         /// </summary>
-        /// <remarks>Used by the debug overlay and by audio cues tied to phase changes.</remarks>
+        /// <remarks>用于调试面板和与阶段变化关联的音频提示。</remarks>
         public event Action<IState<TContext>, IState<TContext>> StateChanged;
 
-        /// <summary>Registers a transition that applies only while a specific state is active.</summary>
-        /// <param name="from">State the transition departs from.</param>
-        /// <param name="transition">The transition to register.</param>
-        /// <exception cref="ArgumentNullException">Thrown when either argument is missing.</exception>
+        /// <summary>注册仅在指定状态激活时适用的转移。</summary>
+        /// <param name="from">转移离开的状态。</param>
+        /// <param name="transition">要注册的转移。</param>
+        /// <exception cref="ArgumentNullException">任一参数缺失时抛出。</exception>
         public void AddTransition(IState<TContext> from, ITransition<TContext> transition)
         {
             if (from == null)
@@ -85,19 +81,19 @@ namespace AdaptiveBossArena.Core.StateMachine
 
             InsertByPriority(list, transition);
 
-            // The active state's list is cached, so a transition added to it mid-fight, which is
-            // exactly what adaptation does, has to refresh that cache to take effect.
+            // 当前状态的转移列表已有缓存，因此战斗中新增转移时必须刷新缓存才能生效；
+            // 适应正会执行这种操作。
             if (ReferenceEquals(from, CurrentState))
             {
                 _currentTransitions = list;
             }
         }
 
-        /// <summary>Registers a transition using a delegate condition.</summary>
-        /// <param name="from">State the transition departs from.</param>
-        /// <param name="to">State to move into.</param>
-        /// <param name="condition">Predicate deciding whether to fire.</param>
-        /// <param name="priority">Evaluation order; higher is tested first.</param>
+        /// <summary>通过委托条件注册转移。</summary>
+        /// <param name="from">转移离开的状态。</param>
+        /// <param name="to">要进入的状态。</param>
+        /// <param name="condition">决定是否触发的谓词。</param>
+        /// <param name="priority">评估顺序，值越大越先检查。</param>
         public void AddTransition(
             IState<TContext> from,
             IState<TContext> to,
@@ -105,9 +101,9 @@ namespace AdaptiveBossArena.Core.StateMachine
             int priority = 0) =>
             AddTransition(from, new FuncTransition<TContext>(to, condition, priority));
 
-        /// <summary>Registers a transition evaluated regardless of the current state.</summary>
-        /// <param name="transition">The transition to register.</param>
-        /// <exception cref="ArgumentNullException">Thrown when no transition is supplied.</exception>
+        /// <summary>注册不受当前状态限制的转移。</summary>
+        /// <param name="transition">要注册的转移。</param>
+        /// <exception cref="ArgumentNullException">未提供转移时抛出。</exception>
         public void AddGlobalTransition(ITransition<TContext> transition)
         {
             if (transition == null)
@@ -118,15 +114,15 @@ namespace AdaptiveBossArena.Core.StateMachine
             InsertByPriority(_globalTransitions, transition);
         }
 
-        /// <summary>Registers a global transition using a delegate condition.</summary>
-        /// <param name="to">State to move into.</param>
-        /// <param name="condition">Predicate deciding whether to fire.</param>
-        /// <param name="priority">Evaluation order; higher is tested first.</param>
+        /// <summary>通过委托条件注册全局转移。</summary>
+        /// <param name="to">要进入的状态。</param>
+        /// <param name="condition">决定是否触发的谓词。</param>
+        /// <param name="priority">评估顺序，值越大越先检查。</param>
         public void AddGlobalTransition(IState<TContext> to, Func<TContext, bool> condition, int priority = 0) =>
             AddGlobalTransition(new FuncTransition<TContext>(to, condition, priority));
 
-        /// <summary>Evaluates transitions, then ticks the resulting state.</summary>
-        /// <param name="deltaTime">Elapsed scaled time.</param>
+        /// <summary>评估转移，然后更新转移后的状态。</summary>
+        /// <param name="deltaTime">经过的缩放时间。</param>
         public void Tick(float deltaTime)
         {
             IState<TContext> next = ResolveTransition();
@@ -139,19 +135,19 @@ namespace AdaptiveBossArena.Core.StateMachine
             CurrentState.Tick(_context, deltaTime);
         }
 
-        /// <summary>Ticks the current state on the physics step. Transitions are not evaluated here.</summary>
-        /// <param name="fixedDeltaTime">Physics step duration.</param>
+        /// <summary>在物理步更新当前状态，此处不评估转移。</summary>
+        /// <param name="fixedDeltaTime">物理步时长。</param>
         public void FixedTick(float fixedDeltaTime) => CurrentState.FixedTick(_context, fixedDeltaTime);
 
         /// <summary>
-        /// Moves to a state immediately, bypassing transition conditions.
+        /// 立即进入状态，绕过转移条件。
         /// </summary>
         /// <remarks>
-        /// Reserved for authoritative events such as death or a scripted phase change. Routine
-        /// behaviour must go through transitions, or the graph stops describing what the boss can do.
+        /// 仅供死亡或脚本阶段变化等权威事件使用。常规行为必须通过转移，
+        /// 否则状态图不再描述 Boss 能执行的行为。
         /// </remarks>
-        /// <param name="state">State to enter.</param>
-        /// <exception cref="ArgumentNullException">Thrown when no state is supplied.</exception>
+        /// <param name="state">要进入的状态。</param>
+        /// <exception cref="ArgumentNullException">未提供状态时抛出。</exception>
         public void ForceState(IState<TContext> state)
         {
             if (state == null)
@@ -162,7 +158,7 @@ namespace AdaptiveBossArena.Core.StateMachine
             ChangeState(state);
         }
 
-        /// <summary>Finds the highest-priority satisfied transition, or null when none apply.</summary>
+        /// <summary>找出满足条件且优先级最高的转移，没有则返回 null。</summary>
         private IState<TContext> ResolveTransition()
         {
             foreach (ITransition<TContext> transition in _globalTransitions)
@@ -184,7 +180,7 @@ namespace AdaptiveBossArena.Core.StateMachine
             return null;
         }
 
-        /// <summary>Performs the exit, swap and entry, then notifies listeners.</summary>
+        /// <summary>执行退出、切换和进入，然后通知监听者。</summary>
         private void ChangeState(IState<TContext> next)
         {
             IState<TContext> previous = CurrentState;
@@ -201,7 +197,7 @@ namespace AdaptiveBossArena.Core.StateMachine
             StateChanged?.Invoke(previous, next);
         }
 
-        /// <summary>Inserts a transition so the list stays ordered by descending priority.</summary>
+        /// <summary>插入转移，保持列表按优先级降序排列。</summary>
         private static void InsertByPriority(
             List<ITransition<TContext>> list,
             ITransition<TContext> transition)

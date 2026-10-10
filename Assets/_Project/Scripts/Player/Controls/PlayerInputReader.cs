@@ -5,17 +5,15 @@ using UnityEngine.InputSystem;
 namespace AdaptiveBossArena.Player.Controls
 {
     /// <summary>
-    /// Reads the controls through the Input System package.
+    /// 通过 Input System 包读取控制。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The only type in the project that touches the input package at runtime, which is what allows
-    /// play-mode tests to substitute a scripted fake and drive the character without a device.
+    /// 项目中唯一在运行时接触输入包的类型，因此运行模式测试可替换脚本伪输入，在没有设备时驱动角色。
     /// </para>
     /// <para>
-    /// Actions are resolved once at initialisation and cached in an array indexed by
-    /// <see cref="PlayerInputAction"/>. Looking actions up by string every frame is both wasteful
-    /// and forgiving of typos in a way that hides broken controls.
+    /// 初始化时解析一次动作，并缓存于以 <see cref="PlayerInputAction"/>索引的数组。
+    /// 每帧按字符串查询既浪费，也容易容忍拼写错误而掩盖控制损坏。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -43,8 +41,7 @@ namespace AdaptiveBossArena.Player.Controls
 
                 Vector2 raw = _moveAction.ReadValue<Vector2>();
 
-                // Composite keyboard bindings can exceed unit length on a diagonal, which would let
-                // a diagonal run be measurably faster than a straight one.
+                // 键盘组合绑定在斜向可能超出单位长度，使斜向跑动明显快于直行。
                 return raw.sqrMagnitude > 1f ? raw.normalized : raw;
             }
         }
@@ -64,7 +61,7 @@ namespace AdaptiveBossArena.Player.Controls
                 return false;
             }
 
-            // Shift + click fires the heavy attack, and the light attack sees the same click. The heavy one wins.
+            // Shift 加点击触发重击，而轻击也看到同次点击。重击优先。
             if (action == PlayerInputAction.LightAttack)
             {
                 InputAction heavy = _actionLookup[(int)PlayerInputAction.HeavyAttack];
@@ -95,7 +92,7 @@ namespace AdaptiveBossArena.Player.Controls
 
         private void OnDisable() => _gameplayMap?.Disable();
 
-        /// <summary>Caches every action referenced by the character, reporting any that are missing.</summary>
+        /// <summary>缓存角色引用的全部动作，并报告缺失项。</summary>
         private void ResolveActions()
         {
             int actionCount = Enum.GetValues(typeof(PlayerInputAction)).Length;
@@ -129,7 +126,7 @@ namespace AdaptiveBossArena.Player.Controls
             }
         }
 
-        /// <summary>Resolves one action, warning rather than throwing so the game still runs.</summary>
+        /// <summary>解析单个动作，失败时警告而非抛出，使游戏仍能运行。</summary>
         private InputAction FindOrWarn(string actionName)
         {
             InputAction action = _gameplayMap.FindAction(actionName, throwIfNotFound: false);
@@ -145,8 +142,8 @@ namespace AdaptiveBossArena.Player.Controls
             return action;
         }
 
-        /// <summary>Assigns the actions asset. Used by the prefab generator.</summary>
-        /// <param name="actions">The actions asset to read from.</param>
+        /// <summary>设置动作资源，供预制体生成器使用。</summary>
+        /// <param name="actions">要读取的动作资源。</param>
         public void SetActionsAsset(InputActionAsset actions) => _actions = actions;
     }
 }

@@ -9,12 +9,11 @@ using UnityEngine.TestTools;
 namespace AdaptiveBossArena.Tests.PlayMode
 {
     /// <summary>
-    /// Tests that the cathedral dresses the arena without changing the fight.
+    /// 测试教堂装饰竞技场，却不改变战斗。
     /// </summary>
     /// <remarks>
-    /// The environment is the easiest place to break the AI without touching its code: one stray collider
-    /// on the fighting floor blocks a charge, a dash or a line of sight the boss's positioning assumes is
-    /// clear, and every test of the AI itself still passes.
+    /// 环境最容易在不改 AI 代码时破坏 AI：战斗地面的一个多余碰撞体便会阻挡冲锋、
+    /// 闪避或首领定位假定畅通的视线，而AI 本身的所有测试仍通过。
     /// </remarks>
     [TestFixture]
     public sealed class CathedralTests
@@ -67,9 +66,9 @@ namespace AdaptiveBossArena.Tests.PlayMode
         {
             yield return null;
 
-            // For every solid thing on the arena layer, the nearest it comes to the middle of the floor at
-            // body height. The floor itself is nearest below that height, and the wall ring is nearest at
-            // its radius, so anything else found inside is an intruder. Exact for the boxes the arena uses.
+            // 对竞技场层上每个实体，测量它在身体高度处距离地面中央的最近位置。
+            // 地板自身最近点在该高度下方，墙环最近点则位于其半径，
+            // 因此任何其它位于内部的对象都是干扰物。对竞技场使用的盒体计算精确。
             var body = new Vector3(0f, 1.2f, 0f);
 
             foreach (Collider collider in Object.FindObjectsByType<Collider>(FindObjectsSortMode.None))
@@ -96,8 +95,8 @@ namespace AdaptiveBossArena.Tests.PlayMode
         [UnityTest]
         public IEnumerator TheBakedLightingSurvivesTheSceneBeingRebuilt()
         {
-            // The scene is regenerated from code on every setup, headless and without a GPU to bake with. The
-            // bake is only worth anything if each rebuild picks it back up.
+            // 每次设置都通过代码重新生成场景，没有界面，也没有可用于烘焙的 GPU。
+            // 只有每次重建都重新采用烘焙结果，烘焙才有价值。
             yield return null;
 
             ReflectionProbe probe = Object.FindAnyObjectByType<ReflectionProbe>();

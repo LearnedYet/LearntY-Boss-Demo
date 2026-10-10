@@ -3,28 +3,27 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Feel
 {
     /// <summary>
-    /// How much the combat effects may spend, which is less in a browser.
+    /// 战斗效果可使用的预算，浏览器中较少。
     /// </summary>
     /// <remarks>
-    /// The browser build is played on laptops with integrated graphics, where every live particle system and every
-    /// per-pixel light is paid for on the same weak GPU that draws the fight. The pools read this once when they
-    /// are built, so nothing checks the platform per hit.
+    /// 浏览器构建运行于集成显卡笔记本，每个活动粒子系统和每个逐像素灯光都与绘制战斗共用同一块较弱
+    /// GPU。池只在构建时读取一次，不会在每次命中时检查平台。
     /// </remarks>
     public static class EffectBudget
     {
-        /// <summary>Whether the game is running as the WebGL player.</summary>
+        /// <summary>游戏是否作为 WebGL 播放器运行。</summary>
         public static bool IsWebPlayer => Application.platform == RuntimePlatform.WebGLPlayer;
 
         /// <summary>
-        /// Whether effects are cut to the Low budget.
+        /// 效果是否缩减到 Low 预算。
         /// </summary>
         /// <remarks>
-        /// Follows the player's graphics quality rather than the platform: the browser on a dedicated graphics card
-        /// can hold every effect, and was cut back only because the first machine it was tuned for could not.
+        /// 遵循玩家图形质量而不是平台：使用独立显卡的浏览器可以承载全部效果，
+        /// 之前只是因为最初调参的机器无法承载而被缩减。
         /// </remarks>
         public static bool IsReduced => Core.Services.GraphicsTier.Current == Core.Services.GraphicsQuality.Low;
 
-        /// <summary>Impact bursts alive at once in a browser: enough for a combo and a clash, not a firework.</summary>
+        /// <summary>浏览器中同时存活的命中爆发数量，足够连击与交锋，不追求烟花效果。</summary>
         public const int WebImpactBursts = 6;
     }
 }

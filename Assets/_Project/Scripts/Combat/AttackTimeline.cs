@@ -4,20 +4,17 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// Drives an attack through startup, active and recovery on a stopwatch.
+    /// 按计时器驱动攻击经过前摇、生效和后摇阶段。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The concrete stand-in for animation events. Because it is ticked with an explicit delta, an
-    /// attack's frame data can be verified in an edit-mode test, and hit-stop freezes an attack's
-    /// progress simply by supplying scaled time.
+    /// 这是动画事件的具体替代实现。由于推进时显式传入时间增量，可以在编辑模式测试中验证攻击帧数据；
+    /// 顿帧只需传入缩放后的时间，就能冻结攻击进度。
     /// </para>
     /// <para>
-    /// Phase transitions are evaluated once per tick and can skip a phase entirely if the frame was
-    /// long enough. That is deliberate: a hitch must never leave an attack stuck mid-swing with its
-    /// hitbox open. It does mean a very long frame can pass over a short active window without ever
-    /// reporting it, which is why <see cref="Tick"/> reports phases in order rather than only
-    /// announcing the final one.
+    /// 每次推进只评估一次阶段转换；如果帧足够长，可能完全跳过某个阶段。这是有意的：
+    /// 卡顿绝不能让攻击卡在挥击中途，且命中盒一直开启。这也意味着极长的帧可能跨过短暂的生效窗口，
+    /// 从未报告该阶段；因此 <see cref="Tick"/> 会按顺序报告阶段，而不是只宣布最终阶段。
     /// </para>
     /// </remarks>
     public sealed class AttackTimeline : IAttackTimeline
@@ -75,8 +72,7 @@ namespace AdaptiveBossArena.Combat
 
             _elapsed += deltaTime;
 
-            // Advance one phase at a time so that a long frame cannot skip past the active window
-            // without the hitbox ever having been opened.
+            // 逐个阶段推进，确保长帧不会跳过生效窗口，导致命中盒从未开启。
             while (IsRunning && _phase != ResolvePhase())
             {
                 TransitionTo(NextPhaseAfter(_phase));
@@ -95,12 +91,12 @@ namespace AdaptiveBossArena.Combat
             _elapsed = 0f;
             _phase = AttackPhase.Inactive;
 
-            // Completed is not raised. A cancelled attack did not finish, and anything waiting on
-            // completion to hand control back must distinguish the two.
+            // 不触发 Completed。被取消的攻击并未完成，任何等待完成后交还控制权的对象都必须区分这两种
+            // 情况。
             PhaseChanged?.Invoke(AttackPhase.Inactive);
         }
 
-        /// <summary>The phase the elapsed time currently falls within.</summary>
+        /// <summary>当前经过时间所处的阶段。</summary>
         private AttackPhase ResolvePhase()
         {
             if (_attack == null)
@@ -121,7 +117,7 @@ namespace AdaptiveBossArena.Combat
             return _elapsed < _attack.TotalSeconds ? AttackPhase.Recovery : AttackPhase.Inactive;
         }
 
-        /// <summary>The next phase in the fixed startup, active, recovery, inactive order.</summary>
+        /// <summary>按固定的前摇、生效、后摇、未激活顺序排列的下一阶段。</summary>
         private static AttackPhase NextPhaseAfter(AttackPhase phase)
         {
             switch (phase)
@@ -132,7 +128,7 @@ namespace AdaptiveBossArena.Combat
             }
         }
 
-        /// <summary>Enters a phase, announcing it and completing the attack when it ends.</summary>
+        /// <summary>进入一个阶段并通知；攻击结束时发出完成通知。</summary>
         private void TransitionTo(AttackPhase phase)
         {
             _phase = phase;

@@ -5,12 +5,11 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts a striking part's path between two frames is covered closely enough that no body is skipped.
+    /// 断言打击部位两帧间的路径被足够密集地覆盖，不会跳过任何身体。
     /// </summary>
     /// <remarks>
-    /// Hits are now decided by what the blade actually touched. A great sword's tip crosses more than a metre in
-    /// one frame of a swing, so testing only where it ends up would let it pass clean through the knight between
-    /// frames - the opposite of the "blade passed beside me but still hurt" bug, and just as dishonest.
+    /// 如今命中由刀刃实际接触决定。巨剑剑尖在挥击一帧内可跨过一米以上，
+    /// 仅检测终点会让它在帧间直接穿过骑士；这与“刀刃从旁边经过却仍伤害我”的故障相反，同样不可信。
     /// </remarks>
     [TestFixture]
     public sealed class StrikeSweepTests
@@ -27,7 +26,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void NoStepIsLongerThanThePartIsThick()
         {
-            // The tip swings 0.5 m; a 0.1 m blade needs five steps so the gap between them never exceeds its width.
+            // 剑尖扫过 0.5 米；宽 0.1 米的刀刃需五步采样，使采样间距始终不超过刀刃宽度。
             int samples = StrikeSweep.SampleCount(
                 Vector3.zero, Vector3.forward, Vector3.zero, new Vector3(0.5f, 0f, 1f), radius: 0.1f, maximum: 10);
 

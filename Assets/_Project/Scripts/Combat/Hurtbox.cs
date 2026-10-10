@@ -4,18 +4,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// A volume on a combatant that can receive hits and forwards them to its owner.
+    /// 交战角色上接收命中并转发给拥有者的体积。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Separating the receiving volume from the combatant lets one character carry several, each
-    /// with its own multiplier. That is how a boss gets a weak point worth aiming at without the
-    /// damage pipeline learning anything about anatomy.
+    /// 接收体积与角色分离，使单个角色可以拥有多个体积，各有伤害倍率。因此首领能拥有值得瞄准的弱点，
+    /// 而伤害管线无需了解身体结构。
     /// </para>
     /// <para>
-    /// The owner is resolved once at initialisation by walking up the hierarchy. Resolving per hit
-    /// would repeat that search during the busiest moments of combat, and caching it means a
-    /// misconfigured prefab reports itself at startup rather than on first contact.
+    /// 初始化时沿层级向上查找一次拥有者。每次命中再查找会在战斗最忙时重复搜索；
+    /// 缓存还让配置错误的预制体在启动而非首次接触时报告问题。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -30,13 +28,13 @@ namespace AdaptiveBossArena.Combat
 
         private IDamageable _owner;
 
-        /// <summary>The combatant this volume belongs to.</summary>
+        /// <summary>此体积所属的交战角色。</summary>
         public IDamageable Owner => _owner;
 
-        /// <summary>Damage scaling applied to hits landing here.</summary>
+        /// <summary>命中此处时应用的伤害缩放。</summary>
         public float DamageMultiplier => _damageMultiplier;
 
-        /// <summary>True when this volume is wired to a combatant.</summary>
+        /// <summary>此体积已接入角色时为 true。</summary>
         public bool IsValid => _owner != null;
 
         private void Awake()
@@ -53,12 +51,11 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// Offers a hit to the owning combatant, scaled by this volume's multiplier.
+        /// 将来袭攻击按此体积倍率缩放，再提交给拥有者。
         /// </summary>
-        /// <param name="damage">The incoming hit.</param>
+        /// <param name="damage">来袭攻击。</param>
         /// <returns>
-        /// The owner's decision about the hit. The owner, not this volume, decides whether it lands;
-        /// invincibility frames and perfect dodges are resolved there.
+        /// 拥有者对命中的决定。是否命中由拥有者而非此体积决定；无敌帧和完美闪避在那里处理。
         /// </returns>
         public DamageResult Receive(in DamageInfo damage)
         {

@@ -5,25 +5,23 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts that each rigged character's body faces the way its root does.
+    /// 断言每个绑定骨架的角色身体与根节点朝向一致。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The motors turn the root to face the opponent and every hitbox is authored along the root's
-    /// forward, so the body has to agree or the character visibly fights backwards: swings arc behind it
-    /// while the hit lands in front. The imported mannequin is authored facing -Z, and attaching it with an
-    /// identity rotation shipped exactly that - both fighters turned away, most obviously the boss, which
-    /// the camera sees from the front. Every other test passed, because nothing measured the body.
+    /// 移动器转动根节点以面向对手，所有判定框也沿根节点前方向编写，因此身体必须与之吻合，
+    /// 否则角色会明显背向战斗：挥击绕到身后，伤害却命中前方。导入的人形模型面向 -Z，
+    /// 以单位旋转挂接便造成了这种情况：双方都转身背离，镜头从正面观察的首领尤其明显。
+    /// 其它所有测试均通过，因为没有任何测试测量身体朝向。
     /// </para>
     /// <para>
-    /// Measured in the bind pose, from the shoulders and the hips, so a clip's stance twist cannot hide a
-    /// flip or fake one.
+    /// 在绑定姿势中根据肩部和髋部测量，避免动画片段的站姿扭转掩盖翻转或伪造翻转。
     /// </para>
     /// </remarks>
     [TestFixture]
     public sealed class RigFacingTests
     {
-        /// <summary>About 25 degrees of tolerance: enough for a rig's natural asymmetry, far from a flip.</summary>
+        /// <summary>容许约 25 度误差，足以容纳骨架自然的不对称，又远离翻转程度。</summary>
         private const float MinimumAgreement = 0.9f;
 
         [TestCase("Assets/_Project/Prefabs/Player.prefab")]
@@ -49,7 +47,7 @@ namespace AdaptiveBossArena.Tests.EditMode
                 Vector3 hips = animator.GetBoneTransform(HumanBodyBones.RightUpperLeg).position -
                                animator.GetBoneTransform(HumanBodyBones.LeftUpperLeg).position;
 
-                // A body facing +Z has its right side at +X, and +X cross +Y is +Z: right x up is the facing.
+                // 面向 +Z 的身体右侧为 +X，+X cross +Y 为 +Z，即右向叉乘上向得到朝向。
                 float chest = Vector3.Dot(Vector3.Cross(shoulders, Vector3.up).normalized, instance.transform.forward);
                 float pelvis = Vector3.Dot(Vector3.Cross(hips, Vector3.up).normalized, instance.transform.forward);
 

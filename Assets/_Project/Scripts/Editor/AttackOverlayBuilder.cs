@@ -4,17 +4,16 @@ using UnityEngine;
 namespace AdaptiveBossArena.Editor
 {
     /// <summary>
-    /// Attaches the ground overlay that makes a combatant's attacks visible.
+    /// 挂载用于显示战斗角色攻击的地面覆盖图。
     /// </summary>
     /// <remarks>
-    /// Shared by both prefab builders because the requirement is identical and the consequence of
-    /// omitting it is severe: an attack with no overlay produces damage and hit-stop but nothing to
-    /// look at, leaving the player unable to tell whether they attacked at all.
+    /// 双方预制体构建器共用，因为需求相同且遗漏后果严重：没有覆盖图的攻击仍产生伤害和 hit-stop，
+    /// 却没有可见提示，玩家甚至无法判断自己是否发动了攻击。
     /// </remarks>
     internal static class AttackOverlayBuilder
     {
-        /// <summary>Adds the overlay as a child of a combatant root.</summary>
-        /// <param name="parent">The combatant's transform.</param>
+        /// <summary>将覆盖图添加为战斗角色根对象的子对象。</summary>
+        /// <param name="parent">战斗角色的 Transform。</param>
         public static void Attach(Transform parent)
         {
             var overlayObject = new GameObject("AttackOverlay");

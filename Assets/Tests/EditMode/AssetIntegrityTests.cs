@@ -5,18 +5,15 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts that the shipped configuration assets actually resolve their references.
+    /// 断言发布配置资产的引用确实可解析。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This test exists because of a failure that every other check missed. Regenerating the attack
-    /// assets orphaned their identifiers, leaving both the player and the boss with attack lists
-    /// full of nulls. Compilation succeeded, the full suite passed, the scene built, and the game
-    /// launched — but the boss could not attack and neither could the player.
+    /// 源于其他检查均遗漏的故障：重建攻击资产使旧标识符失效，双方攻击列表全为null。编译、测试、场景构建、
+    /// 启动都成功，但双方无法攻击。
     /// </para>
     /// <para>
-    /// The lesson worth encoding: a project whose data is broken can look perfectly healthy from
-    /// code. Asset integrity needs asserting explicitly, exactly like behaviour does.
+    /// 需要固化的教训是：数据坏掉的项目从代码看仍可健康。资产完整性必须像行为一样明确断言。
     /// </para>
     /// </remarks>
     [TestFixture]

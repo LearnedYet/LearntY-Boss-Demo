@@ -3,38 +3,37 @@ using System;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// The parts of a body an attack strikes with.
+    /// 攻击用于打击的身体部位。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A flag set, because some blows land with more than one part: a grab closes with both hands, a charge
-    /// drives the blade and the body in together.
+    /// 采用标记集合，因为某些攻击用多个部位命中：抓取双手合拢，冲锋同时用刀刃与身体撞击。
     /// </para>
     /// <para>
-    /// <see cref="None"/> keeps the attack on its authored volume - an arc, sphere or box around the attacker.
-    /// That is right for anything whose area is drawn on the floor (a slam's ring, a shockwave), and it is the
-    /// fallback for a body with no rig, where there are no limbs to strike with.
+    /// <see cref="None"/> 让攻击采用编写的体积，即攻击者周围的弧、球或盒。
+    /// 适合任何在地面绘制范围的攻击，例如砸击圆环和冲击波，也作为无骨架、
+    /// 没有肢体可用于打击的身体的回退方式。
     /// </para>
     /// </remarks>
     [Flags]
     public enum StrikerParts
     {
-        /// <summary>No part: the attack is decided by its authored volume.</summary>
+        /// <summary>不使用部位，以编写的攻击体积判定。</summary>
         None = 0,
 
-        /// <summary>The weapon in the right hand, base to tip.</summary>
+        /// <summary>右手武器，从根部到尖端。</summary>
         Weapon = 1,
 
-        /// <summary>The right fist.</summary>
+        /// <summary>右拳。</summary>
         RightHand = 2,
 
-        /// <summary>The left fist.</summary>
+        /// <summary>左拳。</summary>
         LeftHand = 4,
 
-        /// <summary>The right foot, for a kick.</summary>
+        /// <summary>右脚，用于踢击。</summary>
         RightFoot = 8,
 
-        /// <summary>The whole body, for a leap or a charge that lands with its weight.</summary>
+        /// <summary>整个身体，用于以重量落地的跳跃或冲锋。</summary>
         Body = 16
     }
 }

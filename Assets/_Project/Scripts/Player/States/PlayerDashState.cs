@@ -7,34 +7,30 @@ using UnityEngine;
 namespace AdaptiveBossArena.Player.States
 {
     /// <summary>
-    /// The evasive dodge roll, including its invincibility frames.
+    /// 用于闪避的翻滚，包括其无敌帧。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Invincibility covers only the opening of the roll, not all of it. That single choice is what
-    /// makes dodging a skill rather than a button: rolling early beats an attack, rolling late moves
-    /// the player into it and still gets punished. The window is an absolute time, and deliberately
-    /// the same 0.135 s the old slide had, because the boss's timing and its learned read of how this
-    /// player dodges were built against it.
+    /// 无敌仅覆盖翻滚开头，而非整个翻滚。这个选择使闪避成为技能，而非按钮：提前翻滚可以避开攻击，
+    /// 太晚翻滚则会移入攻击并受罚。窗口使用绝对时间，并刻意保持旧滑行的 0.135 秒，
+    /// 因为 Boss 的时机及其对玩家闪避习惯的学习均建立在该数值上。
     /// </para>
     /// <para>
-    /// The roll replaced a flat-speed slide. It bursts out on <see cref="DodgeRollProfile"/> and
-    /// settles, covering most of its ground inside the invincibility; the stick can still steer it for
-    /// the opening moment, and its slow tail can be cancelled into a buffered attack. It snaps facing
-    /// on entry so the character visibly commits, which is what gives the boss's dodge-prediction
-    /// adaptation something legible to read.
+    /// 翻滚替代了匀速滑行。它按 <see cref="DodgeRollProfile"/>爆发起步并逐渐减速，
+    /// 在无敌期间完成大部分位移；开头仍可由摇杆调整方向，缓慢尾段可取消并转为缓存攻击。
+    /// 进入时立即调整朝向，让角色明显投入动作，也为 Boss 的闪避预测自适应提供可读信息。
     /// </para>
     /// </remarks>
     public sealed class PlayerDashState : StateBase<PlayerContext>
     {
-        /// <summary>True once the roll has run its configured duration.</summary>
-        /// <param name="context">The player context.</param>
-        /// <returns>Whether the roll has finished.</returns>
+        /// <summary>翻滚持续达到配置时长时为 true。</summary>
+        /// <param name="context">玩家上下文。</param>
+        /// <returns>翻滚是否完成。</returns>
         public bool IsComplete(PlayerContext context) => TimeInState >= context.Config.DashDurationSeconds;
 
-        /// <summary>True once the roll has slowed enough to be cancelled into an attack.</summary>
-        /// <param name="context">The player context.</param>
-        /// <returns>Whether a buffered attack may interrupt the roll.</returns>
+        /// <summary>翻滚减速到可以取消并转为攻击时为 true。</summary>
+        /// <param name="context">玩家上下文。</param>
+        /// <returns>缓存攻击是否可以打断翻滚。</returns>
         public bool CanCancel(PlayerContext context) =>
             CancelRules.RollCanBeLeft(TimeInState, context.Config.DashDurationSeconds, context.Config.DashCancelFraction);
 
@@ -43,8 +39,7 @@ namespace AdaptiveBossArena.Player.States
         {
             context.SetObservableState(ObservableActionState.Dashing);
 
-            // Stamina is spent here rather than at the transition so that the cost and the movement
-            // can never diverge; if the roll happens, it was paid for.
+            // 在此处而非转移时消耗体力，保证代价与移动始终一致；只要翻滚发生，就已支付体力。
             context.Stamina.TrySpend(context.Config.DashStaminaCost);
 
             context.DashDirection = context.ResolveDashDirection();
@@ -54,8 +49,8 @@ namespace AdaptiveBossArena.Player.States
             context.Motor.SnapToDirection(context.DashDirection);
             ApplyRollVelocity(context);
 
-            // Published so the boss can build a picture of which way this player tends to roll. The
-            // direction is legitimately observable; the boss watches the roll happen like anyone else.
+            // 发布事件，使 Boss 能了解玩家习惯向哪个方向翻滚。方向属于合理可观察信息；
+            // Boss 和任何旁观者一样观察翻滚的发生。
             context.PublishCombatEvent(CombatEventKind.DodgePerformed, context.DashDirection);
         }
 
@@ -76,18 +71,16 @@ namespace AdaptiveBossArena.Player.States
         /// <inheritdoc />
         protected override void OnExit(PlayerContext context)
         {
-            // The velocity is left as the roll left it. The curve has already slowed it, so a roll that
-            // runs its course ends nearly still, and one cancelled into an attack keeps just the carry
-            // it had - no separate exit fraction is needed to make it flow.
+            // 速度保持为翻滚结束时的数值。曲线已将其减速，因此自然结束的翻滚几乎静止，
+            // 取消并转为攻击时则保留当时的惯性，无需另设退出速度比例也能保持衔接流畅。
             context.IsInvulnerable = false;
             context.DashCooldownRemaining = context.Config.DashCooldownSeconds;
         }
 
-        /// <summary>Lets the stick bend the roll during its opening moment only.</summary>
+        /// <summary>只在翻滚起始时允许摇杆调整方向。</summary>
         /// <remarks>
-        /// Steering for the whole roll would make the distance travelled unpredictable and quietly
-        /// break the spacing the boss's range logic assumes. A short window is enough to correct a
-        /// roll started a few degrees off, which is what steering is for.
+        /// 若整个翻滚都可转向，实际位移便不可预测，并悄然破坏 Boss 距离逻辑所依据的间距。
+        /// 短窗口已足以纠正起步时偏差几度的翻滚，这正是转向的用途。
         /// </remarks>
         private static void SteerEarly(PlayerContext context, float deltaTime)
         {

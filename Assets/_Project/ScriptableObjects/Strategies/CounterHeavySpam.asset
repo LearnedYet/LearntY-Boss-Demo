@@ -25,5 +25,5 @@ MonoBehaviour:
   - _parameter: 2
     _targetValue: 0.45
   _easeInSeconds: 6
-  _tellMessage: It has started reading your heavy swing.
+  _tellMessage: 它开始预判你的重攻击。
   _tellAudioCueId: 

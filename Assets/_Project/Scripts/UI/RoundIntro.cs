@@ -5,19 +5,15 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.UI
 {
     /// <summary>
-    /// The short "ready… fight!" beat that opens a fight.
+    /// 战斗开场的短暂准备和开战提示。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A cold open — where the boss is already swinging the instant control returns — reads as the
-    /// game having started without you. This holds the fight for a moment so the player can settle,
-    /// then releases it on an unmistakable cue. The director freezes time around this; the overlay
-    /// itself only decides what to show and for how long.
+    /// 控制刚恢复Boss就攻击，会让玩家觉得游戏未经准备已经开始。先短暂停留让玩家就绪，再给出明确提示；
+    /// Director控制冻结时间，本组件只决定显示内容和时长。
     /// </para>
     /// <para>
-    /// Everything here runs on unscaled time, because the world it sits in front of is paused. It
-    /// reports completion through a callback rather than a coroutine so the director stays the single
-    /// owner of when the fight actually begins.
+    /// 背景世界暂停，所以这里使用未缩放时间；通过回调报告结束而非协程，让Director统一决定战斗开始时机。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -46,26 +42,26 @@ namespace AdaptiveBossArena.UI
         [Tooltip("How long the 'fight' cue stays up as it fades.")]
         private float _fightSeconds = 0.6f;
 
-        // Bone and old blood, in the lettering of the rest of the interface.
+        // 与界面其他文字一致的骨白和旧血色。
         private static readonly Color ReadyColor = new Color(0.84f, 0.77f, 0.66f);
         private static readonly Color FightColor = new Color(0.72f, 0.12f, 0.07f);
 
-        /// <summary>How long the boss's name holds on the first attempt, before the fight is released.</summary>
+        /// <summary>首次尝试时Boss名称显示多久后释放战斗。</summary>
         private const float TitleSeconds = 2.6f;
 
-        /// <summary>Size of the boss's name: smaller than the cue, so the widely spaced letters fit the screen.</summary>
+        /// <summary>Boss名称字号，小于开战提示，让宽字距文字能够放入屏幕。</summary>
         private const int TitleFontSize = 60;
 
-        /// <summary>The boss's name, when this run opens on its entrance; null for an ordinary ready and fight.</summary>
+        /// <summary>本轮首次入场的Boss名称，普通准备和开战流程为null。</summary>
         private string _title;
 
-        /// <summary>The banner's own size, restored after a title.</summary>
+        /// <summary>提示条自身字号，在名称展示后恢复。</summary>
         private int _cueFontSize;
 
-        /// <summary>Where the title sits: the lower third, clear of the face the camera is framing.</summary>
+        /// <summary>标题放在下三分之一处，避开镜头中的角色脸部。</summary>
         private static readonly Vector2 TitlePosition = new Vector2(0f, -300f);
 
-        /// <summary>The banner's own position, restored after a title.</summary>
+        /// <summary>提示条自身位置，在名称展示后恢复。</summary>
         private Vector2 _cuePosition;
 
         private Action _onComplete;
@@ -73,24 +69,23 @@ namespace AdaptiveBossArena.UI
         private float _elapsed;
         private bool _releasedShown;
 
-        /// <summary>True while the intro is still playing.</summary>
+        /// <summary>开场仍在播放时为true。</summary>
         public bool IsRunning => _isRunning;
 
         private void Awake() => Hide();
 
-        /// <summary>Starts the intro, calling back once it finishes.</summary>
-        /// <param name="onComplete">Invoked when the fight should be released. Always called once.</param>
+        /// <summary>开始开场，完成后回调。</summary>
+        /// <param name="onComplete">战斗应释放时调用，保证只调用一次。</param>
         public void Begin(Action onComplete) => BeginEntrance(null, onComplete);
 
         /// <summary>
-        /// Starts the intro opening on the boss's name, calling back once it finishes.
+        /// 从Boss名称展示开始开场，完成后回调。
         /// </summary>
         /// <remarks>
-        /// The first attempt of a run opens on the boss: its name held while the camera looks at it, instead of a
-        /// "READY?" over the back of the knight. Retries go straight to the quick ready and fight.
+        /// 首次尝试在镜头看向Boss时显示其名称；重试直接使用简短准备和开战提示。
         /// </remarks>
-        /// <param name="title">The name to show, or null for the ordinary ready cue.</param>
-        /// <param name="onComplete">Invoked when the fight should be released. Always called once.</param>
+        /// <param name="title">要显示的名称，普通准备提示为null。</param>
+        /// <param name="onComplete">战斗应释放时调用，保证只调用一次。</param>
         public void BeginEntrance(string title, Action onComplete)
         {
             _title = title;
@@ -125,8 +120,7 @@ namespace AdaptiveBossArena.UI
 
             if (_releasedShown && _group != null)
             {
-                // Fade the banner out across the 'fight' window so the last thing the player sees
-                // before acting is the cue thinning away rather than blinking off.
+                // 在开战窗口中渐隐提示条，让行动前最后看到的是淡出提示，而非突然消失。
                 float fightElapsed = _elapsed - hold;
                 _group.alpha = Mathf.Clamp01(1f - fightElapsed / _fightSeconds);
             }
@@ -137,10 +131,10 @@ namespace AdaptiveBossArena.UI
             }
         }
 
-        /// <summary>How long the opening cue holds: the boss's name on an entrance, the ready cue otherwise.</summary>
+        /// <summary>开场提示停留时长，首次入场显示Boss名称，其余显示准备提示。</summary>
         public float HoldSeconds => _title != null ? TitleSeconds : _readySeconds;
 
-        /// <summary>Cuts the intro short and releases the fight now, for a player who has seen it.</summary>
+        /// <summary>为已经看过的玩家跳过开场并立即开始战斗。</summary>
         public void Skip()
         {
             if (_isRunning)
@@ -149,7 +143,7 @@ namespace AdaptiveBossArena.UI
             }
         }
 
-        /// <summary>Hides the banner and clears any run in progress.</summary>
+        /// <summary>隐藏提示条并清除当前流程。</summary>
         public void Hide()
         {
             _isRunning = false;
@@ -182,7 +176,7 @@ namespace AdaptiveBossArena.UI
 
                 _label.rectTransform.anchoredPosition = _title != null ? TitlePosition : _cuePosition;
 
-                _label.text = _title ?? "READY?";
+                _label.text = _title ?? "准备好了吗？";
                 _label.color = ReadyColor;
                 _label.fontSize = _title != null ? TitleFontSize : _cueFontSize;
             }
@@ -194,7 +188,7 @@ namespace AdaptiveBossArena.UI
 
             if (_label != null)
             {
-                _label.text = "FIGHT!";
+                _label.text = "开战！";
                 _label.color = FightColor;
 
                 if (_cueFontSize != 0)
@@ -212,15 +206,14 @@ namespace AdaptiveBossArena.UI
 
             Hide();
 
-            // Invoked last, after this component is fully back at rest, so the director is free to
-            // begin the attempt — including anything that inspects this intro — without re-entrancy.
+            // 组件完全回到静止状态后最后调用，让Director可以开始尝试并检查本组件，避免重入。
             callback?.Invoke();
         }
 
-        /// <summary>Assigns the references. Used by the interface generator.</summary>
-        /// <param name="panel">Root object containing the banner.</param>
-        /// <param name="group">Group to fade.</param>
-        /// <param name="label">The banner line.</param>
+        /// <summary>指定引用，供界面生成器使用。</summary>
+        /// <param name="panel">包含提示条的根对象。</param>
+        /// <param name="group">用于淡入淡出的CanvasGroup。</param>
+        /// <param name="label">提示条文字。</param>
         public void Bind(GameObject panel, CanvasGroup group, Text label)
         {
             _panel = panel;

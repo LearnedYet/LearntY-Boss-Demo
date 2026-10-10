@@ -1,24 +1,22 @@
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// Why a combatant was interrupted.
+    /// 交战者被打断的原因。
     /// </summary>
     /// <remarks>
-    /// Carried alongside the duration because the stagger state announces itself, and announcing the
-    /// wrong thing is worse than announcing nothing: a poise break throws the loudest burst and cue
-    /// in the game, and firing that for a parry recoil would tell the player their guard had broken
-    /// when it had not. Ordered by severity so a request arriving during an existing stagger can be
-    /// merged rather than overwriting what is already playing.
+    /// 随时长一起传递，因为硬直状态会宣告自己；宣告错误比不宣告更糟。
+    /// 姿态崩溃会触发游戏最响亮的爆发与提示，若招架后仰也触发它，就会误告玩家防御已经崩溃。
+    /// 按严重程度排序，使已有硬直期间的新请求可以合并，而非覆盖正在播放的内容。
     /// </remarks>
     public enum StaggerReason
     {
-        /// <summary>An ordinary hit that carried enough force to interrupt.</summary>
+        /// <summary>力量足以打断动作的普通命中。</summary>
         Hit = 0,
 
-        /// <summary>A swing met on the beat and refused, recoiling the attacker.</summary>
+        /// <summary>挥击被精准接下并拒绝，使攻击者后仰。</summary>
         Parried = 1,
 
-        /// <summary>The poise pool emptied and the guard broke outright.</summary>
+        /// <summary>姿态池耗尽，防御完全崩溃。</summary>
         PoiseBreak = 2
     }
 }

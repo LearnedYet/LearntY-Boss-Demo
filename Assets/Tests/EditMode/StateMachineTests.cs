@@ -5,18 +5,16 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests for the state machine driving both the boss's behaviour and the player's actions.
+    /// 测试驱动首领行为与玩家动作的状态机。
     /// </summary>
     /// <remarks>
-    /// Priority ordering carries real weight here. A death or stagger transition that loses to a
-    /// routine attack transition satisfied on the same frame produces a boss that keeps swinging
-    /// after it should have been interrupted, which reads to the player as the game ignoring their
-    /// hit.
+    /// 优先级顺序在此有实际意义。若同帧满足的普通攻击转移胜过死亡或硬直转移，
+    /// 首领就会在应被打断后继续挥击，令玩家觉得游戏无视其命中。
     /// </remarks>
     [TestFixture]
     public sealed class StateMachineTests
     {
-        /// <summary>Mutable context that the test transitions read from.</summary>
+        /// <summary>供测试转移读取的可变上下文。</summary>
         private sealed class TestContext
         {
             public bool ShouldAdvance { get; set; }
@@ -26,7 +24,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             public List<string> Log { get; } = new List<string>();
         }
 
-        /// <summary>State that records its lifecycle callbacks into the shared log.</summary>
+        /// <summary>将生命周期回调记录至共享日志的状态。</summary>
         private sealed class RecordingState : StateBase<TestContext>
         {
             private readonly string _name;
@@ -87,7 +85,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             Assert.AreSame(attack, machine.CurrentState);
             CollectionAssert.AreEqual(new[] { "enter:Idle", "exit:Idle", "enter:Attack" }, context.Log);
 
-            // The newly entered state receives the tick, not the state that was just left.
+            // 新进入的状态接收本帧更新，而非刚离开的状态。
             Assert.AreEqual(0, idle.TickCount);
             Assert.AreEqual(1, attack.TickCount);
         }
@@ -144,8 +142,7 @@ namespace AdaptiveBossArena.Tests.EditMode
             machine.Tick(0.1f);
             machine.Tick(0.1f);
 
-            // Without the self-transition guard, a permanently satisfied global condition would
-            // re-enter its target every frame and restart any entry effects.
+            // 若无自转移保护，持续满足的全局条件会每帧重入目标，并重新启动所有进入效果。
             Assert.AreEqual(1, CountOccurrences(context.Log, "enter:Dead"));
         }
 
@@ -158,8 +155,7 @@ namespace AdaptiveBossArena.Tests.EditMode
 
             var machine = new StateMachine<TestContext>(context, idle);
 
-            // This is what runtime adaptation does: registering a new response while the boss is
-            // already sitting in the state the response departs from.
+            // 这正是运行时自适应的行为：首领已处于某响应的来源状态时，注册新响应。
             machine.AddTransition(idle, counter, ctx => ctx.ShouldAdvance);
             machine.Tick(0.1f);
 

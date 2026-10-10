@@ -3,34 +3,31 @@ using UnityEditor;
 namespace AdaptiveBossArena.Editor.Art
 {
     /// <summary>
-    /// Decides how third-party character models and their animations import.
+    /// 决定第三方角色模型及其动画的导入方式。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Import settings normally live only in a model's .meta file, set by hand in the inspector. That
-    /// breaks the rule this project runs on - everything is generated from code - and it is fragile in
-    /// a specific way: delete or regenerate a .meta and the rig silently becomes Generic, clips stop
-    /// looping, and root motion starts dragging characters around, with nothing in any test to notice.
-    /// Setting the import here means reimporting always produces the same result.
+    /// 导入设置通常只保存在模型 .meta 文件中，由 Inspe ctor 手动设置。这违反项目一切从代码生成的原则，
+    /// 也有特定风险：删除或重新生成 .meta 后，骨架会悄然变为 Generic，片段停止循环，根运动开始拖动角色，
+    /// 而测试未必能发现。在此设置导入规则，可确保每次重新导入结果一致。
     /// </para>
     /// <para>
-    /// Scoped to the third-party art folder, so no other model in the project is affected.
+    /// 仅作用于第三方美术文件夹，不影响项目其他模型。
     /// </para>
     /// </remarks>
     public sealed class CharacterModelPostprocessor : AssetPostprocessor
     {
-        /// <summary>Folder whose models this postprocessor owns.</summary>
+        /// <summary>此后处理器负责的模型文件夹。</summary>
         public const string ThirdPartyFolder = "Assets/_Project/Art/ThirdParty/";
 
         /// <summary>
-        /// Bumped whenever the import rules change.
+        /// 导入规则变化时增加版本号。
         /// </summary>
         /// <remarks>
-        /// Unity only reimports a model when something it tracks has changed, and a postprocessor's code
-        /// is not one of those things. Without a version bump an edited rule applies to newly imported
-        /// models only, while every model already in the project keeps its old import.
+        /// Unity 仅在其追踪的内容变化时重新导入模型，后处理器代码不在其中。不增加版本号，
+        /// 修改规则只对新导入模型生效，已有模型仍保留旧设置。
         /// </remarks>
-        /// <returns>The version of these import rules.</returns>
+        /// <returns>这些导入规则的版本。</returns>
         public override uint GetVersion() => 2;
 
         private bool IsThirdPartyModel => assetPath.StartsWith(ThirdPartyFolder) && assetPath.EndsWith(".fbx");
@@ -44,13 +41,12 @@ namespace AdaptiveBossArena.Editor.Art
 
             var importer = (ModelImporter)assetImporter;
 
-            // Humanoid, so clips from one library drive a body from another, and so the game can find
-            // the hand and chest bones by role rather than by the author's bone names.
+            // 使用 Humanoid，让一个库的片段能够驱动另一个库的身体，
+            // 也让游戏按骨骼角色而非作者命名查找手骨和胸骨。
             importer.animationType = ModelImporterAnimationType.Human;
             importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
 
-            // The embedded materials are placeholders; surfaces come from MaterialLibrary, which knows
-            // the render pipeline and the art direction.
+            // 内嵌材质只是占位资源；表面材质来自了解渲染管线和美术方向的 MaterialLibrary。
             importer.materialImportMode = ModelImporterMaterialImportMode.None;
             importer.importCameras = false;
             importer.importLights = false;
@@ -71,15 +67,13 @@ namespace AdaptiveBossArena.Editor.Art
 
             foreach (ModelImporterClipAnimation clip in clips)
             {
-                // The exporter prefixes every take with its armature, and the two libraries use
-                // different armature names. Stripped, one clip name means one thing everywhere, and
-                // nothing downstream has to know which library a clip came from.
+                // 导出器为每个动画 take 加上骨架前缀，两个库使用不同的骨架名。去掉前缀后，
+                // 同一个片段名在各处含义一致，下游不必知道它来自哪个库。
                 clip.name = CleanClipName(clip.name);
                 clip.loopTime = IsLoopingClip(clip.name);
 
-                // Movement is the motors' job, never the clip's: hitbox reach and the boss's range logic
-                // are authored against where the code moves a character. Every clip's root motion is
-                // baked into the pose so a clip can never carry its character anywhere.
+                // 移动属于运动控制器，绝不属于片段：命中范围和首领距离逻辑都按代码移动角色的位置设定。
+                // 每个片段的根运动都烘焙进姿势，确保片段无法自行移动角色。
                 clip.lockRootRotation = true;
                 clip.lockRootHeightY = true;
                 clip.lockRootPositionXZ = true;
@@ -91,9 +85,9 @@ namespace AdaptiveBossArena.Editor.Art
             importer.clipAnimations = clips;
         }
 
-        /// <summary>Removes the exporter's armature prefix from a take name.</summary>
-        /// <param name="rawName">Name as exported, such as <c>Rig|Walk_Loop</c>.</param>
-        /// <returns>The clip's own name, such as <c>Walk_Loop</c>.</returns>
+        /// <summary>移除 take 名称中的导出骨架前缀。</summary>
+        /// <param name="rawName">导出的名称，例如 <c>Rig|Walk_Loop</c>.</param>
+        /// <returns>片段自身名称，例如 <c>Walk_Loop</c>.</returns>
         public static string CleanClipName(string rawName)
         {
             int separator = rawName.LastIndexOf('|');
@@ -101,9 +95,9 @@ namespace AdaptiveBossArena.Editor.Art
             return separator >= 0 ? rawName.Substring(separator + 1) : rawName;
         }
 
-        /// <summary>Whether a clip should loop, from the library's own naming.</summary>
-        /// <param name="clipName">The clip's name.</param>
-        /// <returns>True for idles and locomotion.</returns>
+        /// <summary>根据库自身命名判断片段是否应循环。</summary>
+        /// <param name="clipName">片段名称。</param>
+        /// <returns>待机和移动片段返回 true。</returns>
         public static bool IsLoopingClip(string clipName) =>
             clipName.EndsWith("_Loop") || clipName == "Sword_Idle";
     }

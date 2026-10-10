@@ -3,40 +3,38 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat.Movement
 {
     /// <summary>
-    /// How much speed a moving body keeps when it asks to change direction.
+    /// 移动中的身体请求改变方向时，保留多少速度。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The knight used to reverse direction at full speed with no cost at all: it reached top speed
-    /// in 0.06 s, turned at 1080 degrees a second, and velocity simply swung round to wherever the
-    /// stick pointed. Nothing in that has mass, which is most of why movement read as floaty.
+    /// 过去骑士能毫无代价地以全速反向：0.06 秒达到最高速度，每秒转向 1080 度，
+    /// 速度直接转向摇杆所指位置。这完全没有质量感，正是移动显得轻飘的主要原因。
     /// </para>
     /// <para>
-    /// A body carrying speed that asks to go somewhere else has to shed some of that speed first. The
-    /// sharper the turn and the faster it was going, the more it loses; a gentle curve at a jog costs
-    /// almost nothing, a full reversal at a sprint costs most of it. That single rule is what makes a
-    /// character read as heavy without making it unresponsive, because starting from rest is untouched.
+    /// 带着速度的身体想去另一个方向，必须先消减部分速度。转弯越急、原速度越快，损失越多；
+    /// 慢跑时平缓转弯几乎没有代价，冲刺时完全反向会损失大部分速度。这个规则让角色显得沉重，
+    /// 却不会失去响应性，因为从静止起步不受影响。
     /// </para>
     /// </remarks>
     public static class MomentumRules
     {
-        /// <summary>Below this fraction of top speed a body turns freely.</summary>
+        /// <summary>低于最高速度的此比例时，身体可自由转向。</summary>
         /// <remarks>
-        /// A character standing still or barely moving has no momentum to fight, and charging it a turn
-        /// cost would make starting to move in a new direction feel sluggish rather than weighty.
+        /// 静止或缓慢移动的角色没有需要克服的动量，对它收取转向代价会让向新方向起步显得迟钝，
+        /// 而不是有重量。
         /// </remarks>
         private const float FreeTurnSpeedFraction = 0.2f;
 
         /// <summary>
-        /// The fraction of top speed a body may aim for when turning toward a new direction.
+        /// 转向新方向时，身体可追求的最高速度比例。
         /// </summary>
-        /// <param name="currentVelocity">Current horizontal velocity.</param>
-        /// <param name="desiredDirection">Direction the body wants to travel. Need not be normalised.</param>
-        /// <param name="topSpeed">The body's top speed.</param>
+        /// <param name="currentVelocity">当前水平速度。</param>
+        /// <param name="desiredDirection">身体希望移动的方向，无需归一化。</param>
+        /// <param name="topSpeed">身体的最高速度。</param>
         /// <param name="speedFloorOnReversal">
-        /// Fraction of top speed kept when reversing outright at full speed.
+        /// 全速完全反向时保留的最高速度比例。
         /// </param>
-        /// <returns>A multiplier on top speed, from the floor up to one.</returns>
+        /// <returns>最高速度倍率，从下限到一。</returns>
         public static float TargetSpeedFactor(
             Vector3 currentVelocity,
             Vector3 desiredDirection,
@@ -60,8 +58,7 @@ namespace AdaptiveBossArena.Combat.Movement
 
             float turn01 = Vector3.Angle(currentVelocity, desiredDirection) / 180f;
 
-            // Scaled by how far above the free-turn speed the body is, so the cost grows smoothly with
-            // momentum instead of switching on at a threshold.
+            // 按超出自由转向速度的程度缩放，让代价随动量平滑增长，而不是在阈值处突然开启。
             float momentum01 = Mathf.InverseLerp(FreeTurnSpeedFraction, 1f, speedFraction);
             float cost = turn01 * momentum01;
 

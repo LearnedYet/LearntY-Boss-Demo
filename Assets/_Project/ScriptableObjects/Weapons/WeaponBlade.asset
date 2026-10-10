@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: AdaptiveBossArena.Combat::AdaptiveBossArena.Combat.WeaponDefinition
   _id: weapon.weaponblade
   _designerNotes: 
-  _displayName: Blade
+  _displayName: 长剑
   _signatureColor: {r: 0.55, g: 0.85, b: 1, a: 0.6}
   _swingCueId: swing.blade
   _modelPrefab: {fileID: 5131817064564814448, guid: 58c1996e39f38eb469dcb2368878e655, type: 3}

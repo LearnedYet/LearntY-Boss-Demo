@@ -7,75 +7,71 @@ using UnityEngine;
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// Turns witnessed combat occurrences into sparks, flashes and trails.
+    /// 将观察到的战斗事件转换为火花、闪光和拖尾。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The visual counterpart to <see cref="CombatAudioDirector"/>, and deliberately built the same
-    /// way: combat systems publish what happened and know nothing about how it is presented. Adding a
-    /// new effect never means editing combat code.
+    /// 它是 <see cref="CombatAudioDirector"/> 的视觉对应部分，刻意采用相同结构：战斗系统发布事件，
+    /// 不了解呈现方式。添加新效果无需修改战斗代码。
     /// </para>
     /// <para>
-    /// Note what this does <em>not</em> do — it never feeds anything back into the fight. It is a
-    /// pure consumer of the event bus, which is the only role the bus is safe for outside the
-    /// learning system's statistics.
+    /// 注意它<em>不会</em>做的事：绝不向战斗回传任何信息。它是事件总线的纯消费者；在学习系统统计之外，
+    /// 总线只适合承担这种职责。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class CombatEffectsDirector : MonoBehaviour
     {
         /// <summary>
-        /// How far above a reported event position a burst is placed.
+        /// 爆发效果在事件报告位置上方的偏移高度。
         /// </summary>
         /// <remarks>
-        /// Combat events are positioned at a character's transform origin, which sits on the floor.
-        /// Sparks emitted there are half swallowed by the ground and read as dust rather than as a
-        /// hit. Roughly chest height on both combatants puts them where the blow actually landed.
+        /// 战斗事件位于角色变换原点，也就是地面。此处发出的火花有一半被地面吞没，看起来像尘土而非命中。
+        /// 双方胸口附近的高度更接近实际击中位置。
         /// </remarks>
         private const float ImpactHeight = 1.1f;
 
-        /// <summary>Height the phase-transition shockwave erupts from, roughly the boss's centre.</summary>
+        /// <summary>阶段切换冲击波的爆发高度，大致位于首领中心。</summary>
         private const float ShockwaveHeight = 1.2f;
 
-        /// <summary>Field-of-view kick, in degrees, that widens the view on a dash for a burst of speed.</summary>
+        /// <summary>闪避时增大视野角的度数，制造速度爆发感。</summary>
         private const float DashFovWiden = 6f;
 
-        /// <summary>Field-of-view narrowing on a clean deflect, snapping focus onto the parry.</summary>
+        /// <summary>精准弹反时缩窄视野角，使注意力迅速聚焦招架。</summary>
         private const float DeflectFovNarrow = 3.5f;
 
-        /// <summary>Field-of-view narrowing on a perfect dodge, complementing the slow-motion.</summary>
+        /// <summary>完美闪避时缩窄视野角，与慢动作相呼应。</summary>
         private const float PerfectDodgeFovNarrow = 5f;
 
-        /// <summary>Screen-shake trauma on an overbalance, a small jolt so the stumble lands physically.</summary>
+        /// <summary>失衡时的屏幕震动强度，以轻微冲击表现踉跄的实体感。</summary>
         private const float OverbalanceTrauma = 0.2f;
 
         /// <summary>
-        /// Shake for a body driven into the wall. Between a heavy hit's and a slam's: the wall is the
-        /// harder thing to be hit by, but it is not an attack and should not read as one.
+        /// 身体撞墙时的震动，介于重击与砸击之间：墙壁冲击更硬，但它不是攻击，不能表现成攻击。
         /// </summary>
         private const float WallImpactTrauma = 0.32f;
 
         /// <summary>
-        /// World speed for the beat after a guard breaks.
+        /// 防御崩溃后瞬间的世界速度。
         /// </summary>
         /// <remarks>
-        /// The biggest moment in an exchange landed at full speed, over as soon as it began. A third of a
-        /// second at a third of the speed lets the stagger be seen, and is well inside the opening it grants.
+        /// 交锋中最重要的时刻以全速发生，刚开始就结束。以三分之一速度持续三分之一秒，既能看清踉跄，
+        /// 也不会超出提供的破绽窗口。
         /// </remarks>
         private const float PoiseBreakSlowMotionScale = 0.35f;
 
         private const float PoiseBreakSlowMotionSeconds = 0.35f;
 
-        /// <summary>Shake and camera punch on a broken guard: heavier than any single blow.</summary>
+        /// <summary>防御崩溃时的震动和相机冲击，比任何单次攻击更重。</summary>
         private const float PoiseBreakTrauma = 0.38f;
 
-        /// <summary>Rough size of the splatter a light blow leaves, in metres.</summary>
+        /// <summary>轻击留下的飞溅大致尺寸，单位为米。</summary>
         private const float LightBloodSize = 0.8f;
 
-        /// <summary>Rough size of the splatter a heavy blow leaves, in metres.</summary>
+        /// <summary>重击留下的飞溅大致尺寸，单位为米。</summary>
         private const float HeavyBloodSize = 1.4f;
 
-        /// <summary>Seed for splatter turns and sizes: cosmetic, and kept off the gameplay generator.</summary>
+        /// <summary>飞溅旋转和尺寸的种子，仅用于表现，不使用玩法随机源。</summary>
         private const uint BloodSeed = 0xB100Du;
 
         [SerializeField]
@@ -176,11 +172,10 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Kicks up dust at the boss's feet as it stumbles, marking the opening a read bought.</summary>
+        /// <summary>首领踉跄时在脚下扬起尘土，标记识破其判断换来的破绽。</summary>
         /// <remarks>
-        /// A dull, dispersed burst low to the ground — the block flavour reads as dust rather than
-        /// sparks — plus a small jolt, so the overextension is felt as well as seen. Placed on the
-        /// boss because the miss is the boss's, not the player's.
+        /// 贴近地面的暗淡、分散爆发；格挡风格更像尘土而非火花，再叠加轻微震动，
+        /// 使过度投入既能被看到也能被感到。效果放在首领位置，因为落空的是首领攻击，而非玩家攻击。
         /// </remarks>
         private void OnOverbalance()
         {
@@ -192,7 +187,7 @@ namespace AdaptiveBossArena.Game
             _shake?.AddTrauma(OverbalanceTrauma);
         }
 
-        /// <summary>Maps a witnessed occurrence onto a burst or a trail.</summary>
+        /// <summary>将观察事件映射到爆发效果或拖尾。</summary>
         private void OnCombatEvent(CombatEvent combatEvent)
         {
             switch (combatEvent.Kind)
@@ -208,16 +203,14 @@ namespace AdaptiveBossArena.Game
                     break;
 
                 case CombatEventKind.Deflected:
-                    // Driven from the bus rather than from the deflect event channel, which carries
-                    // no position and fires for the same moment. Listening to both would double the
-                    // burst on the single most important beat in the fight.
+                    // 由总线驱动，而非弹反事件通道；后者在同一时刻触发，但不携带位置。
+                    // 同时监听两者会在战斗最重要的单个瞬间触发两次爆发。
                     Burst(combatEvent.Position, -combatEvent.Direction, ImpactFlavour.Deflect);
                     _shake?.PunchFov(-DeflectFovNarrow);
                     break;
 
                 case CombatEventKind.DodgePerformed:
-                    // The whole camera breathes out on a dash, which is most of what makes a roll read
-                    // as a burst of speed rather than a teleport.
+                    // 闪避时整台相机向外舒展，这让翻滚呈现为速度爆发，而非瞬间传送。
                     _shake?.PunchFov(DashFovWiden);
                     break;
 
@@ -226,15 +219,13 @@ namespace AdaptiveBossArena.Game
                     break;
 
                 case CombatEventKind.Parried when combatEvent.Actor != CombatantTeam.Player:
-                    // Only when someone other than the player parried. The player's own deflect
-                    // publishes Deflected as well and is served by the case above; bursting on both
-                    // would double the sparks on the single most important beat in the fight, which
-                    // is the same mistake the comment there already guards against.
+                    // 仅处理玩家之外的角色招架。玩家自身弹反也会发布 Deflected，已由上面的分支处理；
+                    // 两者都触发会让战斗最重要时刻出现双倍火花，与上方注释防范的是同一种错误。
                     Burst(combatEvent.Position, -combatEvent.Direction, ImpactFlavour.Deflect);
                     break;
 
                 case CombatEventKind.WallImpact:
-                    // Sparks thrown back off the wall, toward the fight, where the body met the stone.
+                    // 在身体撞石的位置，火花从墙面向战斗区域弹回。
                     Burst(combatEvent.Position, -combatEvent.Direction, ImpactFlavour.Stone);
                     _shake?.AddTrauma(WallImpactTrauma);
                     break;
@@ -253,11 +244,11 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Plays a burst, raised off the floor to where the blow landed.</summary>
+        /// <summary>播放爆发效果，并从地面抬升到实际命中位置。</summary>
         private void Burst(Vector3 position, Vector3 direction, ImpactFlavour flavour) =>
             _bursts.Play(position + Vector3.up * ImpactHeight, direction, flavour);
 
-        /// <summary>Heavier attacks throw a bigger, slower burst so weight is visible as well as audible.</summary>
+        /// <summary>更重的攻击产生更大、更慢的爆发，使重量既可见也可闻。</summary>
         private static ImpactFlavour FlavourFor(DamageType damageType)
         {
             switch (damageType)
@@ -271,17 +262,16 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Whose weapon is swinging.</summary>
+        /// <summary>正在挥动哪一方的武器。</summary>
         private WeaponTrail TrailFor(CombatantTeam team) =>
             team == CombatantTeam.Player ? _playerTrail : _bossTrail;
 
         /// <summary>
-        /// Finds the trail on each combatant.
+        /// 查找双方的拖尾。
         /// </summary>
         /// <remarks>
-        /// Resolved by scene search rather than injected, because the combatants are spawned from
-        /// prefabs by the scene generator and there is no seam to hand references through. The search
-        /// happens once, at startup.
+        /// 通过场景搜索而非注入解析，因为双方由场景生成器从预制体生成，没有传递引用的接缝。
+        /// 搜索仅在启动时执行一次。
         /// </remarks>
         private void ResolveTrails()
         {
@@ -308,10 +298,10 @@ namespace AdaptiveBossArena.Game
             }
         }
 
-        /// <summary>Erupts a shockwave from the boss on each escalation.</summary>
+        /// <summary>每次阶段升级时从首领位置爆发冲击波。</summary>
         /// <remarks>
-        /// The phase channel also fires for the opening phase and for a reset, so only an index above
-        /// zero — a genuine escalation, since the boss's health only ever falls — gets the eruption.
+        /// 阶段通道在开场和重置时也会触发，因此只有大于零的索引才触发爆发；首领生命只会下降，
+        /// 所以这是真正的升级。
         /// </remarks>
         private void OnBossPhaseChanged(int phaseIndex)
         {
@@ -326,25 +316,23 @@ namespace AdaptiveBossArena.Game
 
         private void OnPerfectDodge()
         {
-            // A tight zoom-in to match the slow-motion — the frame narrows onto the opening the read
-            // just bought.
+            // 紧凑放大视野以配合慢动作，将画面聚焦于刚刚识破判断所换来的破绽。
             _shake?.PunchFov(-PerfectDodgeFovNarrow);
 
-            // Placed on the player rather than at an impact point, because nothing was struck. The
-            // burst marks where they were when they slipped it.
+            // 放在玩家位置而非命中点，因为没有击中任何目标；爆发标记玩家躲开攻击时的位置。
             if (_playerTrail != null)
             {
-                // Not lifted, unlike the others: the trail already sits at chest height, so this is
-                // the one position in the class that is already where it should be.
+                // 与其他效果不同，此处不再抬高：拖尾已经位于胸口高度，
+                // 这是本类唯一已经处于正确高度的位置。
                 _bursts.Play(_playerTrail.transform.position, Vector3.up, ImpactFlavour.Deflect);
             }
         }
 
-        /// <summary>Assigns the channels. Used by the scene generator.</summary>
-        /// <param name="perfectDodge">Perfect dodge channel.</param>
-        /// <param name="bossPhase">Boss phase index channel.</param>
-        /// <param name="overbalance">Boss overbalance channel.</param>
-        /// <param name="impactMaterial">Material the impact sparks are drawn with.</param>
+        /// <summary>分配事件通道，供场景生成器使用。</summary>
+        /// <param name="perfectDodge">完美闪避通道。</param>
+        /// <param name="bossPhase">首领阶段索引通道。</param>
+        /// <param name="overbalance">首领失衡通道。</param>
+        /// <param name="impactMaterial">绘制命中火花的材质。</param>
         public void Bind(
             VoidEventChannel perfectDodge,
             IntEventChannel bossPhase,
@@ -361,13 +349,13 @@ namespace AdaptiveBossArena.Game
             _bloodMaterial = bloodMaterial;
         }
 
-        /// <summary>The material floor splatters are drawn with.</summary>
+        /// <summary>绘制地面飞溅的材质。</summary>
         public Material BloodMaterial => _bloodMaterial;
 
-        /// <summary>The material impact sparks are drawn with.</summary>
+        /// <summary>绘制命中火花的材质。</summary>
         public Material ImpactMaterial => _impactMaterial;
 
-        /// <summary>The material blood and dust are drawn with.</summary>
+        /// <summary>绘制血液和尘土的材质。</summary>
         public Material MatterMaterial => _matterMaterial;
     }
 }

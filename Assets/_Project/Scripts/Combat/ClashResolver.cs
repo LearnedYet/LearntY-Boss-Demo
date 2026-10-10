@@ -3,45 +3,41 @@ using UnityEngine;
 namespace AdaptiveBossArena.Combat
 {
     /// <summary>
-    /// Decides whether two live swings have met each other rather than their targets.
+    /// 判断两次有效挥击是否击中彼此而非各自目标。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A clash is the third outcome a duel needs. A parry is one fighter reading the other; a trade
-    /// is both simply connecting; a clash is neither winning, and without it two simultaneous swings
-    /// resolve as a damage race in which the fighter with the bigger number is always right.
+    /// 刀刃相撞是决斗需要的第三种结果：招架是一方识破另一方，互换伤害是双方都命中，相撞则双方都未赢。
+    /// 若没有它，同时挥击会退化为数值更大一方总能胜出的伤害竞赛。
     /// </para>
     /// <para>
-    /// Pure, and separate from where it is detected, because the decision is a rule and rules in this
-    /// project are pinned by edit-mode tests. The detection has to live somewhere that can see both
-    /// combatants at once, which is the encounter director.
+    /// 决策保持纯逻辑并与检测位置分离，因为这是规则，而本项目的规则用编辑模式测试固定。
+    /// 检测必须位于能同时看到双方的位置，也就是遭遇战导演。
     /// </para>
     /// </remarks>
     public static class ClashResolver
     {
         /// <summary>
-        /// How squarely the two must be facing each other, as a dot product.
+        /// 双方必须多么正对彼此，以点积表示。
         /// </summary>
         /// <remarks>
-        /// Roughly forty-five degrees. Blades meet when the swings are aimed at one another; a
-        /// fighter struck from the side has been caught out, not matched, and turning that into a
-        /// clash would rob them of a hit they had already earned.
+        /// 大致为四十五度。挥击朝向彼此时刀刃才相遇；从侧面被击中的角色是露出破绽，而非旗鼓相当，
+        /// 将其判作相撞会剥夺攻击者已经赢得的命中。
         /// </remarks>
         private const float MinimumFacingDot = 0.7f;
 
         /// <summary>
-        /// Whether two swings should bounce off each other instead of landing.
+        /// 两次挥击是否应互相弹开而非命中。
         /// </summary>
-        /// <param name="firstIsSwinging">Whether the first fighter's hitbox is currently open.</param>
-        /// <param name="secondIsSwinging">Whether the second fighter's hitbox is currently open.</param>
-        /// <param name="separation">Distance between the two fighters.</param>
-        /// <param name="combinedReach">The two live attacks' reaches added together.</param>
+        /// <param name="firstIsSwinging">第一名角色的攻击判定是否开启。</param>
+        /// <param name="secondIsSwinging">第二名角色的攻击判定是否开启。</param>
+        /// <param name="separation">双方距离。</param>
+        /// <param name="combinedReach">两次有效攻击的范围之和。</param>
         /// <param name="facingDot">
-        /// How squarely the two face each other: the smaller of the two fighters' alignment with the
-        /// line between them. Taking the smaller of the pair means one fighter looking away is
-        /// enough to make it a hit rather than a clash, which is the fair reading.
+        /// 双方正对程度：各自朝向与连线的对齐程度取较小值。取较小值意味着任一角色背对对手，
+        /// 就足以判为命中而非相撞，这才公平。
         /// </param>
-        /// <returns>True when both swings should be refused.</returns>
+        /// <returns>双方挥击都应被拒绝时为 true。</returns>
         public static bool ShouldClash(
             bool firstIsSwinging,
             bool secondIsSwinging,
@@ -54,9 +50,8 @@ namespace AdaptiveBossArena.Combat
                 return false;
             }
 
-            // Half the combined reach, not the whole of it: two attacks whose ranges merely overlap
-            // somewhere are not two blades in the same place. Requiring the fighters to be inside
-            // the average of the two reaches is what keeps a clash to swings that genuinely met.
+            // 使用合计范围的一半，而非全部；攻击范围仅在某处重叠不代表刀刃位于同一位置。
+            // 要求双方距离小于平均范围，可确保相撞只发生在真正相遇的挥击之间。
             if (separation > combinedReach * 0.5f)
             {
                 return false;
@@ -66,17 +61,16 @@ namespace AdaptiveBossArena.Combat
         }
 
         /// <summary>
-        /// How squarely two fighters face each other, for <see cref="ShouldClash"/>.
+        /// 为 <see cref="ShouldClash"/> 计算双方正对程度。
         /// </summary>
         /// <remarks>
-        /// Measured on the horizontal plane only, matching how the hit arcs are measured: a fighter
-        /// standing slightly higher is not facing any less squarely.
+        /// 仅在水平面测量，与命中弧一致；角色稍微站高一些不意味着正对程度降低。
         /// </remarks>
-        /// <param name="firstPosition">Where the first fighter stands.</param>
-        /// <param name="firstForward">Where the first fighter is looking.</param>
-        /// <param name="secondPosition">Where the second fighter stands.</param>
-        /// <param name="secondForward">Where the second fighter is looking.</param>
-        /// <returns>The smaller of the two fighters' alignment with the line between them.</returns>
+        /// <param name="firstPosition">第一名角色的位置。</param>
+        /// <param name="firstForward">第一名角色的朝向。</param>
+        /// <param name="secondPosition">第二名角色的位置。</param>
+        /// <param name="secondForward">第二名角色的朝向。</param>
+        /// <returns>双方朝向与连线对齐程度中的较小值。</returns>
         public static float FacingDot(
             Vector3 firstPosition,
             Vector3 firstForward,
@@ -98,7 +92,7 @@ namespace AdaptiveBossArena.Combat
                 Vector3.Dot(Flatten(secondForward), -between));
         }
 
-        /// <summary>Drops the vertical component and renormalises, or returns forward if degenerate.</summary>
+        /// <summary>去掉竖直分量并重新归一化；退化时返回前方。</summary>
         private static Vector3 Flatten(Vector3 direction)
         {
             direction.y = 0f;

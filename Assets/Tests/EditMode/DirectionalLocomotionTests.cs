@@ -9,11 +9,10 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests that every clip in a fighter's locomotion blend steps the way the blend places it.
+    /// 测试移动混合每个片段的步伐方向与其配置位置一致。
     /// </summary>
     /// <remarks>
-    /// The brute's run clip stepped backwards, so it ran forwards on legs running away. File names said
-    /// "run"; only measuring the feet showed it.
+    /// 巨兽跑步片段实际后退，使前进身体配逃离双腿。文件名说run，只有测脚才发现。
     /// </remarks>
     [TestFixture]
     public sealed class DirectionalLocomotionTests

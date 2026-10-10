@@ -4,15 +4,15 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests that an attack's clip strikes while its hitbox is live, whatever the two lengths are.
+    /// 测试无论片段与攻击时长如何，动画打击都发生在命中框有效期间。
     /// </summary>
     [TestFixture]
     public sealed class AttackClipTimeWarpTests
     {
-        // A light slash: 0.09 s wind-up, 0.07 s live, 0.2 s recovery, on a 1.1 s clip landing at 0.45 s.
+        // 轻斩：0.09 秒前摇、0.07 秒有效、0.2 秒后摇；片段长 1.1 秒，在 0.45 秒接触。
         private static AttackClipTimeWarp Light() => new AttackClipTimeWarp(0.09f, 0.07f, 0.2f, 1.1f, 0.45f, 0.1f);
 
-        // A heavy on the same clip: a much longer wind-up and recovery.
+        // 同一片段的重攻击，前摇和后摇长得多。
         private static AttackClipTimeWarp Heavy() => new AttackClipTimeWarp(0.34f, 0.10f, 0.52f, 1.1f, 0.45f, 0.1f);
 
         [Test]
@@ -37,7 +37,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void ClipTimeNeverRunsBackwards()
         {
-            // A pose that jumped backwards mid-swing would read as a stutter.
+            // 挥击途中姿势向后跳会像卡顿。
             AttackClipTimeWarp warp = Heavy();
             float previous = -1f;
 

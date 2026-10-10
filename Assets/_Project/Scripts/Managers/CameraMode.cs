@@ -1,31 +1,28 @@
 namespace AdaptiveBossArena.Game
 {
     /// <summary>
-    /// The vantage points the camera can adopt.
+    /// 相机可以采用的观察视角。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Worth being honest about the trade-off, because it is not merely aesthetic. This encounter is
-    /// designed around a top-down read: attack telegraphs are drawn flat on the ground, the boss's
-    /// spacing behaviour assumes you can judge distance at a glance, and its dodge-prediction
-    /// adaptation only feels fair when you could have seen the swing coming.
+    /// 需要明确这种取舍，因为它不只是审美差异。此遭遇战围绕俯视视角设计：攻击预警平铺在地面，
+    /// 首领的距离控制要求玩家一眼判断间距，而闪避预测适应只有在玩家能够看见来袭挥击时才显得公平。
     /// </para>
     /// <para>
-    /// Those assumptions weaken as the camera drops. Third person still reads well and is arguably
-    /// more dramatic. First person breaks several of them outright — ground telegraphs fall largely
-    /// outside your view and an attack from behind is unreadable — so it is included as an option
-    /// to try rather than as a supported way to fight.
+    /// 相机越低，这些前提越弱。第三人称仍然可读，而且可能更有戏剧性。第一人称会直接破坏其中多项：
+    /// 地面预警大多位于视野外，背后的攻击也无法判断，因此这里只将它作为可尝试的选项，
+    /// 而非正式支持的战斗方式。
     /// </para>
     /// </remarks>
     public enum CameraMode
     {
-        /// <summary>Angled overhead view. The mode the encounter is designed around.</summary>
+        /// <summary>倾斜俯视视角，遭遇战围绕此模式设计。</summary>
         TopDown = 0,
 
-        /// <summary>Over-the-shoulder view, closer and more dramatic.</summary>
+        /// <summary>越肩视角，更近且更有戏剧性。</summary>
         ThirdPerson = 1,
 
-        /// <summary>Eye-level view from the character's head.</summary>
+        /// <summary>角色头部高度的平视视角。</summary>
         FirstPerson = 2
     }
 }

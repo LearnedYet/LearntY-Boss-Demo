@@ -9,12 +9,12 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts the licensed Mixamo characters and animations import in the shape the game depends on.
+    /// 断言授权 Mixamo 角色及动画导入结果符合游戏所依赖的结构。
     /// </summary>
     /// <remarks>
-    /// The files are not in the repository, so every test is skipped - not failed - where they are absent.
-    /// Import settings fail silently: an animation file whose avatar is not copied from its character still
-    /// imports and previews, and then drives a Humanoid body with nothing, which only running the game shows.
+    /// 这些文件不在仓库中，因此缺失时每个测试会跳过而非失败。导入配置可能无声失败：
+    /// 动画文件的 Avatar 未从角色复制时仍能导入和预览，却无法驱动 Humanoid 身体，
+    /// 只有运行游戏才会显现。
     /// </remarks>
     [TestFixture]
     public sealed class LicensedArtImportTests

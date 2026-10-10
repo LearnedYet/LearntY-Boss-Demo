@@ -6,11 +6,10 @@ using UnityEngine;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Asserts the recorded sounds reach the moments they were chosen for.
+    /// 断言录音能到达预期播放时刻。
     /// </summary>
     /// <remarks>
-    /// The player heard the synthesised sounds as random. The downloads replace them cue by cue, matched by file
-    /// name, and a pattern that matched nothing would leave the old sound playing with no error anywhere.
+    /// 玩家觉得合成声音随机。下载录音按文件名逐标识替换，模式无匹配时会继续播放旧声且不报错。
     /// </remarks>
     [TestFixture]
     public sealed class AudioMappingTests
@@ -34,7 +33,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [TestCase(@"^(125405|869056)_take\d+$", 10)]
         public void EachCompilationWasCutIntoSingleSounds(string pattern, int atLeast)
         {
-            // A compilation played whole fires a burst of swings for one blow. Each take is one sound, and short.
+            // 完整播放合集会让一次打击触发一串挥击声。每个变体必须是短单声。
             Assume.That(Directory.Exists(AudioAssetBuilder.SoundFolder + "/Freesound/Takes"), "The Freesound takes are not here.");
 
             AudioClip[] takes = AudioAssetBuilder.ClipsMatching(pattern);
@@ -50,7 +49,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheBlockAndTheParryNeverShareASound()
         {
-            // A block is the shield's wood, a parry the bright ring: the player must hear which one happened.
+            // 格挡为盾木声，招架为明亮金属声，玩家必须听出发生了哪一种。
             Assume.That(Directory.Exists(AudioAssetBuilder.SoundFolder + "/Kenney"), "The Kenney packs are not downloaded here.");
 
             AudioClip[] block = AudioAssetBuilder.ClipsMatching(@"^impactWood_heavy_\d+$");

@@ -2,11 +2,11 @@ using UnityEngine;
 
 namespace AdaptiveBossArena.Core.Events
 {
-    /// <summary>Event channel carrying a floating-point value, such as a normalised health fraction.</summary>
+    /// <summary>携带浮点值的事件通道，例如归一化生命比例。</summary>
     /// <remarks>
-    /// Lives in its own file, named for the class, because Unity only creates a <c>MonoScript</c> for
-    /// the type whose name matches the file. See <see cref="VoidEventChannel"/> for what goes wrong
-    /// otherwise — briefly, the asset saves with no script reference and loads as null.
+    /// 放在与类同名的独立文件中，因为 Unity 仅为名称匹配文件的类型创建 <c>MonoScript</c>。
+    /// 其他做法的问题见 <see cref="VoidEventChannel"/>：简而言之，资源保存时没有脚本引用，
+    /// 加载后成为 null。
     /// </remarks>
     [CreateAssetMenu(
         fileName = "FloatEventChannel",

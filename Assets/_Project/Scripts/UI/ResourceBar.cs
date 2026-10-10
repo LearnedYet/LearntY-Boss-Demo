@@ -6,22 +6,18 @@ using UnityEngine.UI;
 namespace AdaptiveBossArena.UI
 {
     /// <summary>
-    /// A bar that displays a normalised resource, with a delayed trailing fill.
+    /// 显示归一化资源值、带延迟追赶填充的资源条。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The trailing fill is the whole point of this component rather than a decoration. A bar that
-    /// snaps to its new value tells the player their health changed; a bar with a chase behind it
-    /// tells them <em>how much</em> it changed, which is the thing they actually need mid-fight and
-    /// cannot get by reading a number.
+    /// 追赶条是核心反馈：立即跳变只说明生命变化，追赶填充显示变化<em>幅度</em>，
+    /// 战斗中玩家无法靠读数字迅速得知。
     /// </para>
     /// <para>
-    /// It listens to an event channel rather than polling a combatant, so the heads-up display holds
-    /// no reference to the player or the boss and works for either.
+    /// 监听事件通道而不轮询角色，因此HUD不持有玩家或Boss引用，可用于双方。
     /// </para>
     /// <para>
-    /// Ticks on unscaled time so the chase keeps animating during hit-stop, when the player is most
-    /// likely to be looking at it.
+    /// 使用未缩放时间，让打击停顿期间追赶动画仍能继续。
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -56,16 +52,15 @@ namespace AdaptiveBossArena.UI
         private float _trailing = 1f;
 
         /// <summary>
-        /// The fraction this bar is currently showing.
+        /// 当前资源条显示的比例。
         /// </summary>
         /// <remarks>
-        /// Exposed so an automated test can assert that a change in the underlying pool actually
-        /// reaches the interface. A bar that was never wired and a bar with nothing to report look
-        /// identical on screen, which is exactly the confusion this makes testable.
+        /// 公开给自动化测试，断言资源池变化实际到达界面；未接线和没有变化的资源条外观看起来相同，
+        /// 测试能区分。
         /// </remarks>
         public float DisplayedFraction => _current;
 
-        /// <summary>Whether this bar has a channel to listen to at all. For diagnostics.</summary>
+        /// <summary>资源条是否有监听通道，用于诊断。</summary>
         public bool HasChannel => _channel != null;
         private float _trailHoldRemaining;
 
@@ -104,8 +99,8 @@ namespace AdaptiveBossArena.UI
             SetWidthFraction(_trailingFill, Mathf.Max(_trailing, _current));
         }
 
-        /// <summary>Sets the displayed value, snapping both fills. Used when a fight resets.</summary>
-        /// <param name="normalized">Value from zero to one.</param>
+        /// <summary>设置显示值并立即同步两个填充，用于重置战斗。</summary>
+        /// <param name="normalized">零至一的数值。</param>
         public void SetImmediate(float normalized)
         {
             _current = Mathf.Clamp01(normalized);
@@ -115,10 +110,10 @@ namespace AdaptiveBossArena.UI
             ApplyFills();
         }
 
-        /// <summary>Assigns the channel and images. Used by the interface generator.</summary>
-        /// <param name="channel">Channel carrying the normalised value.</param>
-        /// <param name="fill">Immediate fill image.</param>
-        /// <param name="trailingFill">Trailing fill image, may be null.</param>
+        /// <summary>指定通道和图片，供界面生成器使用。</summary>
+        /// <param name="channel">传递归一化数值的通道。</param>
+        /// <param name="fill">即时填充图片。</param>
+        /// <param name="trailingFill">追赶填充图片，可为空。</param>
         public void Bind(FloatEventChannel channel, Image fill, Image trailingFill)
         {
             _channel = channel;
@@ -131,8 +126,7 @@ namespace AdaptiveBossArena.UI
             float previous = _current;
             _current = Mathf.Clamp01(normalized);
 
-            // The hold only applies to losses. Gaining resource should show immediately, because
-            // the player is usually deciding whether they can afford another action.
+            // 停留只作用于资源损失。获得资源应立即显示，方便玩家判断能否再执行动作。
             if (_current < previous)
             {
                 _trailHoldRemaining = _trailDelaySeconds;
@@ -146,13 +140,11 @@ namespace AdaptiveBossArena.UI
         }
 
         /// <summary>
-        /// Sizes both fills by stretching their rects rather than using <see cref="Image.fillAmount"/>.
+        /// 拉伸矩形调整两个填充，不使用<see cref="Image.fillAmount"/>。
         /// </summary>
         /// <remarks>
-        /// <c>fillAmount</c> is silently ignored when an Image has no sprite, and these bars are
-        /// plain coloured quads. The symptom is a bar that renders permanently full while every
-        /// value behind it updates correctly, which looks like a broken event wiring and is not.
-        /// Driving the anchor works regardless of whether a sprite is ever assigned.
+        /// Image没有Sprite时<c>fillAmount</c>会被忽略，这些条是纯色四边形，
+        /// 可能出现底层值正常更新却始终满条的症状。调整锚点无需依赖Sprite。
         /// </remarks>
         private void ApplyFills()
         {
@@ -160,7 +152,7 @@ namespace AdaptiveBossArena.UI
             SetWidthFraction(_trailingFill, Mathf.Max(_trailing, _current));
         }
 
-        /// <summary>Stretches an image's rect to a fraction of its parent's width.</summary>
+        /// <summary>按父对象宽度的比例拉伸图片矩形。</summary>
         private static void SetWidthFraction(Image image, float fraction)
         {
             if (image == null)

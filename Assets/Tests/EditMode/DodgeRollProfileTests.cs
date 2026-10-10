@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace AdaptiveBossArena.Tests.EditMode
 {
     /// <summary>
-    /// Tests the dodge roll's speed curve.
+    /// 测试闪避翻滚速度曲线。
     /// </summary>
     [TestFixture]
     public sealed class DodgeRollProfileTests
@@ -15,8 +15,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void TheRollCoversItsConfiguredDistance()
         {
-            // The boss's spacing logic was tuned against how far a dodge carries the player. Changing
-            // the shape of the dodge must not change that.
+            // 首领距离逻辑按闪避位移调节，改曲线形状不得改总距离。
             const float frame = 1f / 240f;
             float travelled = 0f;
 
@@ -42,8 +41,7 @@ namespace AdaptiveBossArena.Tests.EditMode
         [Test]
         public void MostOfTheDistanceIsCoveredWhileInvincible()
         {
-            // The i-frames run for the first 0.135 s. A roll that covered most of its ground after
-            // that would carry the player into attacks rather than out of them.
+            // 无敌帧在前 0.135 秒。若多数位移发生在其后，就会把玩家送进攻击而非离开。
             const float frame = 1f / 240f;
             float early = 0f;
 
