@@ -1,4 +1,4 @@
-# 试玩地址：https://learnedyet.github.io/adaptive-boss-arena-demo/
+# 试玩地址：https://learnedyet.github.io/LearntY-Boss/
 
 # 自适应boss竞技场
 
